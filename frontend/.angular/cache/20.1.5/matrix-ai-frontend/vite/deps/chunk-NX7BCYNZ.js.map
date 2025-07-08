@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../../../../node_modules/.pnpm/ng-zorro-antd@20.1.2_fc4ae3c25fffe825e77a0aa6abb687ba/node_modules/ng-zorro-antd/fesm2022/ng-zorro-antd-core-polyfill.mjs"],
+  "sourcesContent": ["/**\n * Use of this source code is governed by an MIT-style license that can be\n * found in the LICENSE file at https://github.com/NG-ZORRO/ng-zorro-antd/blob/master/LICENSE\n */\n// Note: This falls back to `setTimeout` if `requestAnimationFrame` is\n// unintentionally called on the server, but ideally, we should never attempt\n// to call `requestAnimationFrame` on the server — all invocations should be\n// wrapped with isBrowser.\nconst requestAnimationFrame = typeof globalThis.requestAnimationFrame === 'function' ? globalThis.requestAnimationFrame : globalThis.setTimeout;\nconst cancelAnimationFrame = typeof globalThis.requestAnimationFrame === 'function' ? globalThis.cancelAnimationFrame : globalThis.clearTimeout;\n\n/**\n * Use of this source code is governed by an MIT-style license that can be\n * found in the LICENSE file at https://github.com/NG-ZORRO/ng-zorro-antd/blob/master/LICENSE\n */\n\n/**\n * Generated bundle index. Do not edit.\n */\n\nexport { cancelAnimationFrame, requestAnimationFrame };\n\n"],
+  "mappings": ";AAQA,IAAM,wBAAwB,OAAO,WAAW,0BAA0B,aAAa,WAAW,wBAAwB,WAAW;AACrI,IAAM,uBAAuB,OAAO,WAAW,0BAA0B,aAAa,WAAW,uBAAuB,WAAW;",
+  "names": []
+}

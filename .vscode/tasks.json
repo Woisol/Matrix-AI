@@ -1,0 +1,46 @@
+{
+  // For more information, visit: https://go.microsoft.com/fwlink/?LinkId=733558
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "start",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "npm.*dev|npm.*start|npm.*test|npm.*build|npm-run-all|[^\\[@]\bvite\b|ng serve|ng build|ng test",
+          "endsPattern": "https?://localhost:.*"
+        }
+      },
+      "presentation": {
+        "showReuseMessage": false,
+      }
+    },
+    {
+      "type": "npm",
+      "script": "test",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "npm.*dev|npm.*start|npm.*test|npm.*build|npm-run-all|[^\\[@]\bvite\b|ng serve|ng build|ng test",
+          "endsPattern": "https?://localhost:.*"
+        }
+      },
+      "presentation": {
+        "showReuseMessage": false,
+      }
+    },
+  ]
+}
