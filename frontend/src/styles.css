@@ -1,1 +1,116 @@
 /* You can add global styles to this file, and also import other style files */
+/* general */
+/* Color Scheme 最佳实践 */
+:root {
+
+  scrollbar-gutter: stable;
+
+  /* 声明支持的颜色方案 */
+  color-scheme: light dark;
+
+  /* 浅色主题变量 */
+  --color-text: #1a1a1a;
+  --color-bg: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-primary: #FCCB1B;
+  --color-primary-dark: #dda712;
+  --color-border: #e0e0e0;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+}
+
+/* 深色主题使用 @media (prefers-color-scheme: dark) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text: #ffffff;
+    --color-bg: #121212;
+    --color-surface: #1e1e1e;
+    --color-primary: #caaa35;
+    --color-primary-dark: #b6880c;
+    --color-border: #333333;
+    --color-shadow: rgba(0, 0, 0, 0.3);
+  }
+
+  /* 深色模式下调整图片亮度 */
+
+  img:not([data-theme-ignore]) {
+    filter: brightness(0.8) contrast(1.2);
+  }
+
+  /* 对于 logo 等关键图片，提供专门的深色版本 */
+  .logo-light {
+    display: none;
+  }
+
+  .logo-dark {
+    display: block;
+  }
+}
+
+/* 手动切换深色模式的覆盖 */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-text: #ffffff;
+  /* 使用稍微偏离纯黑的颜色，减少眼疲劳 */
+  --color-bg: #121212;
+  --color-surface: #1e1e1e;
+  --color-primary: #caaa35;
+  --color-primary-dark: #b6880c;
+  --color-border: #333333;
+  --color-shadow: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --color-text: #1a1a1a;
+  --color-bg: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-primary: #FCCB1B;
+  --color-primary-dark: #dda712;
+  --color-border: #e0e0e0;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  outline: none;
+  user-select: none;
+}
+
+.hidden {
+  display: none;
+}
+
+a {
+  color: var(--color-text);
+  text-decoration: none;
+  transition: text-decoration 0.3s ease-in-out, color 0.3s ease;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+
+
+button {
+  padding: 0.5em 1em;
+  background: var(--color-primary);
+  border: var(--color-primary-dark);
+  border-radius: 10px;
+  transition: background 0.3s ease-in-out;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    /* background: var(--color-primary-dark); */
+    filter: brightness(0.9);
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  &>* {
+    transition: color 0.5s ease-in-out;
+  }
+
+  /* @apply --btn-scale; */
+  /* &:active {} */
+}
