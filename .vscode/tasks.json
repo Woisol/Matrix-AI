@@ -10,16 +10,17 @@
         "cwd": "${workspaceFolder}/frontend"
       },
       "problemMatcher": {
-        "owner": "custom",
+        "owner": "typescript",
         "pattern": "$tsc",
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "npm.*dev|npm.*start|npm.*test|npm.*build|npm-run-all|[^\\[@]\bvite\b|ng serve|ng build|ng test",
-          "endsPattern": "https?://localhost:.*"
+          "beginsPattern": {
+            "regexp": "(.*?)"
+          },
+          "endsPattern": {
+            "regexp": "bundle generation complete"
+          }
         }
-      },
-      "presentation": {
-        "showReuseMessage": false,
       }
     },
     {
@@ -30,17 +31,18 @@
         "cwd": "${workspaceFolder}/frontend"
       },
       "problemMatcher": {
-        "owner": "custom",
+        "owner": "typescript",
         "pattern": "$tsc",
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "npm.*dev|npm.*start|npm.*test|npm.*build|npm-run-all|[^\\[@]\bvite\b|ng serve|ng build|ng test",
-          "endsPattern": "https?://localhost:.*"
+          "beginsPattern": {
+            "regexp": "(.*?)"
+          },
+          "endsPattern": {
+            "regexp": "bundle generation complete"
+          }
         }
-      },
-      "presentation": {
-        "showReuseMessage": false,
       }
-    },
+    }
   ]
 }
