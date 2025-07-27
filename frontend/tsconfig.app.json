@@ -4,12 +4,20 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/app",
-    "types": []
+    "types": [],
+    "paths": {
+      "@/*": [
+        "/frontend/src"
+      ],
+      "@public/*": [
+        "/frontend/public"
+      ]
+    },
   },
   "include": [
     "src/**/*.ts"
   ],
   "exclude": [
     "src/**/*.spec.ts"
-  ]
+  ],
 }

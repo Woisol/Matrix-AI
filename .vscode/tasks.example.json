@@ -10,17 +10,16 @@
         "cwd": "${workspaceFolder}/frontend"
       },
       "problemMatcher": {
-        "owner": "typescript",
+        "owner": "custom",
         "pattern": "$tsc",
         "background": {
           "activeOnStart": true,
-          "beginsPattern": {
-            "regexp": "(.*?)"
-          },
-          "endsPattern": {
-            "regexp": "bundle generation complete"
-          }
+          "beginsPattern": "npm.*dev|npm.*start|npm.*test|npm.*build|npm-run-all|[^\\[]vite|ng serve|ng build|ng test",
+          "endsPattern": "https?://localhost:.*"
         }
+      },
+      "presentation": {
+        "showReuseMessage": false,
       }
     },
     {
@@ -31,17 +30,16 @@
         "cwd": "${workspaceFolder}/frontend"
       },
       "problemMatcher": {
-        "owner": "typescript",
+        "owner": "custom",
         "pattern": "$tsc",
         "background": {
           "activeOnStart": true,
-          "beginsPattern": {
-            "regexp": "(.*?)"
-          },
-          "endsPattern": {
-            "regexp": "bundle generation complete"
-          }
+          "beginsPattern": "npm.*dev|npm.*start|npm.*test|npm.*build|npm-run-all|[^\\[]vite|ng serve|ng build|ng test",
+          "endsPattern": "https?://localhost:.*"
         }
+      },
+      "presentation": {
+        "showReuseMessage": false,
       }
     }
   ]
