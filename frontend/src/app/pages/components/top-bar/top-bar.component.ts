@@ -14,7 +14,7 @@ type NavItem = {
   imports: [RouterLink, NzImageModule, NzAvatarModule],
   template: `
   <nav>
-    <div class=""><img nz-image nzDisablePreview nzSrc="logo.svg" alt="" class="nav-icon"></div>
+    <div class=""><img nz-image nzDisablePreview nzSrc="logo.svg" alt="" class="nav-icon" routerLink="/home"></div>
     <ul>
       @for (item of navItems; track item.label) {
         <li class="">
@@ -24,9 +24,9 @@ type NavItem = {
       }
     </ul>
     <div class="user-menu">
-      <nz-avatar [nzSize]="48" nzIcon="user" alt="" />
+      <nz-avatar [nzSize]="40" nzIcon="user" alt="" />
       <span>
-        User
+        {{ userName }}
       </span>
   </div>
   </nav>
@@ -51,9 +51,12 @@ type NavItem = {
     width: 100%;
     margin: 0;
 
-    >li{
-      display: inline-block;
-      margin-right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    &>li>a{
+      color: var(--color-primary);
     }
   }
 
@@ -61,7 +64,11 @@ type NavItem = {
     display: flex;
     gap: 10px;
     align-items: center;
-    font-size: 16px;
+    &>span{
+      font-size: 16px;
+      text-wrap: nowrap;
+    }
+
   }
   `]
 })
@@ -69,7 +76,13 @@ type NavItem = {
 
 export class TopBarComponent {
   // Add any necessary properties or methods here
+  constructor() {
+    this.userName = 'Unknown User';
+    this.userAvatar = 'user'; // Placeholder for user avatar
+  }
   protected readonly navItems: NavItem[] = [
     { label: '题目', path: '/course/private' }
   ]
+  protected readonly userName: string;
+  protected readonly userAvatar: string; // Placeholder for user avatar URL
 }
