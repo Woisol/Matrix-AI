@@ -24,7 +24,7 @@ type NavItem = {
       }
     </ul>
     <div class="user-menu">
-      <nz-avatar [nzSize]="40" nzIcon="user" alt="" />
+      <nz-avatar [nzSize]="40" nzIcon="" alt="" />
       <span>
         {{ userName }}
       </span>
