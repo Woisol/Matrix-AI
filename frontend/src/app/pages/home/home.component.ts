@@ -4,7 +4,7 @@ import { Component } from "@angular/core";
   selector: "app-home",
   standalone: true,
   template: `
-
+<h2>Home to be implement</h2>
   `,
   styles: [`
     `],
