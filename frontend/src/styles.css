@@ -19,6 +19,9 @@
 
   --size-radius: 16px;
   --size-radius-sm: 8px;
+
+  /* swiper */
+  --swiper-theme-color: white !important;
 }
 
 /* 深色主题使用 @media (prefers-color-scheme: dark) */
