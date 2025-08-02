@@ -1,14 +1,9 @@
 import { AfterViewInit, Component, CUSTOM_ELEMENTS_SCHEMA, signal, ViewChild, ElementRef } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { NzImageModule } from "ng-zorro-antd/image";
-import Swiper from "swiper";
-import { Navigation, Pagination } from "swiper/modules";
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
-import { register } from "swiper/element";
-import { NgModel } from "@angular/forms";
-import { NzCarouselModule } from "ng-zorro-antd/carousel";
+import { NzCarouselModule, NzCarouselComponent } from "ng-zorro-antd/carousel";
+import { NzButtonModule } from "ng-zorro-antd/button";
+import { NzIconModule } from "ng-zorro-antd/icon";
 
 export interface CarouselItem {
   isRouterLink?: boolean;
@@ -16,34 +11,56 @@ export interface CarouselItem {
   imagePath: string;
 }
 
-register();
 @Component({
   selector: "app-home",
-  imports: [RouterLink, NzImageModule, NzCarouselModule,],
+  imports: [RouterLink, NzImageModule, NzCarouselModule, NzButtonModule, NzIconModule],
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
   <div class="home-con">
     <section class="col col-left">
-      <nz-carousel
-        #carousel
-        class="swiper-con"
-        nzAutoPlay
-        nzEffect="slide"
-        [nzLoop]="true"
-        [nzDotRender]="dotTpl">
-        @for (content of carouselItems; track $index) {
-          <div nz-carousel-content class="swiper-slide">
-            <!-- <img nz-image nzSrc="{{content.imagePath}}" routerLink="{{content.link}}" nzDisablePreview loading="lazy" /> -->
-            <!-- {{content}} -->
-            <img [src]="content.imagePath"  />
-        </div>
-        }
-      </nz-carousel>
+      <div class="carousel-container">
+        <nz-carousel
+          #carousel
+          class="swiper-con"
+          nzAutoPlay
+          nzEffect="slide"
+          [nzLoop]="true"
+          >
+          @for (content of carouselItems; track $index) {
+            <div nz-carousel-content class="swiper-slide">
+              <!-- <img nz-image nzSrc="{{content.imagePath}}" routerLink="{{content.link}}" nzDisablePreview loading="lazy" /> -->
+              <!-- {{content}} -->
+              <img [src]="content.imagePath"  />
+          </div>
+          }
+        </nz-carousel>
 
-      <ng-template #dotTpl let-index>
+        <!-- 自定义导航按钮 -->
+        <button
+          nz-button
+          nzType="primary"
+          nzShape="circle"
+          class="carousel-nav prev"
+          (click)="goToPrevSlide()"
+          nzSize="small">
+          <span nz-icon nzType="left" nzTheme="outline"></span>
+        </button>
+
+        <button
+          nz-button
+          nzType="primary"
+          nzShape="circle"
+          class="carousel-nav next"
+          (click)="goToNextSlide()"
+          nzSize="small">
+          <span nz-icon nzType="right" nzTheme="outline"></span>
+        </button>
+      </div>
+
+      <!-- <ng-template #dotTpl let-index>
         <span class="custom-dot"></span>
-      </ng-template>
+      </ng-template> -->
 
       <!-- <swiper-container class="swiper-con" loop="true" autoplay="{disableOnInteraction: false,pauseOnMouseEnter: true}" effect="slide" space-between="10" width ="0"> -->
         <!-- <div class="swiper-wrapper">  navigation="true" pagination="true" -->
@@ -93,6 +110,36 @@ register();
       }
     }
   }
+
+  .carousel-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.2) ;
+    border: none ;
+    color: white ;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.5) ;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    &.prev {
+      left: 10px;
+    }
+
+    &.next {
+      right: 10px;
+    }
+  }
+
   .swiper-con{
     width: 100% !important;
     /* max-width: 100%;*/
@@ -136,9 +183,43 @@ register();
     color: #fff;
     overflow: hidden;
   }
+
+  .slick-dots{
+    &>li{
+      >span{
+      width: 5px;
+      height: 5px;
+      border-radius: 2.5px;
+      background-color: #aaa;
+    }
+    &.slick-active>span{
+      background-color: var(--color-primary);
+    }
+
+    }
+  }
   `],
 })
-export class HomeComponent {
+export class HomeComponent implements AfterViewInit {
+  @ViewChild('carousel') carousel!: NzCarouselComponent;
+
+  ngAfterViewInit() {
+    // 延迟初始化，确保 DOM 完全渲染
+    setTimeout(() => {
+      if (this.carousel) {
+        // 触发窗口 resize 事件
+        window.dispatchEvent(new Event('resize'));
+      }
+    }, 100);
+  }
+
+  goToPrevSlide() {
+    this.carousel.pre();
+  }
+
+  goToNextSlide() {
+    this.carousel.next();
+  }
   // constructor() {
   // swiper: Swiper | undefined;
   // ngAfterViewInit() {
