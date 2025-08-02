@@ -1,9 +1,17 @@
-import { AfterViewInit, Component, CUSTOM_ELEMENTS_SCHEMA, signal, ViewChild, ElementRef } from "@angular/core";
+import { AfterViewInit, Component, CUSTOM_ELEMENTS_SCHEMA, signal, ViewChild, ElementRef, inject } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { NzImageModule } from "ng-zorro-antd/image";
 import { NzCarouselModule, NzCarouselComponent } from "ng-zorro-antd/carousel";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzIconModule } from "ng-zorro-antd/icon";
+import { NzListModule } from "ng-zorro-antd/list";
+import { CourseInfo } from "../../services/course.service";
+import { NzCollapseModule } from "ng-zorro-antd/collapse";
+import { NzTableModule } from "ng-zorro-antd/table";
+import { NzTagModule } from "ng-zorro-antd/tag";
+import { NzBadgeModule } from "ng-zorro-antd/badge";
+import { NzSpaceModule } from "ng-zorro-antd/space";
+import { DatePipe } from "@angular/common";
 
 export interface CarouselItem {
   isRouterLink?: boolean;
@@ -13,7 +21,7 @@ export interface CarouselItem {
 
 @Component({
   selector: "app-home",
-  imports: [RouterLink, NzImageModule, NzCarouselModule, NzButtonModule, NzIconModule],
+  imports: [RouterLink, NzImageModule, NzCarouselModule, NzButtonModule, NzIconModule, NzListModule, NzCollapseModule, NzTableModule, NzTagModule, NzBadgeModule, NzSpaceModule, DatePipe],
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
@@ -32,7 +40,7 @@ export interface CarouselItem {
               <!-- <img nz-image nzSrc="{{content.imagePath}}" routerLink="{{content.link}}" nzDisablePreview loading="lazy" /> -->
               <!-- {{content}} -->
               <img [src]="content.imagePath"  />
-          </div>
+            </div>
           }
         </nz-carousel>
 
@@ -77,7 +85,147 @@ export interface CarouselItem {
 
         </div>
       </swiper-container> -->
-      <table class=""></table>
+      <!-- 课程列表 - 使用 List + Collapse 嵌套结构 -->
+      <div class="course-section">
+        <h3 class="section-title">
+          <span nz-icon nzType="book" nzTheme="outline"></span>
+          Todo-List
+        </h3>
+
+        <nz-list nzBordered nzSize="small" class="course-list">
+          @for(course of courseInfo.courseListItems; track course.courseName) {
+            <nz-list-item class="course-item">
+              <nz-collapse nzGhost>
+                <nz-collapse-panel
+                  [nzHeader]="courseHeaderTpl"
+                  [nzExtra]="courseExtraTpl"
+                  [nzActive]="false">
+
+                  <!-- 课程头部模板 -->
+                  <ng-template #courseHeaderTpl>
+                    <div class="course-header">
+                      <span class="course-name">{{ course.courseName }}</span>
+                    </div>
+                  </ng-template>
+
+                  <!-- 课程额外信息模板 -->
+                  <ng-template #courseExtraTpl>
+                      <nz-badge
+                        [nzCount]="course.assigment.length"
+                        [nzShowZero]="true"
+                        nzSize="small"
+                        class="assignment-count">
+                      </nz-badge>
+                  </ng-template>
+
+                  <!-- 作业列表 -->
+                  <nz-list nzSize="small" class="assignment-list">
+                    @for(assignment of course.assigment; track assignment.assigmentName) {
+                      <nz-list-item class="assignment-item">
+                        <!-- <nz-list-item-meta
+                        [nzTitle]="assignmentTitleTpl"
+                          [nzDescription]="assignmentDescTpl"
+                          [nzAvatar]="assignmentAvatarTpl"> -->
+
+                          <!-- 作业类型图标 -->
+                          <!-- <ng-template #assignmentAvatarTpl>
+                            <nz-badge [nzDot]="isOverdue(assignment.ddl)" nzStatus="error">
+                              <span
+                                nz-icon
+                                [nzType]="assignment.type === 'program' ? 'code' : 'file-text'"
+                                nzTheme="outline"
+                                class="assignment-icon"
+                                [class.program-type]="assignment.type === 'program'"
+                                [class.choose-type]="assignment.type === 'choose'">
+                              </span>
+                            </nz-badge>
+                          </ng-template> -->
+
+                          <!-- 作业标题 -->
+                          <!-- <ng-template #assignmentTitleTpl> -->
+                            <div class="assignment-title">
+                              <h3 class="assignment-name">{{ assignment.assigmentName }}</h3>
+                              @if (assignment.score !== null) {
+                                <nz-tag [nzColor]="assignment.score >= 60? 'green':'orange'" class="score-tag">
+                                  {{ assignment.score }} 分
+                                </nz-tag>
+                              } @else {
+                                <nz-tag nzColor="orange" class="status-tag">
+                                  未提交
+                                </nz-tag>
+                              }
+                              <span class="assignment-type">
+                                <span nz-icon nzType="tag" nzTheme="outline"></span>
+                                {{ assignment.type === 'program' ? '实时编程题' : '选择题' }}
+                              </span>
+                            </div>
+                            <div class="assignment-desc">
+                              <nz-space>
+                                <span *nzSpaceItem class="assignment-ddl" [class.no-ddl]="!assignment.ddl" [class.overdue]="isOverdue(assignment.ddl)">
+                                  <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+                                  @if(!assignment.ddl){
+                                    不截止
+                                  }
+                                  @else if (isOverdue(assignment.ddl)) {
+                                    已经截止于：{{ assignment.ddl | date:'MM-dd HH:mm' }}
+                                  }
+                                  @else{
+                                    截止于：{{ assignment.ddl | date:'MM-dd HH:mm' }}
+                                  }
+                                  </span>
+
+                              </nz-space>
+                            </div>
+                          <!-- </ng-template> -->
+
+                          <!-- 作业描述信息 -->
+                          <!-- <ng-template #assignmentDescTpl> -->
+                          <!-- </ng-template> -->
+                        <!-- </nz-list-item-meta> -->
+
+                        <!-- 作业操作按钮 -->
+                        <!-- <ul nz-list-item-actions>
+                          <nz-list-item-action>
+                            <button nz-button nzType="primary" nzSize="small" nzGhost>
+                              <span nz-icon nzType="edit" nzTheme="outline"></span>
+                              {{ assignment.score !== null ? '查看' : '开始' }}
+                            </button>
+                          </nz-list-item-action>
+                        </ul> -->
+                      </nz-list-item>
+                    }
+
+                    <!-- 空状态 -->
+                    @if (course.assigment.length === 0) {
+                      <nz-list-item>
+                        <nz-list-item-meta
+                          nzDescription="暂无作业">
+                          <ng-template #nzAvatar>
+                            <span nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></span>
+                          </ng-template>
+                        </nz-list-item-meta>
+                      </nz-list-item>
+                    }
+                  </nz-list>
+                </nz-collapse-panel>
+              </nz-collapse>
+            </nz-list-item>
+          }
+
+          <!-- 全局空状态 -->
+          @if (courseInfo.courseListItems.length === 0) {
+            <nz-list-item>
+              <nz-list-item-meta
+                nzTitle="暂无课程"
+                nzDescription="当前没有正在进行的课程">
+                <ng-template #nzAvatar>
+                  <span nz-icon nzType="book" nzTheme="outline" class="empty-icon"></span>
+                </ng-template>
+              </nz-list-item-meta>
+            </nz-list-item>
+          }
+        </nz-list>
+      </div>
     </section>
     <section class="col col-right">
       <h2 class="">正在进行中的课程</h2>
@@ -98,6 +246,8 @@ export interface CarouselItem {
     gap: 40px;
 
     &>.col{
+      max-height: 100%;
+
       &.col-left{
         flex:1;
         display: flex;
@@ -198,6 +348,160 @@ export interface CarouselItem {
 
     }
   }
+
+  /* 课程列表样式 */
+  .course-section {
+    margin-top: 24px;
+    height: 100%;
+    /*overflow-y: auto;*/
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #262626;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+    }
+  }
+
+  .course-list {
+    background: #fff;
+    border-radius: 8px;
+
+    .course-item {
+      width: 100%;
+      padding: 0 !important;
+      border: none !important;
+
+      nz-collapse{
+        width: 100%;
+      }
+
+      ::ng-deep .ant-collapse {
+        background: transparent;
+        border: none;
+
+        .ant-collapse-item {
+          border: none;
+
+          .ant-collapse-header {
+            padding: 16px 24px;
+            background: #fafafa;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            transition: all 0.3s ease;
+
+            &:hover {
+              background: #f0f2f5;
+            }
+          }
+
+          .ant-collapse-content {
+            background: #fff;
+            border-radius: 0 0 6px 6px;
+            border: 1px solid #f0f0f0;
+            border-top: none;
+          }
+        }
+      }
+    }
+  }
+
+  .course-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .course-name {
+      font-weight: 500;
+      font-size: 14px;
+      color: #262626;
+    }
+
+  }
+  .assignment-count {
+    ::ng-deep .ant-badge-count {
+      background: var(--color-primary);
+      font-size: 12px;
+      height: 18px;
+      line-height: 18px;
+      min-width: 18px;
+    }
+  }
+
+  .assignment-list {
+    ::ng-deep .ant-list-item {
+      padding: 12px 24px;
+      border-bottom: 1px solid #f0f0f0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background: #fafafa;
+      }
+    }
+  }
+
+  .assignment-item {
+    .assignment-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .assignment-name {
+        margin: 0;
+        font-weight: 500;
+        color: #262626;
+      }
+
+      .score-tag, .status-tag {
+        margin: 0;
+        padding: 2px 5px;
+        font-size: 11px;
+        line-height: 1.2;
+      }
+    }
+
+    .assignment-type {
+      color: #8c8c8c;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .assignment-desc {
+      height: 100%;
+      line-height: 12px;
+
+
+      .assignment-ddl {
+        /*color: #fa8c16;*/
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        &.overdue {
+          color: #ff4d4f;
+          font-weight: 500;
+        }
+        &.no-ddl{
+          color: #aaa;
+        }
+      }
+    }
+  }
+
+  .empty-icon {
+    color: #bfbfbf;
+    font-size: 18px;
+  }
   `],
 })
 export class HomeComponent implements AfterViewInit {
@@ -219,6 +523,11 @@ export class HomeComponent implements AfterViewInit {
 
   goToNextSlide() {
     this.carousel.next();
+  }
+
+  isOverdue(ddl: Date | null): boolean {
+    if (!ddl) return false;
+    return new Date() > new Date(ddl);
   }
   // constructor() {
   // swiper: Swiper | undefined;
@@ -249,6 +558,6 @@ export class HomeComponent implements AfterViewInit {
       link: "",
       imagePath: "banner-recruit-2025.png",
     },
-
   ]
+  protected readonly courseInfo = inject(CourseInfo)
 }
