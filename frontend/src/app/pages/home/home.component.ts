@@ -1,6 +1,5 @@
-import { AfterViewInit, Component, CUSTOM_ELEMENTS_SCHEMA, signal } from "@angular/core";
+import { AfterViewInit, Component, CUSTOM_ELEMENTS_SCHEMA, signal, ViewChild, ElementRef } from "@angular/core";
 import { RouterLink } from "@angular/router";
-import { NzCarouselModule } from "ng-zorro-antd/carousel";
 import { NzImageModule } from "ng-zorro-antd/image";
 import Swiper from "swiper";
 import { Navigation, Pagination } from "swiper/modules";
@@ -9,24 +8,46 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import { register } from "swiper/element";
 import { NgModel } from "@angular/forms";
+import { NzCarouselModule } from "ng-zorro-antd/carousel";
 
-interface bannerContent {
-  img: string;
-  alt?: string;
-  link?: string;
+export interface CarouselItem {
+  isRouterLink?: boolean;
+  link: string;
+  imagePath: string;
 }
+
 register();
 @Component({
   selector: "app-home",
-  imports: [RouterLink, NzImageModule],
+  imports: [RouterLink, NzImageModule, NzCarouselModule,],
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
   <div class="home-con">
     <section class="col col-left">
+      <nz-carousel
+        #carousel
+        class="swiper-con"
+        nzAutoPlay
+        nzEffect="slide"
+        [nzLoop]="true"
+        [nzDotRender]="dotTpl">
+        @for (content of carouselItems; track $index) {
+          <div nz-carousel-content class="swiper-slide">
+            <!-- <img nz-image nzSrc="{{content.imagePath}}" routerLink="{{content.link}}" nzDisablePreview loading="lazy" /> -->
+            <!-- {{content}} -->
+            <img [src]="content.imagePath"  />
+        </div>
+        }
+      </nz-carousel>
+
+      <ng-template #dotTpl let-index>
+        <span class="custom-dot"></span>
+      </ng-template>
+
       <!-- <swiper-container class="swiper-con" loop="true" autoplay="{disableOnInteraction: false,pauseOnMouseEnter: true}" effect="slide" space-between="10" width ="0"> -->
         <!-- <div class="swiper-wrapper">  navigation="true" pagination="true" -->
-      <swiper-container class="swiper-con"
+      <!-- <swiper-container class="swiper-con"
         slides-per-view="3"
         space-between="spaceBetween"
         centered-slides="true"
@@ -36,16 +57,9 @@ register();
             slidesPerView: 3,
           },
         }">
-          @for (content of carouselContents(); track $index) {
-            <swiper-slide class="swiper-slide">
-              <img nz-image nzSrc="{{content.img}}" [alt]="content.alt" routerLink="{{content.link}}" nzDisablePreview loading="lazy" />
-              <!-- {{content}} -->
-              <!-- <img [src]="content.image" [alt]="content.title" /> -->
-            </swiper-slide>
-          }
 
-        <!-- </div> -->
-      </swiper-container>
+        </div>
+      </swiper-container> -->
       <table class=""></table>
     </section>
     <section class="col col-right">
@@ -80,19 +94,47 @@ register();
     }
   }
   .swiper-con{
-    width: 100%;
+    width: 100% !important;
     /* max-width: 100%;*/
-    /*height: min(fit-content,200px);*/
     height: fit-content;
     max-height: 200px;
     overflow: hidden;
     border-radius: var(--size-radius);
     background: linear-gradient(135deg, #eee, #ccc);
+
+    /* 强制修复 slick 的宽度计算问题 */
+    & ::ng-deep .slick-list {
+      width: 100% !important;
+    }
+
+    & ::ng-deep .slick-track {
+      width: auto !important;
+      display: flex !important;
+    }
+
+    & ::ng-deep .slick-slide {
+      width: 100% !important;
+      height: fit-content !important;
+      flex: 0 0 100% !important;
+    }
+
     /* 关键：图片元素有可能突破布局() 解决关键就在于设置图片的宽高() */
     & img{
       width: 100%;
       height: 100%;
+      object-fit: cover;
+      display: block;
     }
+  }
+  [nz-carousel-content] {
+    text-align: center;
+    width: 100%;
+    height: fit-content;
+    max-height: 200px;
+    line-height: 200px;
+    background: #364d79;
+    color: #fff;
+    overflow: hidden;
   }
   `],
 })
@@ -117,15 +159,15 @@ export class HomeComponent {
   //     spaceBetween: 10,
   //   })
   // }
-  protected readonly carouselContents = signal<bannerContent[]>([
+  protected readonly carouselItems: CarouselItem[] = [
     {
-      img: "banner-report-2024.png",
-      alt: "2024 年度报告报告",
+      link: "",
+      imagePath: "banner-report-2024.png",
     },
     {
-      img: "banner-recruit-2025.png",
-      alt: "2025 Matrix 招新",
+      link: "",
+      imagePath: "banner-recruit-2025.png",
     },
 
-  ])
+  ]
 }
