@@ -586,11 +586,11 @@ export class HomeComponent implements AfterViewInit {
   protected readonly carouselItems: CarouselItem[] = [
     {
       link: "",
-      imagePath: "banner-report-2024.png",
+      imagePath: "banner/banner-report-2024.png",
     },
     {
       link: "",
-      imagePath: "banner-recruit-2025.png",
+      imagePath: "banner/banner-recruit-2025.png",
     },
   ]
   protected readonly courseInfo = inject(CourseInfo)
