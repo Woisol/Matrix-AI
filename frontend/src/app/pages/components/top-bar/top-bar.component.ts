@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { RouterLink } from "@angular/router";
+import { RouterLink, Router, RouterLinkActive } from "@angular/router";
 import { NzAvatarModule } from "ng-zorro-antd/avatar";
 import { NzImageModule } from 'ng-zorro-antd/image';
 
@@ -11,7 +11,7 @@ type NavItem = {
 @Component({
   selector: "app-top-bar",
   standalone: true,
-  imports: [RouterLink, NzImageModule, NzAvatarModule],
+  imports: [RouterLink, RouterLinkActive, NzImageModule, NzAvatarModule],
   template: `
   <nav>
     <div class=""><img nz-image nzDisablePreview nzSrc="logo.svg" alt="" class="nav-icon" routerLink="/home"></div>
@@ -19,7 +19,7 @@ type NavItem = {
       @for (item of navItems; track item.label) {
         <li class="">
           <!-- 注意引入 RouterLink 才能使用不然补全都没有() -->
-          <a [routerLink]="item.path">{{ item.label }}</a>
+          <a [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
         </li>
       }
     </ul>
@@ -57,6 +57,19 @@ type NavItem = {
     list-style: none;
     &>li>a{
       color: var(--color-primary);
+      padding: 8px 16px;
+      border-radius: var(--size-radius-sm);
+      text-decoration: none;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background-color: var(--color-primary-light-xl);
+      }
+
+      &.active {
+        background-color: var(--color-primary);
+        color: white;
+      }
     }
   }
 
@@ -76,10 +89,11 @@ type NavItem = {
 
 export class TopBarComponent {
   // Add any necessary properties or methods here
-  constructor() {
+  constructor(private router: Router) {
     this.userName = 'Unknown User';
     this.userAvatar = 'user'; // Placeholder for user avatar
   }
+
   protected readonly navItems: NavItem[] = [
     { label: '题目', path: '/course/private' }
   ]
