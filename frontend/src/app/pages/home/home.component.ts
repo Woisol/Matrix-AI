@@ -230,13 +230,13 @@ export interface CarouselItem {
       </div>
     </section>
     <!-- 课程右栏 -->
-    <section class="col col-right">
+    <section class="col col-right all-course-con">
       <h2 class="">正在进行中的课程</h2>
-      <div class="">
-        <h3 class="">普通课程</h3>
-        <a routerLink="/course/private" class="">&gt;&gt;查看所有课程</a>
+      <div class="header">
+        <h3 style="display: inline-block; margin-right: auto;">普通课程</h3>
+        <a routerLink="/course/private">&gt;&gt;所有课程</a>
       </div>
-      <div class="">
+      <div class="list">
         <nz-list>
           @for(course of courseInfo.allCourseList; track course.courseId) {
             <nz-list-item>
@@ -513,6 +513,38 @@ export interface CarouselItem {
         &.no-ddl{
           color: #aaa;
         }
+      }
+    }
+  }
+  .all-course-con{
+    &>.header{
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+
+      &>h3{
+        font-size: 16px;
+        font-weight: 600;
+        color: #262626;
+      }
+
+      &>a{
+        margin-left: auto;
+        color: grey;
+        transition: all 0.3s ease;
+
+        &:hover {
+          color: var(--color-primary);
+          text-decoration: none;
+        }
+      }
+    }
+    &>.list  nz-list-item{
+      padding: 12px 6px;
+      border-radius: var(--size-radius-sm);
+      transition: all 0.3s ease;
+      &:hover{
+        background-color: var(--color-primary-light);
       }
     }
   }
