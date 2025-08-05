@@ -34,7 +34,7 @@ type NavItem = {
   styles: [`
   nav{
     width: 100vw;
-    height: 48px;
+    height: var(--size-top-bar);
     display: flex;
     gap: 20px;
     justify-content: space-between;
