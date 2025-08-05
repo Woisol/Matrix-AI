@@ -10,17 +10,18 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideHttpClient } from '@angular/common/http';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { IconDefinition } from '@ant-design/icons-angular';
-import {
-  BookOutline,
-  TagOutline,
-  ClockCircleOutline,
-  InboxOutline,
+import { 
+  BookOutline, 
+  TagOutline, 
+  ClockCircleOutline, 
+  InboxOutline, 
   CheckOutline,
   LeftOutline,
   RightOutline,
   CodeOutline,
   FileTextOutline
 } from '@ant-design/icons-angular/icons';
+import { MarkdownModule } from 'ngx-markdown';
 
 registerLocaleData(zh);
 
@@ -41,11 +42,12 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
-    provideNzI18n(zh_CN),
-    importProvidersFrom(FormsModule),
+    provideRouter(routes), 
+    provideNzI18n(zh_CN), 
+    importProvidersFrom(FormsModule), 
     importProvidersFrom(NzIconModule.forRoot(icons)),
-    provideAnimationsAsync(),
+    importProvidersFrom(MarkdownModule.forRoot()),
+    provideAnimationsAsync(), 
     provideHttpClient()
   ]
 };
