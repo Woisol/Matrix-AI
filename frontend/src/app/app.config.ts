@@ -8,13 +8,44 @@ import zh from '@angular/common/locales/zh';
 import { FormsModule } from '@angular/forms';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient } from '@angular/common/http';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { IconDefinition } from '@ant-design/icons-angular';
+import {
+  BookOutline,
+  TagOutline,
+  ClockCircleOutline,
+  InboxOutline,
+  CheckOutline,
+  LeftOutline,
+  RightOutline,
+  CodeOutline,
+  FileTextOutline
+} from '@ant-design/icons-angular/icons';
 
 registerLocaleData(zh);
+
+// 定义需要的图标
+const icons: IconDefinition[] = [
+  BookOutline,
+  TagOutline,
+  ClockCircleOutline,
+  InboxOutline,
+  CheckOutline,
+  LeftOutline,
+  RightOutline,
+  CodeOutline,
+  FileTextOutline
+];
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes), provideNzI18n(zh_CN), importProvidersFrom(FormsModule), provideAnimationsAsync(), provideHttpClient()
+    provideRouter(routes),
+    provideNzI18n(zh_CN),
+    importProvidersFrom(FormsModule),
+    importProvidersFrom(NzIconModule.forRoot(icons)),
+    provideAnimationsAsync(),
+    provideHttpClient()
   ]
 };
