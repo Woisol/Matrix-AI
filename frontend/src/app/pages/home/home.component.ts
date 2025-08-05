@@ -263,6 +263,7 @@ export interface CarouselItem {
     max-width: 100vw;
     display: flex;
     gap: 40px;
+    padding: 20px 40px;
 
     &>.col{
       max-height: 100%;
