@@ -32,7 +32,7 @@ export interface CarouselItem {
           #carousel
           class="swiper-con"
           nzAutoPlay
-          nzEffect="slide"
+          nzEffect="transform-no-loop"
           [nzLoop]="true"
           >
           @for (content of carouselItems; track $index) {
@@ -155,19 +155,19 @@ export interface CarouselItem {
                                 </nz-tag>
                               }
                               <span class="assignment-type">
-                                <span nz-icon nzType="tag" nzTheme="outline"></span>
+                                <nz-icon nzType="tag" nzTheme="outline" />
                                 {{ assignment.type === 'program' ? '实时编程题' : '选择题' }}
                               </span>
                             </div>
                             <div class="assignment-desc">
                               <nz-space>
                                 <span *nzSpaceItem class="assignment-ddl" [class.no-ddl]="!assignment.ddl" [class.overdue]="isOverdue(assignment.ddl)">
-                                  <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+                                  <nz-icon nzType="clock-circle" nzTheme="outline"/>
                                   @if(!assignment.ddl){
                                     不截止
                                   }
                                   @else if (isOverdue(assignment.ddl)) {
-                                    已经截止于：{{ assignment.ddl | date:'MM-dd HH:mm' }}
+                                    已截止于：{{ assignment.ddl | date:'MM-dd HH:mm' }}
                                   }
                                   @else{
                                     截止于：{{ assignment.ddl | date:'MM-dd HH:mm' }}
@@ -199,9 +199,10 @@ export interface CarouselItem {
                     @if (course.assigment.length === 0) {
                       <nz-list-item>
                         <nz-list-item-meta
-                          nzDescription="暂无作业">
+                          nzDescription="暂无作业"
+                          [nzAvatar]="nzAvatar">
                           <ng-template #nzAvatar>
-                            <span nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></span>
+                            <nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"/>
                           </ng-template>
                         </nz-list-item-meta>
                       </nz-list-item>
@@ -216,10 +217,12 @@ export interface CarouselItem {
           @if (courseInfo.courseListItems.length === 0) {
             <nz-list-item>
               <nz-list-item-meta
-                nzTitle="暂无课程"
-                nzDescription="当前没有正在进行的课程">
+                nzTitle="没有更多作业"
+                nzDescription="恭喜，你已经完成了所有题目！"
+                [nzAvatar]="nzAvatar">
                 <ng-template #nzAvatar>
-                  <span nz-icon nzType="book" nzTheme="outline" class="empty-icon"></span>
+                  <span nz-icon nzType="check" nzTheme="outline"></span>
+                  <!-- <span nz-icon nzType="book" nzTheme="outline" class="empty-icon"></span> -->
                 </ng-template>
               </nz-list-item-meta>
             </nz-list-item>

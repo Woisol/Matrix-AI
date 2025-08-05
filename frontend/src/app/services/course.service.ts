@@ -67,6 +67,11 @@ export class CourseInfo {
           ddl: null
         },
       ]
-    }
+    },
+    {
+      courseName: '程序设计I（23 级）',
+      assigment: [
+      ]
+    },
   ]
 }
