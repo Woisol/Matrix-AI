@@ -1,6 +1,8 @@
-import { Component } from "@angular/core";
+import { Component, signal, WritableSignal } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
+import { testAssigData } from "../../api/test/assig";
+import { AssigData } from "../../api/type/assigment";
 
 @Component({
   selector: "app-course",
@@ -10,7 +12,7 @@ import { CourseInfoTabComponent } from "./components/course-info-tab.component";
   <div class="course-con">
     <nz-splitter>
       <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true" class="col left">
-        <course-info-tab [assigData]="assigData"/>
+        <course-info-tab [assigData]="assigData()"/>
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true" class="col right">
         right
@@ -41,5 +43,8 @@ import { CourseInfoTabComponent } from "./components/course-info-tab.component";
 })
 
 export class CourseComponent {
-  assigData = "hello";
+  constructor() {
+    this.assigData.set(testAssigData)
+  }
+  assigData: WritableSignal<AssigData | undefined> = signal(undefined);
 }
