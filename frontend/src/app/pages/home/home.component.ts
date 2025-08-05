@@ -93,7 +93,7 @@ export interface CarouselItem {
         </h3>
 
         <nz-list nzBordered nzSize="small" class="course-list">
-          @for(course of courseInfo.courseListItems; track course.courseName) {
+          @for(course of courseInfo.todoCourseList; track course.courseId) {
             <nz-list-item class="course-item">
               <nz-collapse nzGhost>
                 <nz-collapse-panel
@@ -120,7 +120,7 @@ export interface CarouselItem {
 
                   <!-- 作业列表 -->
                   <nz-list nzSize="small" class="assignment-list">
-                    @for(assignment of course.assigment; track assignment.assigmentName) {
+                    @for(assignment of course.assigment; track assignment.assigId) {
                       <nz-list-item class="assignment-item">
                         <!-- <nz-list-item-meta
                         [nzTitle]="assignmentTitleTpl"
@@ -167,13 +167,12 @@ export interface CarouselItem {
                                     不截止
                                   }
                                   @else if (isOverdue(assignment.ddl)) {
-                                    已截止于：{{ assignment.ddl | date:'MM-dd HH:mm' }}
+                                    已截止
                                   }
                                   @else{
                                     截止于：{{ assignment.ddl | date:'MM-dd HH:mm' }}
                                   }
                                   </span>
-
                               </nz-space>
                             </div>
                           <!-- </ng-template> -->
@@ -214,7 +213,7 @@ export interface CarouselItem {
           }
 
           <!-- 全局空状态 -->
-          @if (courseInfo.courseListItems.length === 0) {
+          @if (courseInfo.todoCourseList.length === 0) {
             <nz-list-item>
               <nz-list-item-meta
                 nzTitle="没有更多作业"
@@ -230,13 +229,30 @@ export interface CarouselItem {
         </nz-list>
       </div>
     </section>
+    <!-- 课程右栏 -->
     <section class="col col-right">
       <h2 class="">正在进行中的课程</h2>
       <div class="">
         <h3 class="">普通课程</h3>
         <a routerLink="/course/private" class="">&gt;&gt;查看所有课程</a>
       </div>
-      <div class=""></div>
+      <div class="">
+        <nz-list>
+          @for(course of courseInfo.allCourseList; track course.courseId) {
+            <nz-list-item>
+              <nz-list-item-meta
+                nzTitle="{{ course.courseName }}"
+                [nzAvatar]="nzAvatar">
+                <ng-template #nzAvatar>
+                  <span nz-icon nzType="book" nzTheme="outline"></span>
+                </ng-template>
+              </nz-list-item-meta>
+              <span style="margin-left: auto;" class="course-status" [class.completed]='course.completed'>{{course.completed?'已':'未'}}完成
+              </span>
+            </nz-list-item>
+          }
+        </nz-list>
+      </div>
     </section>
   </div>
 <!-- <h2>Home to be implement</h2> -->
@@ -505,6 +521,21 @@ export interface CarouselItem {
     color: #bfbfbf;
     font-size: 18px;
   }
+
+  .course-status{
+    &::before{
+      content: '';
+      width: 10px;
+      height: 10px;
+      line-height: 10px;
+      display: inline-block;
+      border-radius: 50%;
+      margin-right: 5px;
+      background-color: #ff4d4f;
+    }
+    &.completed::before{
+      background-color: #52c41a;
+    }
   `],
 })
 export class HomeComponent implements AfterViewInit {
