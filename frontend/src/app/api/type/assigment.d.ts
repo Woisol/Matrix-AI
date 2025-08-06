@@ -1,11 +1,21 @@
 import { AssigId } from "./general"
 
 export type MdContent = string
+export type CodeContent = string
+
+export type SubmitScoreStatus = 'not-submitted' | 'not-passed' | 'passed' | 'full-score'
+
+export type TestSample = {
+  input: CodeContent
+  realOutput: CodeContent
+  expectOutput?: CodeContent
+}
 
 export type Submit = {
-  time: Date
-  submitCode: string
   score: number | null
+  time: Date
+  testSample: TestSample[]
+  submitCode: string
 }
 
 export type AssigData = {
