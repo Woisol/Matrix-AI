@@ -10,7 +10,7 @@ import { DatePipe } from "@angular/common";
   imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe],
   standalone: true,
   template: `
-    <nz-tabs>
+    <nz-tabs [nzSelectedIndex]="1">
       <nz-tab nzTitle="描述">
         @if (assigData) {
           <h3>{{assigData.title}}</h3>
@@ -28,20 +28,8 @@ import { DatePipe } from "@angular/common";
         }
       </nz-tab>
 
-      @if (assigData?.analysis) {
-        <nz-tab nzTitle="题解">
-          @if (isValidMarkdown(assigData?.analysis)) {
-            <markdown [data]="assigData!.analysis"></markdown>
-          } @else {
-            <div class="empty-content">
-              <p>暂无题解内容</p>
-            </div>
-          }
-        </nz-tab>
-      }
-
-      @if (assigData?.submit) {
-        <nz-tab nzTitle="提交记录">
+      <nz-tab nzTitle="提交">
+        @if (assigData?.submit) {
           <div class="submit-info">
             <h4>提交信息</h4>
             @if (assigData!.submit?.time) {
@@ -55,6 +43,23 @@ import { DatePipe } from "@angular/common";
               <pre class="code-block">{{ assigData!.submit!.submitCode }}</pre>
             }
           </div>
+        }
+        @else {
+          <div class="empty-content">
+            <p>还没有提交过哦</p>
+          </div>
+        }
+      </nz-tab>
+
+      @if (assigData?.analysis) {
+        <nz-tab nzTitle="分析">
+          @if (isValidMarkdown(assigData?.analysis)) {
+            <markdown [data]="assigData!.analysis"></markdown>
+          } @else {
+            <div class="empty-content">
+              <p>暂无题解内容</p>
+            </div>
+          }
         </nz-tab>
       }
     </nz-tabs>
@@ -109,8 +114,11 @@ import { DatePipe } from "@angular/common";
 
   /* 空状态样式 */
   .empty-content {
-    text-align: center;
-    padding: 40px 20px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     color: #8c8c8c;
 
     p {
@@ -162,6 +170,9 @@ import { DatePipe } from "@angular/common";
     overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
+  }
+  ::ng-deep .ant-tabs-content,::ng-deep .ant-tabs-tabpane{
+    height: 100%;
   }
   `],
   // styleUrl
