@@ -15,7 +15,7 @@ import { DatePipe } from "@angular/common";
         @if (assigData) {
           <h3>{{assigData.title}}</h3>
           @if (assigData.description && assigData.description.trim()) {
-            <markdown [data]="assigData.description"></markdown>
+            <markdown class="markdown-patched" [data]="assigData.description"></markdown>
           } @else {
             <div class="empty-content">
               <p>暂无描述内容</p>
@@ -163,68 +163,8 @@ import { DatePipe } from "@angular/common";
     white-space: pre-wrap;
     word-wrap: break-word;
   }
-
-  /* Markdown 内容样式优化 */
-  ::ng-deep markdown {
-    line-height: 1.6;
-
-    h1, h2, h3, h4, h5, h6 {
-      color: #262626;
-      margin-top: 24px;
-      margin-bottom: 12px;
-    }
-
-    p {
-      margin-bottom: 12px;
-      color: #595959;
-    }
-
-    code {
-      background: #f6f8fa;
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-size: 85%;
-    }
-
-    pre {
-      background: #f6f8fa;
-      border: 1px solid #e1e4e8;
-      border-radius: 6px;
-      padding: 16px;
-      overflow-x: auto;
-      margin: 16px 0;
-    }
-
-    blockquote {
-      border-left: 4px solid #dfe2e5;
-      padding-left: 16px;
-      margin: 16px 0;
-      color: #6a737d;
-    }
-
-    ul, ol {
-      padding-left: 24px;
-      margin-bottom: 12px;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 16px 0;
-
-      th, td {
-        border: 1px solid #dfe2e5;
-        padding: 8px 12px;
-        text-align: left;
-      }
-
-      th {
-        background: #f6f8fa;
-        font-weight: 600;
-      }
-    }
-  }
   `],
+  // styleUrl
 })
 export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() assigData!: AssigData | undefined;
