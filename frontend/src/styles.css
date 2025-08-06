@@ -103,9 +103,7 @@ a {
   }
 }
 
-
-
-button {
+button:not(.ant-tabs-tab-btn) {
   padding: 0.5em 1em;
   background: var(--color-primary);
   border: var(--color-primary-dark);
@@ -125,4 +123,81 @@ button {
 
   /* @apply --btn-scale; */
   /* &:active {} */
+}
+
+/* markdown patched 样式，直接使用 ::ng-deep markdown 由于未知原因无法生效 */
+.markdown-patched {
+  & ul>li {
+    list-style-type: disc;
+    margin-left: 20px;
+  }
+
+  & ol>li {
+    list-style-type: decimal;
+    margin-left: 20px;
+  }
+
+  /* 其他 markdown 样式 */
+  & h1,
+  & h2,
+  & h3,
+  & h4,
+  & h5,
+  & h6 {
+    color: #262626;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  & p {
+    margin-bottom: 12px;
+    /* color: #595959; */
+    line-height: 1.6;
+  }
+
+  & code {
+    background: #f6f8fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 85%;
+    color: #e83e8c;
+  }
+
+  & pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  & blockquote {
+    border-left: 4px solid #dfe2e5;
+    padding-left: 16px;
+    margin: 16px 0;
+    color: #6a737d;
+    background: #f8f9fa;
+    padding: 12px 16px;
+    border-radius: var(--size-radius-sm);
+  }
+
+  & table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+
+    & th,
+    & td {
+      border: 1px solid #dfe2e5;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    & th {
+      background: #f6f8fa;
+      font-weight: 600;
+    }
+  }
 }
