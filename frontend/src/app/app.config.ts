@@ -19,7 +19,8 @@ import {
   LeftOutline,
   RightOutline,
   CodeOutline,
-  FileTextOutline
+  FileTextOutline,
+  AppstoreOutline,
 } from '@ant-design/icons-angular/icons';
 import { MarkdownModule } from 'ngx-markdown';
 
@@ -35,7 +36,8 @@ const icons: IconDefinition[] = [
   LeftOutline,
   RightOutline,
   CodeOutline,
-  FileTextOutline
+  FileTextOutline,
+  AppstoreOutline
 ];
 
 export const appConfig: ApplicationConfig = {

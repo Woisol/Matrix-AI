@@ -42,30 +42,51 @@ export const testAssigData: AssigData = {
       root.right = constructMaximumBinaryTree(nums.slice(maxIndex + 1));
 
       return root;
-  }`,
+    }`,
   },
-  analysis: `# 题解
-  \`\`\`c
-  function constructMaximumBinaryTree(nums: number[]) {
-      if (nums.length === 0) return null;
+  analysis: {
+    basic: {
+      resolution: {
+        content: [
+          {
+            title: 'TA 标准答案',
+            content: `
+            \`\`\`typescript
+            function constructMaximumBinaryTree(nums: number[]) {
+                if (nums.length === 0) return null;
 
-      // 找到数组中的最大值及其索引
-      let maxIndex = 0;
-      for (let i = 1; i < nums.length; i++) {
-          if (nums[i] > nums[maxIndex]) {
-              maxIndex = i;
-          }
+                // 找到数组中的最大值及其索引
+                let maxIndex = 0;
+                for (let i = 1; i < nums.length; i++) {
+                    if (nums[i] > nums[maxIndex]) {
+                        maxIndex = i;
+                    }
+                }
+
+                // 创建根节点
+                const root = new TreeNode(nums[maxIndex]);
+
+                // 递归构建左子树和右子树
+                root.left = constructMaximumBinaryTree(nums.slice(0, maxIndex));
+                root.right = constructMaximumBinaryTree(nums.slice(maxIndex + 1));
+
+                return root;
+            }
+          \`\`\`
+          `,
+            complexity: {
+              time: 'O(n^2)',
+              space: 'O(n)'
+            }
+          },
+          {
+            title: '循环 | 解法1',
+            content: '',
+          },
+        ],
+        summary: `综合考虑，上述解法中，xxx 解法相对较优`,
+        showInEditor: true
       }
-
-      // 创建根节点
-      const root = new TreeNode(nums[maxIndex]);
-
-      // 递归构建左子树和右子树
-      root.left = constructMaximumBinaryTree(nums.slice(0, maxIndex));
-      root.right = constructMaximumBinaryTree(nums.slice(maxIndex + 1));
-
-      return root;
+    }
   }
-\`\`\`
-`
 }

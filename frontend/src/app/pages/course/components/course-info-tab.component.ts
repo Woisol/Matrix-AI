@@ -7,13 +7,14 @@ import { DatePipe } from "@angular/common";
 import { NzProgressModule } from "ng-zorro-antd/progress";
 import { getSubmitScoreStatus } from "../../../api/util/assig";
 import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
+import { MatrixAnalyseComponent } from "./matrix-analyse.component";
 
 @Component({
   selector: "course-info-tab",
-  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule],
+  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent],
   standalone: true,
   template: `
-    <nz-tabs [nzSelectedIndex]="1">
+    <nz-tabs [nzSelectedIndex]="2">
       <nz-tab nzTitle="描述">
         @if (assigData) {
           <h3>{{assigData.title}}</h3>
@@ -73,12 +74,35 @@ import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
 
       @if (assigData?.analysis) {
         <nz-tab nzTitle="分析">
-          @if (isValidMarkdown(assigData?.analysis)) {
-            <markdown [data]="assigData!.analysis"></markdown>
-          } @else {
+          @if (!assigData?.analysis) {
             <div class="empty-content">
               <p>暂无题解内容</p>
             </div>
+          } @else {
+            @if(assigData!.analysis!.basic.resolution) {
+              <h4>参考题解</h4>
+              <matrix-analyse [analysis]="assigData!.analysis?.basic?.resolution"></matrix-analyse>
+            }
+            @if(assigData!.analysis!.basic.knowledgeAnalysis) {
+              <h4>知识点分析</h4>
+              <matrix-analyse [analysis]="assigData!.analysis?.basic?.knowledgeAnalysis"></matrix-analyse>
+            }
+            @if(!assigData!.analysis?.aiGen){
+              <section class="aiGen">
+                <p>想了解你提交代码的质量？<br/>想进一步学习更多相关知识点？</p>
+                <button>AI 个性分析</button>
+              </section>
+            }
+            @else{
+              @if(assigData!.analysis?.aiGen?.codeAnalysis) {
+                <h4>AI 代码分析</h4>
+                <matrix-analyse [analysis]="assigData!.analysis?.aiGen?.codeAnalysis"></matrix-analyse>
+              }
+              @if(assigData!.analysis?.aiGen?.learningSuggestions) {
+                <h4>知识点学习建议</h4>
+                <matrix-analyse [analysis]="assigData!.analysis?.aiGen?.learningSuggestions"></matrix-analyse>
+              }
+            }
           }
         </nz-tab>
       }
@@ -101,9 +125,13 @@ import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
     color: #262626;
     font-size: 20px;
     font-weight: 600;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     border-bottom: 2px solid #f0f0f0;
     padding-bottom: 8px;
+  }
+  h4{
+    font-size: 20px;
+    margin: 0;
   }
 
   /* 空状态样式 */
@@ -167,18 +195,18 @@ import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
     }
   }
 
-  ::ng-deep .ant-tabs-content,::ng-deep .ant-tabs-tabpane{
+  /*::ng-deep .ant-tabs-content,::ng-deep .ant-tabs-tabpane{
     height: 100%;
-  }
+  }*/
 
   .test-sample-con{
     border-radius: var(--size-radius-sm);
-  }
 
-  h4{
-    margin:1em 0 0 0;
-    &:first-child {
-      margin: 0;}
+      h4{
+        margin:1em 0 0 0;
+        &:first-child {
+          margin: 0;}
+      }
   }
 
   code{
@@ -194,6 +222,18 @@ import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
     overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
+  }
+
+  .aiGen{
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    p{
+      text-align: center;
+      margin: 0;
+    }
   }
   `],
   // styleUrl
