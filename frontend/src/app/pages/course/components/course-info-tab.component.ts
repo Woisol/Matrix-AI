@@ -112,12 +112,24 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
   /* Tabs 容器样式 */
   ::ng-deep .ant-tabs {
     height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
 
-    .ant-tabs-content-holder {
-      padding: 16px;
-      max-height: calc(100vh - 120px);
-      overflow-y: auto;
-    }
+  ::ng-deep .ant-tabs-content-holder {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  ::ng-deep .ant-tabs-content {
+    height: 100%;
+  }
+
+  ::ng-deep .ant-tabs-tabpane {
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 8px;
   }
 
   /* 内容区域样式 */

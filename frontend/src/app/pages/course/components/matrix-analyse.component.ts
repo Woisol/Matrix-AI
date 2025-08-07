@@ -59,6 +59,7 @@ export interface MatrixAnalysisProps {
       }
     }
     .analyse-summary {
+      margin-top: 10px;
       padding: 8px 16px;
       background: #fafafa;
       border-left: 2px solid var(--color-primary);
