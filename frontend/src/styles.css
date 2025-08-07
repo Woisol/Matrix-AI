@@ -105,6 +105,7 @@ a {
 
 button:not(.ant-tabs-tab-btn) {
   padding: 0.5em 1em;
+  color: white;
   background: var(--color-primary);
   border: var(--color-primary-dark);
   border-radius: 10px;
@@ -127,6 +128,16 @@ button:not(.ant-tabs-tab-btn) {
 
 /* markdown patched 样式，直接使用 ::ng-deep markdown 由于未知原因无法生效 */
 .markdown-patched {
+
+  /* @todo fix */
+  &:first-child {
+    margin-top: 0 !important;
+  }
+
+  &:last-child {
+    margin-bottom: 0 !important;
+  }
+
   & ul>li {
     list-style-type: disc;
     margin-left: 20px;
@@ -148,6 +159,30 @@ button:not(.ant-tabs-tab-btn) {
     margin-top: 24px;
     margin-bottom: 12px;
     font-weight: 600;
+  }
+
+  & h1 {
+    font-size: 1.5em;
+  }
+
+  & h2 {
+    font-size: 1.4em;
+  }
+
+  & h3 {
+    font-size: 1.3em;
+  }
+
+  & h4 {
+    font-size: 1.2em;
+  }
+
+  & h5 {
+    font-size: 1.1em;
+  }
+
+  & h6 {
+    font-size: 1em;
   }
 
   & p {
