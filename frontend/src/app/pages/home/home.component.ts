@@ -389,7 +389,7 @@ export interface CarouselItem {
 
   .course-list {
     background: #fff;
-    border-radius: 8px;
+    border-radius: var(--size-radius-sm);
 
     .course-item {
       width: 100%;
@@ -410,7 +410,6 @@ export interface CarouselItem {
           .ant-collapse-header {
             padding: 16px 24px;
             background: #fafafa;
-            border-radius: 6px;
             margin-bottom: 2px;
             transition: all 0.3s ease;
 
@@ -421,7 +420,6 @@ export interface CarouselItem {
 
           .ant-collapse-content {
             background: #fff;
-            border-radius: 0 0 6px 6px;
             border: 1px solid #f0f0f0;
             border-top: none;
           }
