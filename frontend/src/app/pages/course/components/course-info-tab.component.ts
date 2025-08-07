@@ -6,10 +6,11 @@ import { MarkdownModule } from "ngx-markdown";
 import { DatePipe } from "@angular/common";
 import { NzProgressModule } from "ng-zorro-antd/progress";
 import { getSubmitScoreStatus } from "../../../api/util/assig";
+import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
 
 @Component({
   selector: "course-info-tab",
-  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule],
+  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule],
   standalone: true,
   template: `
     <nz-tabs [nzSelectedIndex]="1">
@@ -48,9 +49,19 @@ import { getSubmitScoreStatus } from "../../../api/util/assig";
               </strong>
             </div>
             <p><strong>提交时间:</strong> {{ assigData!.submit!.time | date:'yyyy-MM-dd HH:mm:ss' }}</p>
+            <!-- 测试样例 -->
+            <nz-collapse class="test-sample-con">
             @for (testSample of assigData?.submit?.testSample; track $index) {
-
+              <nz-collapse-panel [nzHeader]="'测试样例 ' + ($index + 1)" [nzActive]="true">
+                <h4>标准输入</h4>
+                <code>{{testSample.input}}</code>
+                <h4>实际输出</h4>
+                <code>{{testSample.realOutput}}</code>
+                <h4>期望输出</h4>
+                <code>{{testSample.expectOutput}}</code>
+              </nz-collapse-panel>
             }
+            </nz-collapse>
           </div>
         }
         @else {
@@ -74,25 +85,6 @@ import { getSubmitScoreStatus } from "../../../api/util/assig";
     </nz-tabs>
   `,
   styles: [`
-  .course-con{
-    width: 100%;
-    height: calc(100vh - var(--size-top-bar) - 20px);
-    display: flex;
-    padding: 10px;
-
-    .col{
-      &.left{
-        width: 20%;
-        height: 100%;
-        background-color: #f0f2f5;
-      }
-      &.right{
-        width: 80%;
-        height: 100%;
-      }
-    }
-  }
-
   /* Tabs 容器样式 */
   ::ng-deep .ant-tabs {
     height: 100%;
@@ -112,13 +104,6 @@ import { getSubmitScoreStatus } from "../../../api/util/assig";
     margin-bottom: 16px;
     border-bottom: 2px solid #f0f0f0;
     padding-bottom: 8px;
-  }
-
-  h4 {
-    color: #595959;
-    font-size: 16px;
-    font-weight: 500;
-    margin: 16px 0 8px 0;
   }
 
   /* 空状态样式 */
@@ -182,12 +167,26 @@ import { getSubmitScoreStatus } from "../../../api/util/assig";
     }
   }
 
-  /* 代码块样式 */
-  .code-block {
+  ::ng-deep .ant-tabs-content,::ng-deep .ant-tabs-tabpane{
+    height: 100%;
+  }
+
+  .test-sample-con{
+    border-radius: var(--size-radius-sm);
+  }
+
+  h4{
+    margin:1em 0 0 0;
+    &:first-child {
+      margin: 0;}
+  }
+
+  code{
+    display: block;
     background: #f6f8fa;
     border: 1px solid #e1e4e8;
-    border-radius: 6px;
-    padding: 16px;
+    border-radius: var(--size-radius-sm);
+    padding: 8px;
     font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
     font-size: 13px;
     line-height: 1.5;
@@ -195,9 +194,6 @@ import { getSubmitScoreStatus } from "../../../api/util/assig";
     overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
-  }
-  ::ng-deep .ant-tabs-content,::ng-deep .ant-tabs-tabpane{
-    height: 100%;
   }
   `],
   // styleUrl
