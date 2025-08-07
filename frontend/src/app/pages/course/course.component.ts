@@ -11,10 +11,10 @@ import { AssigData } from "../../api/type/assigment";
   template: `
   <div class="course-con">
     <nz-splitter>
-      <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true" class="col left">
+      <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true">
         <course-info-tab [assigData]="assigData()"/>
       </nz-splitter-panel>
-      <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true" class="col right">
+      <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
         right
       </nz-splitter-panel>
     </nz-splitter>
@@ -25,18 +25,9 @@ import { AssigData } from "../../api/type/assigment";
     width: 100%;
     height: calc(100vh - var(--size-top-bar) - 20px);
     display: flex;
-    padding: 10px;
 
-    .col{
-      &.left{
-        width: 20%;
-        height: 100%;
-        background-color: #f0f2f5;
-      }
-      &.right{
-        width: 80%;
-        height: 100%;
-      }
+    ::ng-deep .ant-splitter-panel{
+      padding: 10px;
     }
   }
   `]
