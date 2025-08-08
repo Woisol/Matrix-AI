@@ -291,13 +291,13 @@ export interface CarouselItem {
     top: 50%;
     transform: translateY(-50%);
     z-index: 10;
-    background: rgba(0, 0, 0, 0.2) ;
-    border: none ;
-    color: white ;
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    color: white;
     transition: all 0.3s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.5) ;
+      background: rgba(0, 0, 0, 0.5);
       transform: translateY(-50%) scale(1.1);
     }
 

@@ -13,6 +13,77 @@ export const testAssigData: AssigData = {
   通过给定的数组构建最大二叉树，并且输出这个树的根节点。
   > **注意**：本题的输入数组保证不为空，且所有元素互不相同。
   `,
+  assigOriginalCode: [{
+    fileName: 'main.c',
+    content: `#include <iostream>
+
+// 找到链表的中间节点
+template<typename T>
+ListNode<T>* findMiddle(ListNode<T>* head) {
+    ListNode<T>* slow = head;
+    ListNode<T>* fast = head;
+    ListNode<T>* prev = nullptr;
+
+    while (fast != nullptr && fast->next != nullptr) {
+        prev = slow;
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+
+    // 断开链表
+    if (prev != nullptr) {
+        prev->next = nullptr;
+    }
+
+    return slow;
+}
+
+// 合并两个有序链表
+template<typename T>
+ListNode<T>* merge(ListNode<T>* l1, ListNode<T>* l2) {
+    ListNode<T> dummy;
+    ListNode<T>* tail = &dummy;
+
+    while (l1 != nullptr && l2 != nullptr) {
+        if (l1->val < l2->val) {
+            tail->next = l1;
+            l1 = l1->next;
+        } else {
+            tail->next = l2;
+            l2 = l2->next;
+        }
+        tail = tail->next;
+    }
+
+    if (l1 != nullptr) {
+        tail->next = l1;
+    }
+
+    if (l2 != nullptr) {
+        tail->next = l2;
+    }
+
+    return dummy.next;
+}
+
+// 归并排序链表
+template<typename T>
+ListNode<T>* sortList(ListNode<T>* head) {
+    if (head == nullptr || head->next == nullptr) {
+        return head;
+    }
+
+    // 找到中间节点并断开链表
+    ListNode<T>* middle = findMiddle(head);
+
+    // 递归排序两部分
+    ListNode<T>* left = sortList(head);
+    ListNode<T>* right = sortList(middle);
+
+    // 合并排序后的两部分
+    return merge(left, right);
+}
+`}],
   submit: {
     score: 60,
     time: new Date('2025-08-05T20:40:00'),
@@ -23,26 +94,75 @@ export const testAssigData: AssigData = {
         expectOutput: '5,4,3,2,1'
       },
     ],
-    submitCode: `function constructMaximumBinaryTree(nums: number[]): TreeNode | null {
-      if (nums.length === 0) return null;
+    submitCode: `#include <iostream>
 
-      // 找到数组中的最大值及其索引
-      let maxIndex = 0;
-      for (let i = 1; i < nums.length; i++) {
-          if (nums[i] > nums[maxIndex]) {
-              maxIndex = i;
-          }
-      }
+// 找到链表的中间节点
+template<typename T>
+ListNode<T>* findMiddle(ListNode<T>* head) {
+    ListNode<T>* slow = head;
+    ListNode<T>* fast = head;
+    ListNode<T>* prev = nullptr;
 
-      // 创建根节点
-      const root = new TreeNode(nums[maxIndex]);
+    while (fast != nullptr && fast->next != nullptr) {
+        prev = slow;
+        slow = slow->next;
+        fast = fast->next->next;
+    }
 
-      // 递归构建左子树和右子树
-      root.left = constructMaximumBinaryTree(nums.slice(0, maxIndex));
-      root.right = constructMaximumBinaryTree(nums.slice(maxIndex + 1));
+    // 断开链表
+    if (prev != nullptr) {
+        prev->next = nullptr;
+    }
 
-      return root;
-    }`,
+    return slow;
+}
+
+// 合并两个有序链表
+template<typename T>
+ListNode<T>* merge(ListNode<T>* l1, ListNode<T>* l2) {
+    ListNode<T> dummy;
+    ListNode<T>* tail = &dummy;
+
+    while (l1 != nullptr && l2 != nullptr) {
+        if (l1->val < l2->val) {
+            tail->next = l1;
+            l1 = l1->next;
+        } else {
+            tail->next = l2;
+            l2 = l2->next;
+        }
+        tail = tail->next;
+    }
+
+    if (l1 != nullptr) {
+        tail->next = l1;
+    }
+
+    if (l2 != nullptr) {
+        tail->next = l2;
+    }
+
+    return dummy.next;
+}
+
+// 归并排序链表
+template<typename T>
+ListNode<T>* sortList(ListNode<T>* head) {
+    if (head == nullptr || head->next == nullptr) {
+        return head;
+    }
+
+    // 找到中间节点并断开链表
+    ListNode<T>* middle = findMiddle(head);
+
+    // 递归排序两部分
+    ListNode<T>* left = sortList(head);
+    ListNode<T>* right = sortList(middle);
+
+    // 合并排序后的两部分
+    return merge(left, right);
+}
+`,
   },
   analysis: {
     basic: {

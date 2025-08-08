@@ -4,7 +4,14 @@ import { AssigId } from "./general"
 export type MdContent = string
 //! MdCodeContent 需要手动加上 ```[语言类型]...```
 export type MdCodeContent = string
-// export type CodeContent = string
+//! CodeContent 不需要
+export type CodeContent = string
+
+
+export type CodeFileInfo = {
+  fileName: string
+  content: CodeContent
+}
 
 export type SubmitScoreStatus = 'not-submitted' | 'not-passed' | 'passed' | 'full-score'
 
@@ -30,6 +37,8 @@ export type AssigData = {
   assigId: AssigId
   title: string
   description: MdContent
+  //! 但是实际上只会有一个文件
+  assigOriginalCode: CodeFileInfo[]
 
   submit?: Submit
 
