@@ -21,6 +21,12 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
     </div>
   `,
   styles: [`
+    :host {
+
+      width: 100%;
+      height: 100%;
+      display:block;
+    }
     .editor-wrapper {
       width: 100%;
       height: 100%;
@@ -31,11 +37,6 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
     .monaco-editor {
       width: 100%;
       height: 100%;
-    }
-    :host {
-      width: 100%;
-      height: 100%;
-      display:block;
     }
   `]
 })

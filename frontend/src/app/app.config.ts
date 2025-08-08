@@ -54,7 +54,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(),
     // Monaco Editor 根级配置
     provideMonacoEditor({
-      baseUrl: 'assets/monaco-editor', // 对应 angular.json 中 output: /assets/monaco-editor
+      baseUrl: 'assets/monaco-editor/vs', // 对应 angular.json 中 output: /assets/monaco-editor
       defaultOptions: {
         automaticLayout: true,
         scrollBeyondLastLine: false,
