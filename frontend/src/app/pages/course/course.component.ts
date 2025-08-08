@@ -3,10 +3,11 @@ import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
 import { testAssigData } from "../../api/test/assig";
 import { AssigData } from "../../api/type/assigment";
+import { CodeEditorComponent } from "./components/code-editor.component";
 
 @Component({
   selector: "app-course",
-  imports: [NzSplitterModule, CourseInfoTabComponent],
+  imports: [NzSplitterModule, CourseInfoTabComponent, CodeEditorComponent],
   standalone: true,
   template: `
   <div class="course-con">
@@ -15,7 +16,7 @@ import { AssigData } from "../../api/type/assigment";
         <course-info-tab [assigData]="assigData()"/>
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
-        right
+        <code-editor [code]="assigData()?.assigOriginalCode?.[0]?.content ?? ''" />
       </nz-splitter-panel>
     </nz-splitter>
   </div>

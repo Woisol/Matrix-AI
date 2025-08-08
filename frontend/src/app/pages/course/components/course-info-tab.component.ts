@@ -256,13 +256,13 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   submitScoreStatus = signal<SubmitScoreStatus>('not-submitted')
 
   ngOnInit() {
-    console.log('ngOnInit - assigData:', this.assigData);
+    // console.log('ngOnInit - assigData:', this.assigData);
   }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['assigData']) {
       this.submitScoreStatus.set(this.assigData?.submit ? getSubmitScoreStatus(this.assigData.submit.score) : 'not-submitted');
-      console.log('assigData changed:', changes['assigData'].currentValue);
+      // console.log('assigData changed:', changes['assigData'].currentValue);
     }
   }
 
