@@ -23,6 +23,7 @@ import {
   AppstoreOutline,
 } from '@ant-design/icons-angular/icons';
 import { MarkdownModule } from 'ngx-markdown';
+import { provideMonacoEditor } from 'ngx-monaco-editor-v2';
 
 registerLocaleData(zh);
 
@@ -50,6 +51,15 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(NzIconModule.forRoot(icons)),
     importProvidersFrom(MarkdownModule.forRoot()),
     provideAnimationsAsync(),
-    provideHttpClient()
+    provideHttpClient(),
+    // Monaco Editor 根级配置
+    provideMonacoEditor({
+      baseUrl: 'assets/monaco-editor', // 对应 angular.json 中 output: /assets/monaco-editor
+      defaultOptions: {
+        automaticLayout: true,
+        scrollBeyondLastLine: false,
+        minimap: { enabled: true }
+      }
+    })
   ]
 };

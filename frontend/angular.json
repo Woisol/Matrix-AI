@@ -22,6 +22,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/monaco-editor/min/vs",
+                "output": "/assets/monaco-editor"
               }
             ],
             "styles": [
@@ -33,7 +38,7 @@
               "node_modules/prismjs/prism.js",
               "./node_modules/prismjs/components/prism-c.js",
               "./node_modules/prismjs/components/prism-cpp.js",
-              "./node_modules/prismjs/components/prism-javascript.min.js",
+              "./node_modules/prismjs/components/prism-javascript.min.js"
             ]
           },
           "configurations": {
