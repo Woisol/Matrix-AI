@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import * as monaco from 'monaco-editor';
@@ -39,7 +39,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
     }
   `]
 })
-export class CodeEditorComponent {
+export class CodeEditorComponent implements OnChanges {
   @Input() language: EditorLanguage = 'cpp';
   @Input() code = '';
   @Input() readOnly = false;
@@ -52,7 +52,10 @@ export class CodeEditorComponent {
   @Output() codeChange = new EventEmitter<string>();
   @Output() editorReady = new EventEmitter<monaco.editor.IStandaloneCodeEditor>();
 
-  get editorOptions(): monaco.editor.IStandaloneEditorConstructionOptions {
+  // 缓存 options，避免每次变更检测创建新引用触发编辑器重建
+  editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = this.buildOptions();
+
+  private buildOptions(): monaco.editor.IStandaloneEditorConstructionOptions {
     return {
       theme: this.theme,
       language: this.language,
@@ -67,9 +70,16 @@ export class CodeEditorComponent {
     };
   }
 
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['language'] || changes['readOnly'] || changes['theme'] || changes['fontSize'] || changes['minimap'] || changes['lineNumbers']) {
+      // 仅当相关输入变化时重建配置对象
+      this.editorOptions = this.buildOptions();
+    }
+  }
+
   onEditorInit(editor: monaco.editor.IStandaloneCodeEditor) {
     console.log('Editor initialized');
-    // this.editorReady.emit(editor);
+    this.editorReady.emit(editor);
 
     // 额外注册 C / C++ （monaco 默认不包含，需要手动注册简单占位，可引入第三方语法高亮扩展）
     const extraLangs: { id: EditorLanguage; extensions: string[] }[] = [
