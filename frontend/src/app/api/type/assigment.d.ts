@@ -25,7 +25,7 @@ export type Submit = {
   score: number | null
   time: Date
   testSample: TestSample[]
-  submitCode: string
+  submitCode: CodeFileInfo[]
 }
 
 export type Complexity = {

@@ -14,74 +14,10 @@ export const testAssigData: AssigData = {
   > **注意**：本题的输入数组保证不为空，且所有元素互不相同。
   `,
   assigOriginalCode: [{
-    fileName: 'main.c',
+    fileName: 'main.cpp',
     content: `#include <iostream>
-
-// 找到链表的中间节点
-template<typename T>
-ListNode<T>* findMiddle(ListNode<T>* head) {
-    ListNode<T>* slow = head;
-    ListNode<T>* fast = head;
-    ListNode<T>* prev = nullptr;
-
-    while (fast != nullptr && fast->next != nullptr) {
-        prev = slow;
-        slow = slow->next;
-        fast = fast->next->next;
-    }
-
-    // 断开链表
-    if (prev != nullptr) {
-        prev->next = nullptr;
-    }
-
-    return slow;
-}
-
-// 合并两个有序链表
-template<typename T>
-ListNode<T>* merge(ListNode<T>* l1, ListNode<T>* l2) {
-    ListNode<T> dummy;
-    ListNode<T>* tail = &dummy;
-
-    while (l1 != nullptr && l2 != nullptr) {
-        if (l1->val < l2->val) {
-            tail->next = l1;
-            l1 = l1->next;
-        } else {
-            tail->next = l2;
-            l2 = l2->next;
-        }
-        tail = tail->next;
-    }
-
-    if (l1 != nullptr) {
-        tail->next = l1;
-    }
-
-    if (l2 != nullptr) {
-        tail->next = l2;
-    }
-
-    return dummy.next;
-}
-
-// 归并排序链表
-template<typename T>
-ListNode<T>* sortList(ListNode<T>* head) {
-    if (head == nullptr || head->next == nullptr) {
-        return head;
-    }
-
-    // 找到中间节点并断开链表
-    ListNode<T>* middle = findMiddle(head);
-
-    // 递归排序两部分
-    ListNode<T>* left = sortList(head);
-    ListNode<T>* right = sortList(middle);
-
-    // 合并排序后的两部分
-    return merge(left, right);
+int main(){
+    cout << "Hello, Matrix AI!" << endl;
 }
 `}],
   submit: {
@@ -94,75 +30,80 @@ ListNode<T>* sortList(ListNode<T>* head) {
         expectOutput: '5,4,3,2,1'
       },
     ],
-    submitCode: `#include <iostream>
+    submitCode: [
+      {
+        fileName: 'main.cpp',
+        content:
+          `#include <iostream>
 
-// 找到链表的中间节点
-template<typename T>
-ListNode<T>* findMiddle(ListNode<T>* head) {
-    ListNode<T>* slow = head;
-    ListNode<T>* fast = head;
-    ListNode<T>* prev = nullptr;
+  // 找到链表的中间节点
+  template<typename T>
+  ListNode<T>* findMiddle(ListNode<T>* head) {
+      ListNode<T>* slow = head;
+      ListNode<T>* fast = head;
+      ListNode<T>* prev = nullptr;
 
-    while (fast != nullptr && fast->next != nullptr) {
-        prev = slow;
-        slow = slow->next;
-        fast = fast->next->next;
-    }
+      while (fast != nullptr && fast->next != nullptr) {
+          prev = slow;
+          slow = slow->next;
+          fast = fast->next->next;
+      }
 
-    // 断开链表
-    if (prev != nullptr) {
-        prev->next = nullptr;
-    }
+      // 断开链表
+      if (prev != nullptr) {
+          prev->next = nullptr;
+      }
 
-    return slow;
-}
+      return slow;
+  }
 
-// 合并两个有序链表
-template<typename T>
-ListNode<T>* merge(ListNode<T>* l1, ListNode<T>* l2) {
-    ListNode<T> dummy;
-    ListNode<T>* tail = &dummy;
+  // 合并两个有序链表
+  template<typename T>
+  ListNode<T>* merge(ListNode<T>* l1, ListNode<T>* l2) {
+      ListNode<T> dummy;
+      ListNode<T>* tail = &dummy;
 
-    while (l1 != nullptr && l2 != nullptr) {
-        if (l1->val < l2->val) {
-            tail->next = l1;
-            l1 = l1->next;
-        } else {
-            tail->next = l2;
-            l2 = l2->next;
-        }
-        tail = tail->next;
-    }
+      while (l1 != nullptr && l2 != nullptr) {
+          if (l1->val < l2->val) {
+              tail->next = l1;
+              l1 = l1->next;
+          } else {
+              tail->next = l2;
+              l2 = l2->next;
+          }
+          tail = tail->next;
+      }
 
-    if (l1 != nullptr) {
-        tail->next = l1;
-    }
+      if (l1 != nullptr) {
+          tail->next = l1;
+      }
 
-    if (l2 != nullptr) {
-        tail->next = l2;
-    }
+      if (l2 != nullptr) {
+          tail->next = l2;
+      }
 
-    return dummy.next;
-}
+      return dummy.next;
+  }
 
-// 归并排序链表
-template<typename T>
-ListNode<T>* sortList(ListNode<T>* head) {
-    if (head == nullptr || head->next == nullptr) {
-        return head;
-    }
+  // 归并排序链表
+  template<typename T>
+  ListNode<T>* sortList(ListNode<T>* head) {
+      if (head == nullptr || head->next == nullptr) {
+          return head;
+      }
 
-    // 找到中间节点并断开链表
-    ListNode<T>* middle = findMiddle(head);
+      // 找到中间节点并断开链表
+      ListNode<T>* middle = findMiddle(head);
 
-    // 递归排序两部分
-    ListNode<T>* left = sortList(head);
-    ListNode<T>* right = sortList(middle);
+      // 递归排序两部分
+      ListNode<T>* left = sortList(head);
+      ListNode<T>* right = sortList(middle);
 
-    // 合并排序后的两部分
-    return merge(left, right);
-}
-`,
+      // 合并排序后的两部分
+      return merge(left, right);
+  }
+      `},
+    ],
   },
   analysis: {
     basic: {
