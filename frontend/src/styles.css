@@ -107,10 +107,17 @@ button:not(.ant-tabs-tab-btn) {
   padding: 0.5em 1em;
   color: white;
   background: var(--color-primary);
-  border: var(--color-primary-dark);
+  border: none;
   border-radius: 10px;
-  transition: background 0.3s ease-in-out;
+  transition: filter 0.3s ease-in-out,
+    box-shadow 0.3s ease-in-out;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+
+  &.secondary {
+    color: var(--color-text);
+    border: solid 2px var(--color-border);
+    background: var(--color-bg);
+  }
 
   &:hover {
     /* background: var(--color-primary-dark); */
