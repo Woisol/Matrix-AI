@@ -99,7 +99,7 @@ export interface CarouselItem {
                 <nz-collapse-panel
                   [nzHeader]="courseHeaderTpl"
                   [nzExtra]="courseExtraTpl"
-                  [nzActive]="false">
+                  [nzActive]="true">
 
                   <!-- 课程头部模板 -->
                   <ng-template #courseHeaderTpl>
@@ -121,7 +121,7 @@ export interface CarouselItem {
                   <!-- 作业列表 -->
                   <nz-list nzSize="small" class="assignment-list">
                     @for(assignment of course.assigment; track assignment.assigId) {
-                      <nz-list-item class="assignment-item">
+                      <nz-list-item class="assignment-item" [routerLink]="['/course/private', course.courseId, 'assignment', assignment.assigId]">
                         <!-- <nz-list-item-meta
                         [nzTitle]="assignmentTitleTpl"
                           [nzDescription]="assignmentDescTpl"
