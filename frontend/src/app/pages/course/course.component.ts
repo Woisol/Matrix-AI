@@ -16,7 +16,7 @@ import { CodeEditorComponent } from "./components/code-editor.component";
         <course-info-tab [assigData]="assigData()"/>
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
-        <code-editor [code]="assigData()?.assigOriginalCode?.[0]?.content ?? ''" />
+        <code-editor [code]="code()" />
       </nz-splitter-panel>
     </nz-splitter>
   </div>
@@ -36,7 +36,10 @@ import { CodeEditorComponent } from "./components/code-editor.component";
 
 export class CourseComponent {
   constructor() {
-    this.assigData.set(testAssigData)
+    let assigData = testAssigData
+    this.assigData.set(assigData)
+    this.code.set(assigData.submit?.submitCode[0]?.content ?? assigData.assigOriginalCode?.[0]?.content ?? '');
   }
   assigData: WritableSignal<AssigData | undefined> = signal(undefined);
+  code: WritableSignal<string> = signal('');
 }
