@@ -14,7 +14,7 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
   imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent],
   standalone: true,
   template: `
-    <nz-tabs [nzSelectedIndex]="2">
+    <nz-tabs [nzSelectedIndex]="2" class="tab-expend">
       <nz-tab nzTitle="描述">
         @if (assigData) {
           <h3>{{assigData.title}}</h3>
@@ -109,27 +109,32 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
     </nz-tabs>
   `,
   styles: [`
-  /* Tabs 容器样式 */
-  ::ng-deep .ant-tabs {
-    height: 100%;
-    max-height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
+  :host{ display:block; height:100%; }
 
-  ::ng-deep .ant-tabs-content-holder {
-    flex: 1;
-    overflow: hidden;
+  /* 仅作用于当前组件模板里标记了 class="tab-expend" 的最外层 nz-tabs，不影响内层后续动态插入的其他 ant-tabs */
+  :host ::ng-deep nz-tabs.tab-expend{
+    height:100%;
+    display:flex;
+    flex-direction:column;
   }
-
-  ::ng-deep .ant-tabs-content {
-    height: 100%;
+  /* 只匹配直接子元素，防止级联到更深层 ant-tabs */
+  :host ::ng-deep nz-tabs.tab-expend > .ant-tabs-nav{ flex:0 0 auto; }
+  :host ::ng-deep nz-tabs.tab-expend > .ant-tabs-content-holder{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
   }
-
-  ::ng-deep .ant-tabs-tabpane {
-    height: 100%;
-    overflow-y: auto;
-    padding-right: 8px;
+  :host ::ng-deep nz-tabs.tab-expend > .ant-tabs-content-holder > .ant-tabs-content{
+    height:100%;
+    display:flex; /* 使首层 pane 高度拉伸 */
+  }
+  :host ::ng-deep nz-tabs.tab-expend > .ant-tabs-content-holder > .ant-tabs-content > .ant-tabs-tabpane{
+    height:100%;
+    overflow:auto;
+    padding-right:8px;
+    flex:1 1 auto;
+    min-width:0;
+  }
   }
 
   /* 内容区域样式 */

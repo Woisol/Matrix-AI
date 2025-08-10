@@ -16,8 +16,8 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
   imports: [MonacoEditorModule, FormsModule, NzSplitterModule, NzFloatButtonModule, NzButtonModule, NzInputModule],
   template: `
     <div class="editor-wrapper">
-      <nz-splitter nzLayout="vertical" class="editor-splitter">
-        <nz-splitter-panel>
+      <nz-splitter nzLayout="vertical" class="editor-splitter" (nzResize)="setTestPanelSize($event)">
+        <nz-splitter-panel [nzCollapsible]="false" [nzSize]="testPanelOpen()? testPanelSize()[0]:'100%'">
           <ngx-monaco-editor
           [(ngModel)]="code"
           [options]="editorOptions"
@@ -27,7 +27,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
           ></ngx-monaco-editor>
         </nz-splitter-panel>
         @if(testPanelOpen()) {
-          <nz-splitter-panel nzMin="100" nzDefaultSize="300">
+          <nz-splitter-panel nzMin="100" [nzSize]="testPanelSize()[1]" [nzResizable]="true" >
              <!-- class="hidable" [class.hide]="!testPanelOpen()" -->
             <div class="test-run-panel">
               <div class="col left">
@@ -130,6 +130,7 @@ export class CodeEditorComponent implements OnChanges {
   @Output() editorReady = new EventEmitter<monaco.editor.IStandaloneCodeEditor>();
 
   testPanelOpen = signal(false);
+  testPanelSize = signal(['100%', 300]);
   testPanelInput = signal('');
   testPanelOutput = signal('等待测试运行……');
 
@@ -172,6 +173,10 @@ export class CodeEditorComponent implements OnChanges {
         monaco.languages.register({ id: l.id, extensions: l.extensions });
       }
     });
+  }
+
+  setTestPanelSize(size: (string | number)[]) {
+    this.testPanelSize.set(size);
   }
 
   handleTestPanelToggle() {

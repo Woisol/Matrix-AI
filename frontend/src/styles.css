@@ -2,7 +2,7 @@
 /* general */
 /* Color Scheme 最佳实践 */
 :root {
-
+  box-sizing: border-box;
   scrollbar-gutter: stable;
 
   /* 声明支持的颜色方案 */
