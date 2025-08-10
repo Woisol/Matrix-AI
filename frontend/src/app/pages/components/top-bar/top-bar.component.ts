@@ -30,17 +30,21 @@ type NavItem = {
       </span>
   </div>
   </nav>
+  <div class="nav-div"></div>
   `,
   styles: [`
   nav{
     width: 100vw;
     height: var(--size-top-bar);
     display: flex;
+    position: fixed;
     gap: 20px;
     justify-content: space-between;
     align-items: center;
     padding: 0 60px;
     background-color: white;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
 
     & img{
       height: 48px;
@@ -50,7 +54,6 @@ type NavItem = {
   ul{
     width: 100%;
     margin: 0;
-
     display: flex;
     align-items: center;
     gap: 20px;
@@ -81,7 +84,10 @@ type NavItem = {
       font-size: 16px;
       text-wrap: nowrap;
     }
-
+  }
+  .nav-div{
+    width: 100%;
+    height: var(--size-top-bar);
   }
   `]
 })
