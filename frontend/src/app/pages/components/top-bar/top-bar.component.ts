@@ -24,7 +24,7 @@ type NavItem = {
       }
     </ul>
     <div class="user-menu">
-      <nz-avatar [nzSize]="40" nzIcon="" alt="" />
+      <nz-avatar [nzSize]="30" nzSrc="favicon.ico" alt=""  />
       <span>
         {{ userName }}
       </span>
@@ -96,7 +96,7 @@ type NavItem = {
 export class TopBarComponent {
   // Add any necessary properties or methods here
   constructor(private router: Router) {
-    this.userName = 'Unknown User';
+    this.userName = 'Matrix AI';
     this.userAvatar = 'user'; // Placeholder for user avatar
   }
 
