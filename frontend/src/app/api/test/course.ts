@@ -1,4 +1,5 @@
-import { AllCourse, TodoCourse } from "../type/course";
+import { AllCourse, AssigmentListItem, TodoCourse } from "../type/course";
+import { CourseId } from "../type/general";
 
 export const testTodoCourseList: TodoCourse[] = [
   {
@@ -87,3 +88,7 @@ export const testAllCourseList: AllCourse[] = [
   },
 ]
 
+export const testAllAssigns = (courseId: CourseId): AssigmentListItem[] => {
+  const course = testTodoCourseList.find(c => c.courseId === courseId);
+  return course ? course.assigment : [];
+}

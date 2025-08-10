@@ -239,7 +239,7 @@ export interface CarouselItem {
       <div class="list">
         <nz-list>
           @for(course of courseInfo.allCourseList; track course.courseId) {
-            <nz-list-item>
+            <nz-list-item [routerLink]="['/course/private', course.courseId]">
               <nz-list-item-meta
                 nzTitle="{{ course.courseName }}"
                 [nzAvatar]="nzAvatar">
@@ -260,10 +260,11 @@ export interface CarouselItem {
   styles: [`
   .home-con{
     width: 100%;
-    max-width: 100vw;
+    max-width: 1080px;
     display: flex;
     gap: 40px;
     padding: 20px 40px;
+    margin: 0 auto;
 
     &>.col{
       max-height: 100%;

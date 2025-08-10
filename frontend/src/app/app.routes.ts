@@ -12,8 +12,11 @@ export const routes: Routes = [
   },
   {
     path: 'course/private',
-    redirectTo: 'course/private/1/assignment/1',
-    pathMatch: 'full'
+    loadComponent: () => import('./pages/course-list/course-list.component').then(m => m.CourseListComponent)
+  },
+  {
+    path: 'course/private/:courseId',
+    loadComponent: () => import('./pages/course/course.component').then(m => m.CourseComponent)
   },
   {
     path: 'course/private/:courseId/assignment/:assignmentId',
