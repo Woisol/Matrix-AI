@@ -17,6 +17,6 @@ export const routes: Routes = [
   },
   {
     path: 'course/private/:courseId/assignment/:assignmentId',
-    loadComponent: () => import('./pages/course/course.component').then(m => m.CourseComponent),
+    loadComponent: () => import('./pages/assignment/assigment.component').then(m => m.AssignmentComponent),
   }
 ];
