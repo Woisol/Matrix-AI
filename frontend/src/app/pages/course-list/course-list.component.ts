@@ -53,8 +53,8 @@ import { RouterLink } from '@angular/router';
     </section>
 
     <section class="section">
-      <h3 class="section-title">全部课程</h3>
-      <nz-list [nzDataSource]="allCourses()" nzItemLayout="horizontal" [nzRenderItem]="allTpl" [nzSplit]="false">
+      <h3 class="section-title">已完成课程</h3>
+      <nz-list [nzDataSource]="completedCourses()" nzItemLayout="horizontal" [nzRenderItem]="allTpl" [nzSplit]="false">
       <ng-template #allTpl let-item>
         <nz-list-item class="course-item" [routerLink]="['/course/private', item.courseId]">
           <nz-list-item-meta [nzTitle]="allTitle" [nzDescription]="allDesc"></nz-list-item-meta>
