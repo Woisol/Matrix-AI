@@ -6,11 +6,11 @@ import { AssigData } from "../../api/type/assigment";
 import { CodeEditorComponent } from "./components/code-editor.component";
 
 @Component({
-  selector: "app-course",
+  selector: "app-assignment",
   imports: [NzSplitterModule, CourseInfoTabComponent, CodeEditorComponent],
   standalone: true,
   template: `
-  <div class="course-con">
+  <div class="assignment-con">
     <nz-splitter>
       <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true">
         <course-info-tab [assigData]="assigData()"/>
@@ -22,7 +22,7 @@ import { CodeEditorComponent } from "./components/code-editor.component";
   </div>
   `,
   styles: [`
-  .course-con{
+  .assignment-con{
     width: 100%;
     height: calc(100vh - var(--size-top-bar) - 20px);
     display: flex;
@@ -34,7 +34,7 @@ import { CodeEditorComponent } from "./components/code-editor.component";
   `]
 })
 
-export class CourseComponent {
+export class AssignmentComponent {
   constructor() {
     let assigData = testAssigData
     this.assigData.set(assigData)
