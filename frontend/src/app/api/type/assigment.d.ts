@@ -33,6 +33,16 @@ export type Complexity = {
   space: string
 }
 
+export type AssignData = {
+  assignId: AssignId
+  title: string
+  description: MdContent
+  //! 但是实际上只会有一个文件
+  assignOriginalCode: CodeFileInfo[]
+
+  submit?: Submit
+}
+
 export type BasicAnalysis = {
   resolution?: MatrixAnalysisProps
   knowledgeAnalysis?: MatrixAnalysisProps
@@ -45,16 +55,4 @@ export type AiGenAnalysis = {
 export type Analysis = {
   basic: BasicAnalysis
   aiGen?: AiGenAnalysis
-}
-
-export type AssignData = {
-  assignId: AssignId
-  title: string
-  description: MdContent
-  //! 但是实际上只会有一个文件
-  assignOriginalCode: CodeFileInfo[]
-
-  submit?: Submit
-
-  analysis?: Analysis
 }
