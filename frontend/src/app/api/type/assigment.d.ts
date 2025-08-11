@@ -7,6 +7,8 @@ export type MdCodeContent = string
 //! CodeContent 不需要
 export type CodeContent = string
 
+export type CodeLanguage = 'c_cpp'
+// | 'javascript' | 'typescript'
 
 export type CodeFileInfo = {
   fileName: string

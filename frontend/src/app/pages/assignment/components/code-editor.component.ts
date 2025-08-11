@@ -7,6 +7,8 @@ import { NzSplitterPanelComponent } from "../../../../../node_modules/.pnpm/ng-z
 import { NzFloatButtonModule } from 'ng-zorro-antd/float-button';
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { AssignService } from '../../../services/assign/assign.service';
+import { CodeFileInfo } from '../../../api/type/assigment';
 
 export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' | 'markdown' | 'python';
 
@@ -19,7 +21,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
       <nz-splitter nzLayout="vertical" class="editor-splitter" (nzResize)="setTestPanelSize($event)">
         <nz-splitter-panel [nzCollapsible]="false" [nzSize]="testPanelOpen()? testPanelSize()[0]:'100%'">
           <ngx-monaco-editor
-          [(ngModel)]="code"
+          [(ngModel)]="codeFile.content"
           [options]="editorOptions"
           (onInit)="onEditorInit($event)"
           (ngModelChange)="codeChange.emit($event)"
@@ -28,7 +30,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
         </nz-splitter-panel>
         @if(testPanelOpen()) {
           <nz-splitter-panel nzMin="100" [nzSize]="testPanelSize()[1]" [nzResizable]="true" >
-             <!-- class="hidable" [class.hide]="!testPanelOpen()" -->
+            <!-- class="hidable" [class.hide]="!testPanelOpen()" -->
             <div class="test-run-panel">
               <div class="col left">
                 <textarea nz-input [(ngModel)]="testPanelInput"></textarea>
@@ -118,12 +120,13 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
 })
 export class CodeEditorComponent implements OnChanges {
   @Input() language: EditorLanguage = 'cpp';
-  @Input() code = '';
+  @Input() codeFile: CodeFileInfo = { fileName: '', content: '' };
   @Input() readOnly = false;
   @Input() theme: 'vs' | 'vs-dark' | 'hc-black' = 'vs';
   @Input() fontSize = 14;
   @Input() minimap = true;
   @Input() lineNumbers: 'on' | 'off' = 'on';
+  @Input() onSubmitRequest: () => void = () => { console.error('submit function not implemented'); };
   // @Input() height = 400;
 
   @Output() codeChange = new EventEmitter<string>();
@@ -137,6 +140,7 @@ export class CodeEditorComponent implements OnChanges {
   // 缓存 options，避免每次变更检测创建新引用触发编辑器重建
   editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = this.buildOptions();
 
+  constructor(private assignService: AssignService) { }
   private buildOptions(): monaco.editor.IStandaloneEditorConstructionOptions {
     return {
       theme: this.theme,
@@ -184,9 +188,14 @@ export class CodeEditorComponent implements OnChanges {
   }
 
   onTestRequest() {
+    this.assignService.testRequest$(this.codeFile, this.testPanelInput(), 'c_cpp').subscribe({
+      next: (output) => {
+        this.testPanelOutput.set(output);
+      },
+      error: (error) => {
+        this.testPanelOutput.set('运行错误: ' + error);
+      }
+    });
+  }
 
-  }
-  onSubmitRequest() {
-    // Handle submit request
-  }
 }
