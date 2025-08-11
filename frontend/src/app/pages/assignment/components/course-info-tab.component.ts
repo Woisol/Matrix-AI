@@ -1,7 +1,7 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, signal } from "@angular/core";
+import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, Output, EventEmitter } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { NzTabsModule } from "ng-zorro-antd/tabs";
-import { AssigData, SubmitScoreStatus } from "../../../api/type/assigment";
+import { Analysis, AssignData, SubmitScoreStatus } from "../../../api/type/assigment";
 import { MarkdownModule } from "ngx-markdown";
 import { DatePipe } from "@angular/common";
 import { NzProgressModule } from "ng-zorro-antd/progress";
@@ -14,12 +14,12 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
   imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent],
   standalone: true,
   template: `
-    <nz-tabs [nzSelectedIndex]="2" class="tab-expend">
+    <nz-tabs class="tab-expend">
       <nz-tab nzTitle="描述">
-        @if (assigData) {
-          <h3>{{assigData.title}}</h3>
-          @if (assigData.description && assigData.description.trim()) {
-            <markdown class="markdown-patched" [data]="assigData.description"></markdown>
+        @if (assignData) {
+          <h3>{{assignData.title}}</h3>
+          @if (assignData.description && assignData.description.trim()) {
+            <markdown class="markdown-patched" [data]="assignData.description"></markdown>
           } @else {
             <div class="empty-content">
               <p>暂无描述内容</p>
@@ -33,13 +33,13 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
       </nz-tab>
 
       <nz-tab nzTitle="提交">
-        @if (assigData?.submit) {
+        @if (assignData?.submit) {
           <div class="submit-panel">
             <p style="margin: 0;">
               <small>Powered by Matrix</small>
             </p>
             <div class="submit-score">
-              <nz-progress nzType="dashboard" [nzWidth]="80" [nzPercent]="assigData!.submit?.score ?? 0" [nzShowInfo]="true" [nzStrokeColor]="{ '10%': '#ee7373ff', '100%': '#97e973ff' }" [nzFormat]="progressScoreFormat" />
+              <nz-progress nzType="dashboard" [nzWidth]="80" [nzPercent]="assignData!.submit?.score ?? 0" [nzShowInfo]="true" [nzStrokeColor]="{ '10%': '#ee7373ff', '100%': '#97e973ff' }" [nzFormat]="progressScoreFormat" />
               <strong class="score-status">
                 {{
                   submitScoreStatus() === 'not-submitted' ? '🤔你还没有提交呢' :
@@ -49,10 +49,10 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
                 }}
               </strong>
             </div>
-            <p><strong>提交时间:</strong> {{ assigData!.submit!.time | date:'yyyy-MM-dd HH:mm:ss' }}</p>
+            <p><strong>提交时间:</strong> {{ assignData!.submit!.time | date:'yyyy-MM-dd HH:mm:ss' }}</p>
             <!-- 测试样例 -->
             <nz-collapse class="test-sample-con">
-            @for (testSample of assigData?.submit?.testSample; track $index) {
+            @for (testSample of assignData?.submit?.testSample; track $index) {
               <nz-collapse-panel [nzHeader]="'测试样例 ' + ($index + 1)" [nzActive]="true">
                 <h4>标准输入</h4>
                 <code>{{testSample.input}}</code>
@@ -72,35 +72,35 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
         }
       </nz-tab>
 
-      @if (assigData?.analysis) {
+      @if (analysis) {
         <nz-tab nzTitle="分析">
-          @if (!assigData?.analysis) {
+          @if (!analysis) {
             <div class="empty-content">
               <p>暂无题解内容</p>
             </div>
           } @else {
-            @if(assigData!.analysis!.basic.resolution) {
+            @if(analysis.basic.resolution) {
               <h4>参考题解</h4>
-              <matrix-analyse [analysis]="assigData!.analysis?.basic?.resolution"></matrix-analyse>
+              <matrix-analyse [analysis]="analysis.basic.resolution"></matrix-analyse>
             }
-            @if(assigData!.analysis!.basic.knowledgeAnalysis) {
+            @if(analysis.basic.knowledgeAnalysis) {
               <h4>知识点分析</h4>
-              <matrix-analyse [analysis]="assigData!.analysis?.basic?.knowledgeAnalysis"></matrix-analyse>
+              <matrix-analyse [analysis]="analysis.basic.knowledgeAnalysis"></matrix-analyse>
             }
-            @if(!assigData!.analysis?.aiGen){
+            @if(!analysis.aiGen){
               <section class="aiGen">
                 <p>想了解你提交代码的质量？<br/>想进一步学习更多相关知识点？</p>
-                <button>AI 个性分析</button>
+                <button (click)="onAnalysisAiGenRequest()">AI 个性分析</button>
               </section>
             }
             @else{
-              @if(assigData!.analysis?.aiGen?.codeAnalysis) {
+              @if(analysis.aiGen.codeAnalysis) {
                 <h4>AI 代码分析</h4>
-                <matrix-analyse [analysis]="assigData!.analysis?.aiGen?.codeAnalysis"></matrix-analyse>
+                <matrix-analyse [analysis]="analysis.aiGen.codeAnalysis"></matrix-analyse>
               }
-              @if(assigData!.analysis?.aiGen?.learningSuggestions) {
+              @if(analysis.aiGen.learningSuggestions) {
                 <h4>知识点学习建议</h4>
-                <matrix-analyse [analysis]="assigData!.analysis?.aiGen?.learningSuggestions"></matrix-analyse>
+                <matrix-analyse [analysis]="analysis.aiGen.learningSuggestions"></matrix-analyse>
               }
             }
           }
@@ -256,18 +256,20 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
   // styleUrl
 })
 export class CourseInfoTabComponent implements OnInit, OnChanges {
-  @Input() assigData!: AssigData | undefined;
+  @Input() assignData!: AssignData | undefined;
+  @Input() analysis!: Analysis | undefined;
+  @Input() onAnalysisAiGenRequest = () => { };
 
   submitScoreStatus = signal<SubmitScoreStatus>('not-submitted')
 
   ngOnInit() {
-    // console.log('ngOnInit - assigData:', this.assigData);
+    // console.log('ngOnInit - assignData:', this.assignData);
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['assigData']) {
-      this.submitScoreStatus.set(this.assigData?.submit ? getSubmitScoreStatus(this.assigData.submit.score) : 'not-submitted');
-      // console.log('assigData changed:', changes['assigData'].currentValue);
+    if (changes['assignData']) {
+      this.submitScoreStatus.set(this.assignData?.submit ? getSubmitScoreStatus(this.assignData.submit.score) : 'not-submitted');
+      // console.log('assignData changed:', changes['assignData'].currentValue);
     }
   }
 

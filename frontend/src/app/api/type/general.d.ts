@@ -1,3 +1,3 @@
 type ID = string
 export type CourseId = ID
-export type AssigId = ID
+export type AssignId = ID
