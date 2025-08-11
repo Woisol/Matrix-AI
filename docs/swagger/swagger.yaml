@@ -132,7 +132,45 @@ paths:
                   msg:
                     type: string
                     example: "未到截止时间"
-
+  /playground/submission:
+    post:
+      tags: [assignment]
+      summary: 代码测试运行
+      description: 运行用户提供的代码与输入，返回标准输出文本。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaygroundSubmissionRequest'
+      responses:
+        '200':
+          description: 运行结果文本
+          content:
+          #@todo 再议
+            text/plain:
+              schema:
+                type: string
+  /courses/{course_id}/assignments/{assign_id}/submission:
+    post:
+      tags: [assignment]
+      summary: 提交作业代码
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+        - $ref: '#/components/parameters/AssignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentSubmissionRequest'
+      responses:
+        '200':
+          description: 提交成功（返回最新提交信息）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submit'
 components:
   parameters:
     CourseId:
@@ -150,6 +188,7 @@ components:
         type: string
       description: 作业/练习 ID
   schemas:
+
     AssignmentListItem:
       type: object
       description: 课程下的作业列表条目
@@ -281,3 +320,20 @@ components:
         submit:
           $ref: '#/components/schemas/Submit'
       required: [assignId, title, assignOriginalCode]
+    PlaygroundSubmissionRequest:
+      type: object
+      properties:
+        codeFile:
+          $ref: '#/components/schemas/CodeFileInfo'
+        input:
+          type: string
+        language:
+          type: string
+          enum: [ c_cpp ]
+      required: [ codeFile ]
+    AssignmentSubmissionRequest:
+      type: object
+      properties:
+        codeFile:
+          $ref: '#/components/schemas/CodeFileInfo'
+      required: [ codeFile ]
