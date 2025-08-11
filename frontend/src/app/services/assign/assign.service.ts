@@ -1,7 +1,7 @@
 import { Injectable } from "@angular/core";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { AssignId, CourseId } from "../../api/type/general";
-import { AiGenAnalysis, Analysis, AssignData, BasicAnalysis } from "../../api/type/assigment";
+import { AiGenAnalysis, Analysis, AssignData, BasicAnalysis, CodeContent, CodeFileInfo, CodeLanguage } from "../../api/type/assigment";
 import { testAnalysis, testAssigData } from "../../api/test/assig";
 import { catchError, of } from "rxjs";
 
@@ -26,5 +26,21 @@ export class AssignService {
     return this.api.get$<AiGenAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/detail`).pipe(
       catchError(() => of(testAnalysis.aiGen))
     );
+  }
+
+  testRequest$(codeFile: CodeFileInfo, input: string, language: CodeLanguage = 'c_cpp') {
+    // 初步先使用 post 实现
+    return this.api.post$<string>('/playground/submission', {
+      codeFile,
+      input,
+      language,
+    }).pipe(
+      catchError(() => of('运行错误'))
+    );
+  }
+
+  submitRequest$(courseId: CourseId, assignId: AssignId, codeFile: CodeFileInfo) {
+    // @todo 后端实现后尝试实现 大文件上传 代码
+    return this.api.post$(`/courses/${courseId}/assignments/${assignId}/submission`, { codeFile });
   }
 }

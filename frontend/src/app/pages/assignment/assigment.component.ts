@@ -2,7 +2,7 @@ import { Component, inject, signal, WritableSignal, OnDestroy } from "@angular/c
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
 import { testAssigData } from "../../api/test/assig";
-import { Analysis, AssignData } from "../../api/type/assigment";
+import { Analysis, AssignData, CodeFileInfo } from "../../api/type/assigment";
 import { CodeEditorComponent } from "./components/code-editor.component";
 import { AssignId, CourseId } from "../../api/type/general";
 import { AssignService } from "../../services/assign/assign.service";
@@ -20,7 +20,7 @@ import { ActivatedRoute } from "@angular/router";
         <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [onAnalysisAiGenRequest]="loadAnalysisAiGen" />
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
-        <code-editor [code]="code()" />
+        <code-editor [codeFile]="codeFile()" [onSubmitRequest]="onSubmitRequest"/>
       </nz-splitter-panel>
     </nz-splitter>
   </div>
@@ -48,7 +48,7 @@ export class AssignmentComponent implements OnDestroy {
   // 直接存放数据对象而不是 Observable，便于模板使用
   assignData = signal<AssignData | undefined>(undefined);
   analysis = signal<Analysis | undefined>(undefined);
-  code: WritableSignal<string> = signal('');
+  codeFile: WritableSignal<CodeFileInfo> = signal({ fileName: '', content: '' });
 
   private subs: Subscription[] = [];
 
@@ -69,10 +69,10 @@ export class AssignmentComponent implements OnDestroy {
     const sub = this.assignService.getAssignData$(this.courseId, this.assignId).subscribe(data => {
       this.assignData.set(data);
       // 初始代码：优先提交代码->原始代码->空
-      const codeStr = data?.submit?.submitCode?.[0]?.content
-        ?? data?.assignOriginalCode?.[0]?.content
+      const codeFile = data?.submit?.submitCode?.[0]
+        ?? data?.assignOriginalCode?.[0]
         ?? '';
-      this.code.set(codeStr);
+      this.codeFile.set(codeFile);
     });
     this.subs.push(sub);
   }
@@ -104,5 +104,25 @@ export class AssignmentComponent implements OnDestroy {
 
   ngOnDestroy() {
     this.subs.forEach(s => s.unsubscribe());
+  }
+
+  //! 注意闭包！否则传入后 this 指向不正确！
+  onSubmitRequest = () => {
+    // debugger
+    if (!this.codeFile().fileName || !this.codeFile().content) {
+      // alert('请先输入代码');
+      return;
+    }
+    if (!this.courseId || !this.assignId) {
+      return;
+    }
+    this.assignService.submitRequest$(this.courseId, this.assignId, this.codeFile()).subscribe({
+      next: (response) => {
+        // alert('提交成功');
+      },
+      error: (error) => {
+        // alert('提交失败: ' + error);
+      }
+    });
   }
 }

@@ -111,7 +111,7 @@ export interface CarouselItem {
                   <!-- 课程额外信息模板 -->
                   <ng-template #courseExtraTpl>
                       <nz-badge
-                        [nzCount]="course.assigment.length"
+                        [nzCount]="course.assignment.length"
                         [nzShowZero]="true"
                         nzSize="small"
                         class="assignment-count">
