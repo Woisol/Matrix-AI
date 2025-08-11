@@ -1,4 +1,4 @@
-import { AssigId, CourseId } from "./general"
+import { AssignId, CourseId } from "./general"
 
 export type AllCourse = Omit<TodoCourse, 'assigment'> & {
   completed: boolean
@@ -11,7 +11,7 @@ export type TodoCourse = {
   assigment: AssigmentListItem[]
 }
 export type AssigmentListItem = {
-  assigId: AssigId
+  assigId: AssignId
   assigmentName: string
   type: 'choose' | 'program'
   score: number | null
