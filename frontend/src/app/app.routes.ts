@@ -19,7 +19,7 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/course/course.component').then(m => m.CourseComponent)
   },
   {
-    path: 'course/private/:courseId/assignment/:assignmentId',
+    path: 'course/private/:courseId/assignment/:assignId',
     loadComponent: () => import('./pages/assignment/assigment.component').then(m => m.AssignmentComponent),
   }
 ];

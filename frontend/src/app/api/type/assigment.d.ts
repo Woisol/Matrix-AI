@@ -1,5 +1,5 @@
 import { MatrixAnalysisProps } from "../../pages/course/components/matrix-analyse.component"
-import { AssigId } from "./general"
+import { AssignId } from "./general"
 
 export type MdContent = string
 //! MdCodeContent 需要手动加上 ```[语言类型]...```
@@ -33,23 +33,28 @@ export type Complexity = {
   space: string
 }
 
-export type AssigData = {
-  assigId: AssigId
+export type BasicAnalysis = {
+  resolution?: MatrixAnalysisProps
+  knowledgeAnalysis?: MatrixAnalysisProps
+}
+export type AiGenAnalysis = {
+  codeAnalysis?: MatrixAnalysisProps
+  learningSuggestions?: MatrixAnalysisProps
+}
+
+export type Analysis = {
+  basic: BasicAnalysis
+  aiGen?: AiGenAnalysis
+}
+
+export type AssignData = {
+  assignId: AssignId
   title: string
   description: MdContent
   //! 但是实际上只会有一个文件
-  assigOriginalCode: CodeFileInfo[]
+  assignOriginalCode: CodeFileInfo[]
 
   submit?: Submit
 
-  analysis?: {
-    basic: {
-      resolution?: MatrixAnalysisProps
-      knowledgeAnalysis?: MatrixAnalysisProps
-    }
-    aiGen?: {
-      codeAnalysis?: MatrixAnalysisProps
-      learningSuggestions?: MatrixAnalysisProps
-    }
-  }
+  analysis?: Analysis
 }

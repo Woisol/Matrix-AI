@@ -1,8 +1,8 @@
 import { input } from "@angular/core";
-import { AssigData } from "../type/assigment";
+import { Analysis, AssignData } from "../type/assigment";
 
-export const testAssigData: AssigData = {
-  assigId: '1',
+export const testAssigData: AssignData = {
+  assignId: '1',
   title: 'T1 二叉树',
   description: `# 题目描述
   给定一个整数数组，请你根据该数组构建一个**最大二叉树**。
@@ -13,7 +13,7 @@ export const testAssigData: AssigData = {
   通过给定的数组构建最大二叉树，并且输出这个树的根节点。
   > **注意**：本题的输入数组保证不为空，且所有元素互不相同。
   `,
-  assigOriginalCode: [{
+  assignOriginalCode: [{
     fileName: 'main.cpp',
     content: `#include <iostream>
 int main(){
@@ -105,49 +105,49 @@ int main(){
       `},
     ],
   },
-  analysis: {
-    basic: {
-      resolution: {
-        content: [
-          {
-            title: 'TA 标准答案',
-            content: `
-            \`\`\`typescript
-            function constructMaximumBinaryTree(nums: number[]) {
-                if (nums.length === 0) return null;
+}
+export const testAnalysis: Analysis = {
+  basic: {
+    resolution: {
+      content: [
+        {
+          title: 'TA 标准答案',
+          content: `
+          \`\`\`typescript
+          function constructMaximumBinaryTree(nums: number[]) {
+              if (nums.length === 0) return null;
 
-                // 找到数组中的最大值及其索引
-                let maxIndex = 0;
-                for (let i = 1; i < nums.length; i++) {
-                    if (nums[i] > nums[maxIndex]) {
-                        maxIndex = i;
-                    }
-                }
+              // 找到数组中的最大值及其索引
+              let maxIndex = 0;
+              for (let i = 1; i < nums.length; i++) {
+                  if (nums[i] > nums[maxIndex]) {
+                      maxIndex = i;
+                  }
+              }
 
-                // 创建根节点
-                const root = new TreeNode(nums[maxIndex]);
+              // 创建根节点
+              const root = new TreeNode(nums[maxIndex]);
 
-                // 递归构建左子树和右子树
-                root.left = constructMaximumBinaryTree(nums.slice(0, maxIndex));
-                root.right = constructMaximumBinaryTree(nums.slice(maxIndex + 1));
+              // 递归构建左子树和右子树
+              root.left = constructMaximumBinaryTree(nums.slice(0, maxIndex));
+              root.right = constructMaximumBinaryTree(nums.slice(maxIndex + 1));
 
-                return root;
-            }
-          \`\`\`
-          `,
-            complexity: {
-              time: 'O(n^2)',
-              space: 'O(n)'
-            }
-          },
-          {
-            title: '循环 | 解法1',
-            content: '',
-          },
-        ],
-        summary: `综合考虑，上述解法中，xxx 解法相对较优`,
-        showInEditor: true
-      }
+              return root;
+          }
+        \`\`\`
+        `,
+          complexity: {
+            time: 'O(n^2)',
+            space: 'O(n)'
+          }
+        },
+        {
+          title: '循环 | 解法1',
+          content: '',
+        },
+      ],
+      summary: `综合考虑，上述解法中，xxx 解法相对较优`,
+      showInEditor: true
     }
   }
 }
