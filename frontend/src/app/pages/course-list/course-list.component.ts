@@ -4,7 +4,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NgIf } from '@angular/common';
-import { CourseInfo } from '../../services/course.service';
+import { CourseInfo } from '../../services/course/course-store.service';
 import { RouterLink } from '@angular/router';
 
 @Component({
