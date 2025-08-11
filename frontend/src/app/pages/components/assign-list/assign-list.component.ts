@@ -13,8 +13,8 @@ import { AllCourse, TodoCourse } from "../../../api/type/course";
   imports: [DatePipe, NzListModule, RouterLink, NzTagModule, NzIconModule, NzSpaceModule],
   template: `
   <nz-list nzSize="small" class="assignment-list">
-    @for(assignment of course?.assigment; track assignment.assigId) {
-      <nz-list-item class="assignment-item" [routerLink]="['/course/private', course?.courseId, 'assignment', assignment.assigId]">
+    @for(assignment of course?.assignment; track assignment.assignId) {
+      <nz-list-item class="assignment-item" [routerLink]="['/course/private', course?.courseId, 'assignment', assignment.assignId]">
         <!-- <nz-list-item-meta
         [nzTitle]="assignmentTitleTpl"
           [nzDescription]="assignmentDescTpl"
@@ -37,7 +37,7 @@ import { AllCourse, TodoCourse } from "../../../api/type/course";
           <!-- 作业标题 -->
           <!-- <ng-template #assignmentTitleTpl> -->
             <div class="assignment-title">
-              <h3 class="assignment-name">{{ assignment.assigmentName }}</h3>
+              <h3 class="assignment-name">{{ assignment.assignmentName }}</h3>
               @if (assignment.score !== null) {
                 <nz-tag [nzColor]="assignment.score >= 60? 'green':'orange'" class="score-tag">
                   {{ assignment.score }} 分
@@ -88,7 +88,7 @@ import { AllCourse, TodoCourse } from "../../../api/type/course";
     }
 
     <!-- 空状态 -->
-    @if (!course?.assigment?.length) {
+    @if (!course?.assignment?.length) {
       <nz-list-item>
         <nz-list-item-meta
           nzDescription="暂无作业"
