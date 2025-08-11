@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
-import { AllCourse, TodoCourse } from "../api/type/course";
-import { CourseApi } from "../api/course";
+import { AllCourse, TodoCourse } from "../../api/type/course";
+import { CourseApi } from "./course-api.service";
 @Injectable({
   providedIn: 'root'
 })

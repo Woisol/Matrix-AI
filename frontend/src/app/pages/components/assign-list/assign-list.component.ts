@@ -5,7 +5,7 @@ import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzListModule } from "ng-zorro-antd/list";
 import { NzSpaceModule } from "ng-zorro-antd/space";
 import { NzTagModule } from "ng-zorro-antd/tag";
-import { CourseInfo } from "../../../services/course.service";
+import { CourseInfo } from "../../../services/course/course-store.service";
 import { AllCourse, TodoCourse } from "../../../api/type/course";
 
 @Component({
