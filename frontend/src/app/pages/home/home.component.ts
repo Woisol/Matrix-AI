@@ -5,7 +5,7 @@ import { NzCarouselModule, NzCarouselComponent } from "ng-zorro-antd/carousel";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzListModule } from "ng-zorro-antd/list";
-import { CourseInfo } from "../../services/course.service";
+import { CourseInfo } from "../../services/course/course-store.service";
 import { NzCollapseModule } from "ng-zorro-antd/collapse";
 import { NzTableModule } from "ng-zorro-antd/table";
 import { NzTagModule } from "ng-zorro-antd/tag";

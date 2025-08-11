@@ -1,9 +1,9 @@
 import { Injectable } from "@angular/core";
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { testAllCourseList, testTodoCourseList } from "../test/course";
-import { ApiHttpService } from "../util/api-http.service";
-import { AllCourse, TodoCourse } from "../type/course";
+import { testAllCourseList, testTodoCourseList } from "../../api/test/course";
+import { ApiHttpService } from "../../api/util/api-http.service";
+import { AllCourse, TodoCourse } from "../../api/type/course";
 
 @Injectable({ providedIn: 'root' })
 export class CourseApi {
