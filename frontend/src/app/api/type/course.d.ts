@@ -2,17 +2,17 @@ import { AssignId, CourseId } from "./general"
 
 export type AllCourse = Omit<TodoCourse, 'assigment'> & {
   completed: boolean
-  assigment?: AssigmentListItem[]
+  assignment?: AssignmentListItem[]
 }
 
 export type TodoCourse = {
   courseId: CourseId
   courseName: string
-  assigment: AssigmentListItem[]
+  assignment: AssignmentListItem[]
 }
-export type AssigmentListItem = {
-  assigId: AssignId
-  assigmentName: string
+export type AssignmentListItem = {
+  assignId: AssignId
+  assignmentName: string
   type: 'choose' | 'program'
   score: number | null
   ddl: Date | null

@@ -1,0 +1,283 @@
+openapi: 3.0.3
+info:
+  title: AI Matrix API
+  version: 0.1.0
+  description: |-
+    前端使用到的核心接口文档（精简版）。
+    如需扩展请在 paths/components 中按规范补充。所有响应示例基于当前前端测试数据。
+servers:
+  - url: /api
+tags:
+  - name: course
+    description: 课程信息
+  - name: assignment
+    description: 课程作业
+  - name: analysis
+    description: 作业分析
+
+paths:
+  /courses:
+    get:
+      tags: [course]
+      summary: 获取课程列表
+      description: 返回所有可见课程集合。
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [public, private]
+          description: 课程可见类型过滤
+        - name: ta
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 是否筛选助教管理课程
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AllCourse'
+  /courses/todo:
+    get:
+      tags: [course]
+      summary: 获取待办课程（含未完成作业统计）
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TodoCourse'
+  /courses/{course_id}:
+    get:
+      tags: [course]
+      summary: 获取课程详情
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllCourse'
+  /courses/{course_id}/assignments/{assign_id}:
+    get:
+      tags: [assignment]
+      summary: 获取作业详情
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+        - $ref: '#/components/parameters/AssignId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+  /courses/{course_id}/assignments/{assign_id}/analysis/basic:
+    get:
+      tags: [analysis]
+      summary: 获取基础分析
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+        - $ref: '#/components/parameters/AssignId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicAnalysis'
+        '403':
+          description: 未到截止时间或题目被禁用预分析
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "未到截止时间"
+  /courses/{course_id}/assignments/{assign_id}/analysis/aiGen:
+    get:
+      tags: [analysis]
+      summary: 获取 AI 生成分析
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+        - $ref: '#/components/parameters/AssignId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiGenAnalysis'
+        '403':
+          description: 未到截止时间或题目被禁用 ai 分析
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "未到截止时间"
+
+components:
+  parameters:
+    CourseId:
+      name: course_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: 课程 ID
+    AssignId:
+      name: assign_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: 作业/练习 ID
+  schemas:
+    AssignmentListItem:
+      type: object
+      description: 课程下的作业列表条目
+      properties:
+        assignId:
+          type: string
+        assignmentName:
+          type: string
+        type:
+          type: string
+          enum: [choose, program]
+        score:
+          type: integer
+          nullable: true
+        ddl:
+          type: string
+          format: date-time
+          nullable: true
+      required: [assignId, assignmentName, type]
+    TodoCourse:
+      type: object
+      properties:
+        courseId:
+          type: string
+        courseName:
+          type: string
+        assignment:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentListItem'
+      required: [courseId, courseName, assignment]
+    AllCourse:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/TodoCourse'
+        - type: object
+          properties:
+            completed:
+              type: boolean
+            assignment:
+              type: array
+              nullable: true
+              items:
+                $ref: '#/components/schemas/AssignmentListItem'
+    CodeFileInfo:
+      type: object
+      properties:
+        fileName:
+          type: string
+        content:
+          type: string
+    TestSample:
+      type: object
+      properties:
+        input:
+          type: string
+        realOutput:
+          type: string
+        expectOutput:
+          type: string
+    Submit:
+      type: object
+      properties:
+        score:
+          type: integer
+          nullable: true
+        time:
+          type: string
+          format: date-time
+        testSample:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestSample'
+        submitCode:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeFileInfo'
+    MatrixAnalysisProps:
+      type: object
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        content:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              body:
+                type: string
+    BasicAnalysis:
+      type: object
+      properties:
+        resolution:
+          $ref: '#/components/schemas/MatrixAnalysisProps'
+        knowledgeAnalysis:
+          $ref: '#/components/schemas/MatrixAnalysisProps'
+    AiGenAnalysis:
+      type: object
+      properties:
+        codeAnalysis:
+          $ref: '#/components/schemas/MatrixAnalysisProps'
+        learningSuggestions:
+          $ref: '#/components/schemas/MatrixAnalysisProps'
+    Analysis:
+      type: object
+      properties:
+        basic:
+          $ref: '#/components/schemas/BasicAnalysis'
+        aiGen:
+          $ref: '#/components/schemas/AiGenAnalysis'
+    Assignment:
+      type: object
+      description: 前端 AssignData 类型
+      properties:
+        assignId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        assignOriginalCode:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeFileInfo'
+        submit:
+          $ref: '#/components/schemas/Submit'
+      required: [assignId, title, assignOriginalCode]
