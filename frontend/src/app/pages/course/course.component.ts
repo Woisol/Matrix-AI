@@ -4,6 +4,7 @@ import { AssignListComponent } from "../components/assign-list/assign-list.compo
 import { CourseId } from "../../api/type/general";
 import { CourseInfo } from "../../services/course.service";
 import { ActivatedRoute } from "@angular/router";
+import { CourseApi } from "../../api/course";
 
 @Component({
   selector: 'app-course',
@@ -48,6 +49,8 @@ import { ActivatedRoute } from "@angular/router";
 })
 
 export class CourseComponent implements OnInit {
+  courseApi = inject(CourseApi);
+
   route = inject(ActivatedRoute)
   courseInfo = inject(CourseInfo)
   course: AllCourse | undefined;
@@ -59,7 +62,13 @@ export class CourseComponent implements OnInit {
     this.route.paramMap.subscribe(params => {
       this.courseId = params.get('courseId') as CourseId;
     });
-    this.course = this.courseInfo.allCourseList.find(c => c.courseId === this.courseId)
+    if (!this.courseId) {
+      console.error('未提供 Course ID');
+      return;
+    }
+    this.courseApi.getCourseById$(this.courseId).subscribe(course => {
+      this.course = course;
+    });
   }
 
 }
