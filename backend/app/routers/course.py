@@ -1,0 +1,487 @@
+"""
+课程相关路由
+"""
+from fastapi import APIRouter, HTTPException, Query, Path, Body
+from typing import Optional, List
+from datetime import datetime
+
+from app.models.course import Course, CourseAssignment, CourseAssignmentSubmission
+from app.schemas.course import (
+    CourseListResponse, CourseResponse, CourseUpdate, CourseCreate,
+    CourseAssignmentResponse, CourseAssignmentDetail, CourseAssignmentUpdate, CourseAssignmentCreate,
+    SubmissionResponse, SubmissionCreate, SubmissionFeedback, RejudgeRequest,
+    MessageResponse, ErrorResponse
+)
+from tortoise.exceptions import DoesNotExist
+
+
+course_router = APIRouter(prefix="/api", tags=["course"])
+
+
+@course_router.get("/courses", response_model=List[CourseListResponse])
+async def get_courses(
+    type: Optional[str] = Query(None, description="题目类型: public, private"),
+    TA: Optional[bool] = Query(None, description="是否为管理的题目")
+):
+    """
+    【课程列表】获取课程列表
+    """
+    query = Course.all()
+    
+    # 根据类型过滤
+    if type and type in ["public", "private"]:
+        query = query.filter(type=type)
+    
+    courses = await query.order_by("-created_at")
+    
+    result = []
+    for course in courses:
+        result.append(CourseListResponse(
+            id=course.id,
+            name=course.name,
+            type=course.type,
+            status=course.status,
+            school_year=course.school_year,
+            semester=course.semester,
+            creator_name=course.creator_name,
+            created_at=course.created_at
+        ))
+    
+    return result
+
+
+@course_router.post("/courses", response_model=CourseResponse)
+async def create_course(course_data: CourseCreate = Body(..., description="课程创建数据")):
+    """
+    创建新课程
+    """
+    try:
+        course = await Course.create(
+            name=course_data.name,
+            type=course_data.type,
+            status=course_data.status,
+            school_year=course_data.school_year,
+            semester=course_data.semester,
+            description=course_data.description,
+            creator_name=course_data.creator_name
+        )
+        
+        return CourseResponse(
+            id=course.id,
+            name=course.name,
+            type=course.type,
+            status=course.status,
+            school_year=course.school_year,
+            semester=course.semester,
+            description=course.description,
+            creator_name=course.creator_name,
+            created_at=course.created_at,
+            updated_at=course.updated_at
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"创建课程失败: {str(e)}")
+
+
+@course_router.get("/courses/{course_id}", response_model=CourseResponse)
+async def get_course_detail(course_id: int = Path(..., description="课程ID")):
+    """
+    获取一个课程及其创建者的详细信息
+    """
+    try:
+        course = await Course.get(id=course_id)
+        
+        return CourseResponse(
+            id=course.id,
+            name=course.name,
+            type=course.type,
+            status=course.status,
+            school_year=course.school_year,
+            semester=course.semester,
+            description=course.description,
+            creator_name=course.creator_name,
+            created_at=course.created_at,
+            updated_at=course.updated_at
+        )
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="课程不存在")
+
+
+@course_router.post("/courses/{course_id}", response_model=MessageResponse)
+async def update_course(
+    course_id: int = Path(..., description="课程ID"),
+    course_update: CourseUpdate = Body(..., description="课程更新数据")
+):
+    """
+    修改课程信息
+    """
+    try:
+        course = await Course.get(id=course_id)
+        
+        # 更新提供的字段
+        update_data = course_update.model_dump(exclude_unset=True)
+        if update_data:
+            await course.update_from_dict(update_data)
+            await course.save()
+        
+        return MessageResponse(message="课程信息更新成功")
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="课程不存在")
+
+
+# 课程作业相关路由
+@course_router.post("/courses/{course_id}/assignments", response_model=CourseAssignmentResponse)
+async def create_assignment(
+    course_id: int = Path(..., description="课程ID"),
+    assignment_data: CourseAssignmentCreate = Body(..., description="作业创建数据")
+):
+    """
+    为课程创建新作业
+    """
+    try:
+        # 验证课程存在
+        course = await Course.get(id=course_id)
+        
+        assignment = await CourseAssignment.create(
+            course_id=course_id,
+            title=assignment_data.title,
+            description=assignment_data.description,
+            start_date=assignment_data.start_date,
+            end_date=assignment_data.end_date,
+            grade_at_end=assignment_data.grade_at_end,
+            pub_answer=assignment_data.pub_answer,
+            plcheck=assignment_data.plcheck,
+            submit_limitation=assignment_data.submit_limitation,
+            answer_file=assignment_data.answer_file,
+            support_files=assignment_data.support_files
+        )
+        
+        return CourseAssignmentResponse(
+            id=assignment.id,
+            course_id=course_id,
+            title=assignment.title,
+            description=assignment.description,
+            start_date=assignment.start_date,
+            end_date=assignment.end_date,
+            grade_at_end=assignment.grade_at_end,
+            pub_answer=assignment.pub_answer,
+            plcheck=assignment.plcheck,
+            submit_limitation=assignment.submit_limitation,
+            support_files=assignment.support_files,
+            created_at=assignment.created_at,
+            updated_at=assignment.updated_at
+        )
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"创建作业失败: {str(e)}")
+
+
+@course_router.get("/courses/{course_id}/assignments/{ca_id}", response_model=CourseAssignmentDetail)
+async def get_assignment_detail(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID")
+):
+    """
+    课程作业详情 - 获取课程作业详情，包括题目支持文件
+    """
+    try:
+        assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
+        
+        return CourseAssignmentDetail(
+            id=assignment.id,
+            course_id=course_id,
+            title=assignment.title,
+            description=assignment.description,
+            start_date=assignment.start_date,
+            end_date=assignment.end_date,
+            grade_at_end=assignment.grade_at_end,
+            pub_answer=assignment.pub_answer,
+            plcheck=assignment.plcheck,
+            submit_limitation=assignment.submit_limitation,
+            support_files=assignment.support_files,
+            answer_file=assignment.answer_file,
+            created_at=assignment.created_at,
+            updated_at=assignment.updated_at
+        )
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+
+@course_router.post("/courses/{course_id}/assignments/{ca_id}", response_model=MessageResponse)
+async def update_assignment(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID"),
+    assignment_update: CourseAssignmentUpdate = Body(..., description="作业更新数据")
+):
+    """
+    更新某个课程作业的起止时间、是否公布答案等
+    """
+    try:
+        assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
+        
+        # 更新字段映射
+        update_data = {}
+        if assignment_update.startdate is not None:
+            update_data["start_date"] = assignment_update.startdate
+        if assignment_update.enddate is not None:
+            update_data["end_date"] = assignment_update.enddate
+        if assignment_update.grade_at_end is not None:
+            update_data["grade_at_end"] = assignment_update.grade_at_end
+        if assignment_update.pub_answer is not None:
+            update_data["pub_answer"] = assignment_update.pub_answer
+        if assignment_update.plcheck is not None:
+            update_data["plcheck"] = assignment_update.plcheck
+        if assignment_update.submit_limitation is not None:
+            update_data["submit_limitation"] = assignment_update.submit_limitation
+        
+        if update_data:
+            await assignment.update_from_dict(update_data)
+            await assignment.save()
+        
+        return MessageResponse(message="作业信息更新成功")
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+
+@course_router.delete("/courses/{course_id}/assignments/{ca_id}", response_model=MessageResponse)
+async def delete_assignment(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID")
+):
+    """
+    删除某个作业的发布
+    """
+    try:
+        assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
+        await assignment.delete()
+        
+        return MessageResponse(message="作业删除成功")
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+
+@course_router.get("/courses/{course_id}/assignments/{ca_id}/answer")
+async def get_assignment_answer(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID")
+):
+    """
+    获取某个课程作业的答案文件
+    """
+    try:
+        assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
+        
+        if not assignment.answer_file:
+            raise HTTPException(status_code=404, detail="答案文件不存在")
+        
+        return {"answer": assignment.answer_file}
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+
+# 课程作业提交相关路由
+@course_router.get("/courses/{course_id}/assignments/{ca_id}/submissions", response_model=List[SubmissionResponse])
+async def get_submissions(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID"),
+    student_name: Optional[str] = Query(None, description="学生姓名")
+):
+    """
+    获取某个人提交记录列表
+    """
+    try:
+        # 验证作业存在
+        assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
+        
+        query = CourseAssignmentSubmission.filter(assignment_id=ca_id)
+        
+        # 如果指定了学生姓名，只查询该学生的提交
+        if student_name:
+            query = query.filter(student_name=student_name)
+        
+        submissions = await query.order_by("-submit_time")
+        
+        result = []
+        for submission in submissions:
+            result.append(SubmissionResponse(
+                id=submission.id,
+                assignment_id=ca_id,
+                student_name=submission.student_name,
+                detail=submission.detail,
+                score=submission.score,
+                feedback=submission.feedback,
+                status=submission.status,
+                judge_result=submission.judge_result,
+                submit_time=submission.submit_time,
+                judge_time=submission.judge_time
+            ))
+        
+        return result
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+
+@course_router.post("/courses/{course_id}/assignments/{ca_id}/submissions", response_model=MessageResponse)
+async def create_submission(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID"),
+    submission_data: SubmissionCreate = Body(..., description="提交数据")
+):
+    """
+    创建提交
+    """
+    try:
+        # 验证作业存在
+        assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
+        
+        # 检查提交时间是否在允许范围内
+        now = datetime.now()
+        if now < assignment.start_date:
+            raise HTTPException(status_code=400, detail="作业尚未开始")
+        if now > assignment.end_date:
+            raise HTTPException(status_code=400, detail="作业已结束")
+        
+        # 检查提交次数限制（按学生姓名）
+        submission_count = await CourseAssignmentSubmission.filter(
+            assignment_id=ca_id, student_name=submission_data.student_name
+        ).count()
+        if submission_count >= assignment.submit_limitation:
+            raise HTTPException(status_code=400, detail="已达到提交次数限制")
+        
+        # 创建提交记录
+        submission = await CourseAssignmentSubmission.create(
+            assignment_id=ca_id,
+            student_name=submission_data.student_name,
+            detail=submission_data.detail,
+            status="pending"
+        )
+
+
+        
+        return MessageResponse(message="提交成功")
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+
+@course_router.get("/courses/{course_id}/assignments/{ca_id}/submissions/{sub_ca_id}", response_model=SubmissionResponse)
+async def get_submission_detail(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID"),
+    sub_ca_id: int = Path(..., description="提交ID")
+):
+    """
+    获取具体某次提交
+    """
+    try:
+        submission = await CourseAssignmentSubmission.get(
+            id=sub_ca_id, assignment_id=ca_id
+        )
+        
+        return SubmissionResponse(
+            id=submission.id,
+            assignment_id=ca_id,
+            student_name=submission.student_name,
+            detail=submission.detail,
+            score=submission.score,
+            feedback=submission.feedback,
+            status=submission.status,
+            judge_result=submission.judge_result,
+            submit_time=submission.submit_time,
+            judge_time=submission.judge_time
+        )
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="提交不存在")
+
+
+@course_router.post("/courses/{course_id}/assignments/{ca_id}/submissions/{sub_ca_id}", response_model=MessageResponse)
+async def rejudge_submission(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID"),
+    sub_ca_id: int = Path(..., description="提交ID"),
+    rejudge_data: RejudgeRequest = Body(..., description="重新评测数据")
+):
+    """
+    【提交】重新评测一份提交
+    """
+    try:
+        submission = await CourseAssignmentSubmission.get(
+            id=sub_ca_id, assignment_id=ca_id
+        )
+        
+        # 检查评测方式
+        if rejudge_data.wayToCallJudge not in ["normal", "force"]:
+            raise HTTPException(status_code=400, detail="无效的评测方式")
+        
+        # 如果是normal方式，检查提交是否正在评测中
+        if rejudge_data.wayToCallJudge == "normal" and submission.status == "judging":
+            raise HTTPException(status_code=400, detail="提交正在评测中，无法重新评测")
+        
+        # 更新提交状态
+        submission.status = "judging"
+        submission.judge_time = datetime.now()
+        await submission.save()
+        
+        return MessageResponse(message="重新评测已启动")
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="提交不存在")
+
+
+@course_router.get("/courses/{course_id}/assignments/{ca_id}/submissions/last", response_model=SubmissionResponse)
+async def get_last_submission(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID"),
+    student_name: Optional[str] = Query(None, description="学生姓名")
+):
+    """
+    获取最后一次提交的答案与结果
+    """
+    try:
+        query = CourseAssignmentSubmission.filter(assignment_id=ca_id)
+        
+        if student_name:
+            query = query.filter(student_name=student_name)
+        
+        submission = await query.order_by("-submit_time").first()
+        if not submission:
+            raise HTTPException(status_code=404, detail="没有提交记录")
+        
+        return SubmissionResponse(
+            id=submission.id,
+            assignment_id=ca_id,
+            student_name=submission.student_name,
+            detail=submission.detail,
+            score=submission.score,
+            feedback=submission.feedback,
+            status=submission.status,
+            judge_result=submission.judge_result,
+            submit_time=submission.submit_time,
+            judge_time=submission.judge_time
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@course_router.get("/courses/{course_id}/assignments/{ca_id}/submissions/last/feedback", response_model=SubmissionFeedback)
+async def get_last_submission_feedback(
+    course_id: int = Path(..., description="课程ID"),
+    ca_id: int = Path(..., description="作业ID"),
+    student_name: str = Query(..., description="学生姓名")
+):
+    """
+    获取最后一次提交的分数与反馈
+    """
+    try:
+        submission = await CourseAssignmentSubmission.filter(
+            assignment_id=ca_id, student_name=student_name
+        ).order_by("-submit_time").first()
+        
+        if not submission:
+            raise HTTPException(status_code=404, detail="没有提交记录")
+        
+        return SubmissionFeedback(
+            score=submission.score,
+            feedback=submission.feedback,
+            judge_result=submission.judge_result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
