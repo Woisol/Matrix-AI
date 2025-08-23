@@ -12,6 +12,14 @@ export const routes: Routes = [
   },
   {
     path: 'course/private',
+    loadComponent: () => import('./pages/course-list/course-list.component').then(m => m.CourseListComponent)
+  },
+  {
+    path: 'course/private/:courseId',
     loadComponent: () => import('./pages/course/course.component').then(m => m.CourseComponent)
+  },
+  {
+    path: 'course/private/:courseId/assignment/:assignId',
+    loadComponent: () => import('./pages/assignment/assigment.component').then(m => m.AssignmentComponent),
   }
 ];
