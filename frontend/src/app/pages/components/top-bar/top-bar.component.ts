@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { RouterLink } from "@angular/router";
+import { RouterLink, Router, RouterLinkActive } from "@angular/router";
 import { NzAvatarModule } from "ng-zorro-antd/avatar";
 import { NzImageModule } from 'ng-zorro-antd/image';
 
@@ -11,7 +11,7 @@ type NavItem = {
 @Component({
   selector: "app-top-bar",
   standalone: true,
-  imports: [RouterLink, NzImageModule, NzAvatarModule],
+  imports: [RouterLink, RouterLinkActive, NzImageModule, NzAvatarModule],
   template: `
   <nav>
     <div class=""><img nz-image nzDisablePreview nzSrc="logo.svg" alt="" class="nav-icon" routerLink="/home"></div>
@@ -19,28 +19,32 @@ type NavItem = {
       @for (item of navItems; track item.label) {
         <li class="">
           <!-- 注意引入 RouterLink 才能使用不然补全都没有() -->
-          <a [routerLink]="item.path">{{ item.label }}</a>
+          <a [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
         </li>
       }
     </ul>
     <div class="user-menu">
-      <nz-avatar [nzSize]="40" nzIcon="" alt="" />
+      <nz-avatar [nzSize]="30" nzSrc="favicon.ico" alt=""  />
       <span>
         {{ userName }}
       </span>
   </div>
   </nav>
+  <div class="nav-div"></div>
   `,
   styles: [`
   nav{
     width: 100vw;
-    height: 48px;
+    height: var(--size-top-bar);
     display: flex;
+    position: fixed;
     gap: 20px;
     justify-content: space-between;
     align-items: center;
     padding: 0 60px;
     background-color: white;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
 
     & img{
       height: 48px;
@@ -50,13 +54,25 @@ type NavItem = {
   ul{
     width: 100%;
     margin: 0;
-
     display: flex;
     align-items: center;
     gap: 20px;
     list-style: none;
     &>li>a{
       color: var(--color-primary);
+      padding: 8px 16px;
+      border-radius: var(--size-radius-sm);
+      text-decoration: none;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background-color: var(--color-primary-light-xl);
+      }
+
+      &.active {
+        background-color: var(--color-primary);
+        color: white;
+      }
     }
   }
 
@@ -68,7 +84,10 @@ type NavItem = {
       font-size: 16px;
       text-wrap: nowrap;
     }
-
+  }
+  .nav-div{
+    width: 100%;
+    height: var(--size-top-bar);
   }
   `]
 })
@@ -76,10 +95,11 @@ type NavItem = {
 
 export class TopBarComponent {
   // Add any necessary properties or methods here
-  constructor() {
-    this.userName = 'Unknown User';
+  constructor(private router: Router) {
+    this.userName = 'Matrix AI';
     this.userAvatar = 'user'; // Placeholder for user avatar
   }
+
   protected readonly navItems: NavItem[] = [
     { label: '题目', path: '/course/private' }
   ]

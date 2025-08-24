@@ -2,7 +2,7 @@
 /* general */
 /* Color Scheme 最佳实践 */
 :root {
-
+  box-sizing: border-box;
   scrollbar-gutter: stable;
 
   /* 声明支持的颜色方案 */
@@ -14,11 +14,16 @@
   --color-surface: #f5f5f5;
   --color-primary: #479EA2;
   --color-primary-light: #9ACFD1;
+  --color-primary-light-xl: #b8d8da;
   --color-primary-dark: #dda712;
   --color-border: #e0e0e0;
 
+  --size-top-bar: 48px;
   --size-radius: 16px;
   --size-radius-sm: 8px;
+
+  /* swiper */
+  --swiper-theme-color: white !important;
 }
 
 /* 深色主题使用 @media (prefers-color-scheme: dark) */
@@ -98,15 +103,21 @@ a {
   }
 }
 
-
-
-button {
+button:not(.ant-tabs-tab-btn) {
   padding: 0.5em 1em;
+  color: white;
   background: var(--color-primary);
-  border: var(--color-primary-dark);
+  border: none;
   border-radius: 10px;
-  transition: background 0.3s ease-in-out;
+  transition: filter 0.3s ease-in-out,
+    box-shadow 0.3s ease-in-out;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+
+  &.secondary {
+    color: var(--color-text);
+    border: solid 2px var(--color-border);
+    background: var(--color-bg);
+  }
 
   &:hover {
     /* background: var(--color-primary-dark); */
@@ -120,4 +131,115 @@ button {
 
   /* @apply --btn-scale; */
   /* &:active {} */
+}
+
+/* markdown patched 样式，直接使用 ::ng-deep markdown 由于未知原因无法生效 */
+.markdown-patched {
+
+  /* @todo fix */
+  &:first-child {
+    margin-top: 0 !important;
+  }
+
+  &:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  & ul>li {
+    list-style-type: disc;
+    margin-left: 20px;
+  }
+
+  & ol>li {
+    list-style-type: decimal;
+    margin-left: 20px;
+  }
+
+  /* 其他 markdown 样式 */
+  & h1,
+  & h2,
+  & h3,
+  & h4,
+  & h5,
+  & h6 {
+    color: #262626;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  & h1 {
+    font-size: 1.5em;
+  }
+
+  & h2 {
+    font-size: 1.4em;
+  }
+
+  & h3 {
+    font-size: 1.3em;
+  }
+
+  & h4 {
+    font-size: 1.2em;
+  }
+
+  & h5 {
+    font-size: 1.1em;
+  }
+
+  & h6 {
+    font-size: 1em;
+  }
+
+  & p {
+    margin-bottom: 12px;
+    /* color: #595959; */
+    line-height: 1.6;
+  }
+
+  & code {
+    background: #f6f8fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 85%;
+    color: #e83e8c;
+  }
+
+  & pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  & blockquote {
+    border-left: 4px solid #dfe2e5;
+    padding-left: 16px;
+    margin: 16px 0;
+    color: #6a737d;
+    background: #f8f9fa;
+    padding: 12px 16px;
+    border-radius: var(--size-radius-sm);
+  }
+
+  & table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+
+    & th,
+    & td {
+      border: 1px solid #dfe2e5;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    & th {
+      background: #f6f8fa;
+      font-weight: 600;
+    }
+  }
 }
