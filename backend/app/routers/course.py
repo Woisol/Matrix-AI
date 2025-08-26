@@ -18,7 +18,7 @@ course_router = APIRouter(prefix="/api", tags=["course"])
 async def list_courses():
     """获取所有课程列表"""
     try:
-        courses = await CourseModel.all().prefetch_related("assignments")
+        courses = await CourseModel.all().prefetch_related("assignments", "assignments__submissions")
         course_list = []
 
         for course in courses:
@@ -26,7 +26,7 @@ async def list_courses():
                 courseId=course.id,
                 courseName=course.course_name,
                 assignment=AssignDBtoSchema(course.assignments),
-                completed=course.completed
+                completed=course.completed,
             )
             course_list.append(course_data)
 
@@ -40,7 +40,7 @@ async def list_courses():
 async def list_todo_courses():
     """获取待完成的课程列表（未完成的课程）"""
     try:
-        courses = await CourseModel.filter(completed=False).prefetch_related("assignments")
+        courses = await CourseModel.filter(completed=False).prefetch_related("assignments", "assignments__submissions")
         course_list = []
 
         for course in courses:
@@ -49,7 +49,7 @@ async def list_todo_courses():
             course_data = TodoCourse(
                 courseId=course.id,
                 courseName=course.course_name,
-                assignment=AssignDBtoSchema(course.assignments)
+                assignment=AssignDBtoSchema(course.assignments),
             )
             course_list.append(course_data)
 
@@ -62,13 +62,13 @@ async def list_todo_courses():
 async def get_course(course_id: str = Path(..., description="课程ID")):
     """根据ID获取单个课程详情"""
     try:
-        course = await CourseModel.get(id=course_id).prefetch_related("assignments")
+        course = await CourseModel.get(id=course_id).prefetch_related("assignments", "assignments__submissions")
 
         course_data = CourseSchema(
             courseId=course.id,
             courseName=course.course_name,
             assignment=AssignDBtoSchema(course.assignments),
-            completed=course.completed
+            completed=course.completed,
         )
 
         return course_data
