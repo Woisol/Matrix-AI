@@ -1,4 +1,5 @@
-import { MatrixAnalysisProps } from "../../pages/course/components/matrix-analyse.component"
+// import { MatrixAnalysisProps } from "../../pages/course/components/matrix-analyse.component"
+import { MatrixAnalysisProps } from "../../pages/assignment/components/matrix-analyse.component"
 import { AssignId } from "./general"
 
 export type MdContent = string
