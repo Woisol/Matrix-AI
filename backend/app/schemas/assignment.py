@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional
 from datetime import datetime
 
-from general import AssignId
+from .general import AssignId
 
 class MdContent(str):
     pass
