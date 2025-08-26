@@ -4,8 +4,8 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from .assignment import TestSample, CodeFileInfo
-from .general import AssignId, CourseId
+from app.schemas.assignment import TestSample, CodeFileInfo
+from app.schemas.general import AssignId, CourseId
 from enum import Enum
 
 class AssignType(str, Enum):

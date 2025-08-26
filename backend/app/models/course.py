@@ -5,7 +5,7 @@ from tortoise.models import Model
 from tortoise import fields
 
 from tortoise.fields import ManyToManyRelation
-from .assignment import Assignment
+from app.models.assignment import Assignment
 
 
 class Course(Model):
