@@ -126,6 +126,8 @@ async def create_course(
         )
 
         return course_data
+    except torExceptions.ValidationError:
+        raise HTTPException(status_code=400, detail=f"Invalid data provided")
     except HTTPException:
         raise
     except Exception as e:

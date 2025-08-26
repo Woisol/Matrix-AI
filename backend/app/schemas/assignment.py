@@ -39,23 +39,33 @@ class SubmitScoreStatus(str, Enum):
     FULL_SCORE = "full_score"
 
 class TestSample(BaseModel):
-    input: MdCodeContent = Field(..., description="输入")
-    realOutput: MdCodeContent = Field(..., description="真实输出")
-    expectOutput: MdCodeContent = Field(..., description="期望输出")
+    input: list[MdCodeContent] = Field(..., description="输入（列表）")
+    realOutput: list[MdCodeContent] = Field(..., description="真实输出（列表）")
+    expectOutput: list[MdCodeContent] = Field(..., description="期望输出（列表）")
 
 class Submit(BaseModel):
     score: float = Field(..., description="提交分数")
     time: datetime = Field(..., description="提交时间")
     #! py3.9 以上直接支持 list[] 语法而不用导入 List
-    testSample: list[TestSample] = Field(..., description="测试样例")
+    #! 在 TestSample 内使用 list 而非在外面否则(暂时不想细究())
+    # 1 validation error for AssignData submit
+    # Field required [type=missing, input_value={'assignId': '6f131513800...trix AI!" << endl;}`}]'}, input_type=dict]
+    # For further information visit https://errors.pydantic.dev/2.9/v/missing
+    testSample: TestSample = Field(..., description="测试样例")
     submitCode: list[CodeFileInfo] = Field(..., description="提交代码文件列表")
+
+class AssignCreateRequest(BaseModel):
+    title: str = Field(..., description="作业标题")
+    description: str = Field(..., description="作业描述")
+    assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
+    ddl: Optional[datetime] = Field(None, description="作业截止时间")
 
 class AssignData(BaseModel):
     assignId: AssignId = Field(..., description="作业ID")
     title: str = Field(..., description="作业标题")
     description: str = Field(..., description="作业描述")
-    assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
-    submit: Optional[Submit] = Field(..., description="作业提交记录")
+    assignOriginalCode: str = Field(..., description="作业原始代码")
+    submit: Optional[Submit] = Field(None, description="作业提交记录")
 
 class BasicAnalysis(BaseModel):
     resolution:Optional[MatrixAnalysisProps] = Field(None, description="题目解答")

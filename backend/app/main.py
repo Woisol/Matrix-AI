@@ -19,6 +19,7 @@ if sys.version_info < (3, 9):
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from routers.course import course_router
+from routers.assignment import assign_router
 from database import init_db, close_db
 
 
@@ -42,7 +43,8 @@ app = FastAPI(
 )
 
 # 注册路由
-app.include_router(course_router)
+for router in [course_router, assign_router]:
+    app.include_router(router)
 
 
 @app.get("/")

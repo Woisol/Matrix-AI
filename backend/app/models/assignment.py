@@ -30,12 +30,12 @@ class Assignment(Model):
     title = fields.CharField(max_length=200, description="作业标题")  # 保留兼容性
     description = fields.TextField(max_length=1000, description="作业描述")
     type = fields.CharEnumField(AssignTypeEnum, max_length=20, description="作业类型")
-    score = fields.FloatField(null=True, description="作业得分")
-    start_date = fields.DatetimeField(description="开始时间")
-    end_date = fields.DatetimeField(description="截止时间")  # ddl
+    # score = fields.FloatField(null=True, description="作业得分")
+    start_date = fields.DatetimeField(null=True,description="开始时间")
+    end_date = fields.DatetimeField(null=True, description="截止时间")  # ddl
 
     # 作业原始代码和答案
-    original_code = fields.JSONField(default=list, description="作业原始代码文件列表")
+    original_code = fields.CharField(max_length=10000, description="作业原始代码文件列表 JSON")
 
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
