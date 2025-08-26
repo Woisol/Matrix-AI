@@ -1,5 +1,6 @@
 from enum import Enum
 from tortoise import fields
+from tortoise.fields import ReverseRelation
 from tortoise.models import Model
 
 #! 单独定义，据 C4：
@@ -36,6 +37,9 @@ class Assignment(Model):
 
     # 作业原始代码和答案
     original_code = fields.CharField(max_length=10000, description="作业原始代码文件列表 JSON")
+
+    codes: ReverseRelation["AssignmentCode"]
+    submissions: ReverseRelation["AssignmentSubmission"]
 
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")

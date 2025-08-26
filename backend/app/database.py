@@ -11,7 +11,7 @@ TORTOISE_ORM = {
     "connections": {"default": "sqlite://db.sqlite3"},
     "apps": {
         "models": {
-            "models": ["app.models.course", "aerich.models"],
+            "models": ["app.models.course", "app.models.assignment", "aerich.models"],
             "default_connection": "default",
         },
     },
@@ -22,7 +22,7 @@ async def init_db():
     """初始化数据库连接"""
     await Tortoise.init(
         db_url="sqlite://db.sqlite3",
-        modules={"models": ["app.models.course"]}
+        modules={"models": ["app.models.course", "app.models.assignment"]}
     )
     # 生成数据库表
     await Tortoise.generate_schemas()

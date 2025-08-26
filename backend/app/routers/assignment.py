@@ -11,7 +11,7 @@ assign_router = APIRouter(prefix="/api", tags=["assignment"])
 
 @assign_router.get("/courses/{course_id}/assignments/{assign_id}", response_model=AssignData)
 async def get_assignment(
-    assign_id: int = Path(..., description="作业ID")
+    assign_id: str = Path(..., description="作业ID")
     ):
     try:
         assignment = await AssignmentModel.get(id=assign_id).prefetch_related("codes").prefetch_related("submissions")
