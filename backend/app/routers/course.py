@@ -26,28 +26,7 @@ async def get_courses(
     """
     【课程列表】获取课程列表
     """
-    query = Course.all()
     
-    # 根据类型过滤
-    if type and type in ["public", "private"]:
-        query = query.filter(type=type)
-    
-    courses = await query.order_by("-created_at")
-    
-    result = []
-    for course in courses:
-        result.append(CourseListResponse(
-            id=course.id,
-            name=course.name,
-            type=course.type,
-            status=course.status,
-            school_year=course.school_year,
-            semester=course.semester,
-            creator_name=course.creator_name,
-            created_at=course.created_at
-        ))
-    
-    return result
 
 
 @course_router.post("/courses", response_model=CourseResponse)
@@ -60,8 +39,6 @@ async def create_course(course_data: CourseCreate = Body(..., description="课�
             name=course_data.name,
             type=course_data.type,
             status=course_data.status,
-            school_year=course_data.school_year,
-            semester=course_data.semester,
             description=course_data.description,
             creator_name=course_data.creator_name
         )
@@ -71,8 +48,6 @@ async def create_course(course_data: CourseCreate = Body(..., description="课�
             name=course.name,
             type=course.type,
             status=course.status,
-            school_year=course.school_year,
-            semester=course.semester,
             description=course.description,
             creator_name=course.creator_name,
             created_at=course.created_at,
@@ -95,8 +70,8 @@ async def get_course_detail(course_id: int = Path(..., description="课程ID")):
             name=course.name,
             type=course.type,
             status=course.status,
-            school_year=course.school_year,
-            semester=course.semester,
+            # school_year=course.school_year,
+            # semester=course.semester,
             description=course.description,
             creator_name=course.creator_name,
             created_at=course.created_at,
