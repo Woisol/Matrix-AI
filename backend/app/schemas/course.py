@@ -37,8 +37,8 @@ class CourseCreateRequest(BaseModel):
     courseName: str = Field(..., description="课程名称", min_length=1, max_length=200)
     type: str = Field(default="public", description="课程类型: public, private")
     status: str = Field(default="open", description="课程状态: open, close")
-    description: Optional[str] = Field(None, description="课程描述", max_length=1000)
-    creatorName: str = Field(default="管理员", description="创建者姓名", max_length=100)
+    # description: Optional[str] = Field(None, description="课程描述", max_length=1000)
+    # creatorName: str = Field(default="管理员", description="创建者姓名", max_length=100)
     assignmentIds: Optional[list[AssignId]] = Field(default=None, description="关联的作业ID列表")
 
 
