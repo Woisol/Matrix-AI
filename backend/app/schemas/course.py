@@ -12,8 +12,8 @@ class CourseBase(BaseModel):
     name: str = Field(..., description="课程名称")
     type: str = Field(default="public", description="课程类型: public, private")
     status: str = Field(default="open", description="课程状态: open, close")
-    school_year: str = Field(..., description="学年")
-    semester: str = Field(..., description="学期")
+    # school_year: str = Field(..., description="学年")
+    # semester: str = Field(..., description="学期")
     description: Optional[str] = Field(None, description="课程描述")
 
 
@@ -27,8 +27,8 @@ class CourseUpdate(BaseModel):
     name: Optional[str] = Field(None, description="课程名称")
     type: Optional[str] = Field(None, description="课程类型")
     status: Optional[str] = Field(None, description="课程状态")
-    school_year: Optional[str] = Field(None, description="学年")
-    semester: Optional[str] = Field(None, description="学期")
+    # school_year: Optional[str] = Field(None, description="学年")
+    # semester: Optional[str] = Field(None, description="学期")
     description: Optional[str] = Field(None, description="课程描述")
 
 
@@ -67,7 +67,7 @@ class CourseAssignmentBase(BaseModel):
     end_date: datetime = Field(..., description="结束时间")
     grade_at_end: int = Field(default=0, description="结束后是否评分")
     pub_answer: int = Field(default=0, description="是否公布答案")
-    plcheck: int = Field(default=0, description="抄袭检测")
+    # plcheck: int = Field(default=0, description="抄袭检测")
     submit_limitation: int = Field(default=10, description="提交次数限制")
 
 
