@@ -7,7 +7,7 @@ export type AllCourse = Omit<TodoCourse, 'assigment'> & {
 
 export type TodoCourse = {
   courseId: CourseId
-  courseName: string
+  courseName: string //! 设计失误，另有 AssignData.title
   assignment: AssignmentListItem[]
 }
 export type AssignmentListItem = {

@@ -1,9 +1,9 @@
-from .course import Course, CourseAssignment, CourseExam, ExamAssignment, ExamAssignmentSubmission
+from .course import Course
+from .assignment import Assignment,AssignmentCode, AssignmentSubmission
 
 __all__ = [
-    "Course", 
-    "CourseAssignment", 
-    "CourseExam", 
-    "ExamAssignment", 
-    "ExamAssignmentSubmission"
+    "Course",
+    "Assignment",
+    "AssignmentCode",
+    "AssignmentSubmission"
 ]
