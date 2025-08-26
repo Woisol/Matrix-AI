@@ -1,17 +1,9 @@
-class ID(str):
-    """
-    通用ID类型
-    """
-    pass
+from typing import Annotated
+from pydantic import Field
 
-class CourseId(ID):
-    """
-    课程ID类型
-    """
-    pass
+# 使用 Annotated 来定义 ID 类型
+ID = Annotated[str, Field(description="通用ID类型")]
 
-class AssignId(ID):
-    """
-    作业ID类型
-    """
-    pass
+CourseId = Annotated[str, Field(description="课程ID类型")]
+
+AssignId = Annotated[str, Field(description="作业ID类型")]

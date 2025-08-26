@@ -2,6 +2,11 @@
 FastAPI课程OJ平台主应用
 """
 import sys
+import os
+
+# 添加项目根目录到 Python 路径，使绝对导入可用
+#~~ 这tm啥
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 检查 Python 版本是否大于 3.9
 if sys.version_info < (3, 9):
