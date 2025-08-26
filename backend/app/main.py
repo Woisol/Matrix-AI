@@ -1,10 +1,21 @@
 """
 FastAPI课程OJ平台主应用
 """
+import sys
+
+# 检查 Python 版本是否大于 3.9
+if sys.version_info < (3, 9):
+    print(f"错误: 此应用需要 Python 3.9 或更高版本，当前版本: {sys.version}")
+    print("请升级 Python 版本后再运行")
+    sys.exit(1)
+
+# print(f"Python 版本检查通过: {sys.version}")
+
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from routers.course import course_router
 from database import init_db, close_db
+
 
 
 @asynccontextmanager
