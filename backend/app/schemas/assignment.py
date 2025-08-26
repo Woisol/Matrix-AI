@@ -1,16 +1,15 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Optional
+from typing import Optional, Annotated
 from datetime import datetime
 
-from .general import AssignId
+from  app.schemas.general import AssignId
 
-class MdContent(str):
-    pass
-class MdCodeContent(str):
-    pass
-class CodeContent(str):
-    pass
+# 使用 Annotated 来定义自定义字符串类型
+MdContent = Annotated[str, Field(description="Markdown内容")]
+MdCodeContent = Annotated[str, Field(description="Markdown代码内容")]
+CodeContent = Annotated[str, Field(description="代码内容")]
+
 class CodeLanguage(str, Enum):
     C_CPP = "c_cpp"
     # JAVASCRIPT = "javascript"

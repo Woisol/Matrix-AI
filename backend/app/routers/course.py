@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Query, Path, Body
 from typing import Optional, List
 from datetime import datetime
 
-from app.models.course import Course as CourseModel, Assignment, AssignmentSubmission
+from app.models.course import Course as CourseModel
+from app.models.assignment import Assignment
 from app.schemas.course import Course as CourseSchema, TodoCourse, CourseCreateRequest, AssignmentListItem
 from app.schemas.assignment import AssignData
 from tortoise import exceptions as torExceptions
