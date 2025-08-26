@@ -4,6 +4,9 @@
 from tortoise.models import Model
 from tortoise import fields
 
+from tortoise.fields import ManyToManyRelation
+from .assignment import Assignment
+
 
 class Course(Model):
     """课程模型"""
@@ -16,7 +19,7 @@ class Course(Model):
     completed = fields.BooleanField(default=False, description="是否完成")
 
     # 多对多关系：课程可以包含多个作业，作业可以被多个课程使用
-    assignments = fields.ManyToManyField("models.Assignment", related_name="courses", description="课程包含的作业")
+    assignments: ManyToManyRelation[Assignment] = fields.ManyToManyField("models.Assignment", related_name="courses", description="课程包含的作业")
 
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
