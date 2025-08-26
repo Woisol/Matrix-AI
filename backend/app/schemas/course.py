@@ -4,10 +4,9 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from assignment import AssignData, TestSample, CodeSet
-from general import AssignId
+from .assignment import TestSample, CodeFileInfo
+from .general import AssignId, CourseId
 from enum import Enum
-from general import CourseId
 
 class AssignType(str, Enum):
     CHOOSE = "choose"
@@ -35,4 +34,4 @@ class SubmissionModel(BaseModel):
     score: float = Field(..., description="提交分数")
     time: datetime = Field(..., description="提交时间")
     sample: TestSample = Field(..., description="样例输入输出")
-    assignCode: list[CodeSet] = Field(..., description="作业代码")
+    assignCode: list[CodeFileInfo] = Field(..., description="作业代码")
