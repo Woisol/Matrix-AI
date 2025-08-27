@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, Path, Form, Body
-from app.schemas.assignment import AssignData, AssignCreateRequest, TestSubmitRequest, TestSampleCreate
+from app.schemas.assignment import AssignData, AssignCreateRequest, Submit, SubmitRequest, TestSubmitRequest, TestSampleCreate
 from app.controller.assignment import AssignmentController
 
 
@@ -37,11 +37,11 @@ async def create_assignment(
 async def test_submit(submitRequest: TestSubmitRequest = Body(...)):
     return await AssignmentController.test_submit(submitRequest=submitRequest)
 
-@assign_router.post("/courses/{course_id}/assignments/{assign_id}/submission", response_model=str)
+@assign_router.post("/courses/{course_id}/assignments/{assign_id}/submission", response_model=Submit)
 async def submit_code(
     course_id: str = Path(..., description="课程ID"),
     assign_id: str = Path(..., description="作业ID"),
-    submitRequest: TestSubmitRequest = Body(...)
- ):
-    return await AssignmentController.submit_code(submitRequest=submitRequest)
+    submitRequest: SubmitRequest = Body(...)
+):
+    return await AssignmentController.submit_code(course_id, assign_id, submitRequest=submitRequest)
 

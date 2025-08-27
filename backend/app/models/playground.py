@@ -4,7 +4,8 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from app.schemas.assignment import CodeContent, CodeLanguage, JudgeResult
+# from app.schemas.general import
+from app.schemas.assignment import CodeContent, CodeLanguage, JudgeResult, TestSampleCreate, MdCodeContent
 
 
 class Playground:
@@ -111,4 +112,20 @@ class Playground:
                 return r_stdout.decode("utf-8", errors="replace")
         except Exception as e:
             return f"Runner Error: {e}"
-    # async def judge_code(code:CodeContent)-> JudgeResult:
+    async def judge_code(code:CodeContent, testSample: TestSampleCreate)-> JudgeResult:
+        try:
+            score = 0
+            testRealOutput:list[MdCodeContent] = []
+            for i in range(len(testSample.input)):
+                output = await Playground.run_code(
+                    code=code,
+                    input=testSample.input[i],
+                    language=CodeLanguage.C_CPP,
+                )
+                testRealOutput.append(output)
+                if output.strip() == testSample.expectOutput[i].strip():
+                    score += 1
+
+            return JudgeResult(score=int(score / len(testSample.input) * 100), testRealOutput=testRealOutput)
+        except Exception as e:
+            return JudgeResult(score=0, testRealOutput=['' for i in range(len(testSample.input))])

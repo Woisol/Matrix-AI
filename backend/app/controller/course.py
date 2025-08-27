@@ -17,10 +17,11 @@ class CourseController:
             course_list = []
 
             for course in courses:
+                # _assign = await course.assignments.all()
                 course_data = CourseSchema(
                     courseId=course.id,
                     courseName=course.course_name,
-                    assignment=AssignDBtoSchema(course.assignments),
+                    assignment=await AssignDBtoSchema(course.assignments),
                     completed=course.completed,
                 )
                 course_list.append(course_data)
@@ -42,7 +43,7 @@ class CourseController:
                 course_data = TodoCourse(
                     courseId=course.id,
                     courseName=course.course_name,
-                    assignment=AssignDBtoSchema(course.assignments),
+                    assignment= await AssignDBtoSchema(course.assignments),
                 )
                 course_list.append(course_data)
 
@@ -57,7 +58,7 @@ class CourseController:
             course_data = CourseSchema(
                 courseId=course.id,
                 courseName=course.course_name,
-                assignment=AssignDBtoSchema(course.assignments),
+                assignment= await AssignDBtoSchema(course.assignments),
                 completed=course.completed,
             )
 

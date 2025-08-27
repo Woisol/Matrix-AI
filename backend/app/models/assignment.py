@@ -79,9 +79,10 @@ class AssignmentSubmission(Model):
     # 预计弃用
     student_id = fields.CharField(max_length=50, description="学生ID")
     score = fields.FloatField(null=True, description="提交分数")
-    submitted_at = fields.DatetimeField(auto_now_add=True, description="提交时间")
     sample_real_output = fields.CharField(max_length=10000, description="样例真实输出列表")
     submit_code = fields.CharField(max_length=10000, description="提交代码文件列表")
+
+    submitted_at = fields.DatetimeField(auto_now=True, description="提交时间")
 
     class Meta:
         table = "assignment_submissions"
