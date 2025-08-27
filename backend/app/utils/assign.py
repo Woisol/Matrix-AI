@@ -1,3 +1,4 @@
+import json, ast
 from datetime import datetime
 from typing import Iterable
 from app.models.assignment import Assignment
@@ -11,7 +12,6 @@ def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[AssignmentListIt
         score = 0
         submissions:Submit = getattr(assignment, "submissions", None)
         if submissions:
-            # 取最新一次提交的分数（按 submitted_at 最大）
             score = submissions.score if submissions.score is not None else 0
 
         result.append({
@@ -23,3 +23,18 @@ def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[AssignmentListIt
         })
 
     return result
+
+def listStrToList(list_str: str) -> list[str]:
+    """将字符串列表转换为 Python 列表"""
+    res = json.loads(list_str.replace("'", '"'))
+    return res
+    # return list(ast.literal_eval(list_str))
+
+    # list_str[0] = list_str[-1] = ''
+    # list_str = list_str.strip('[]')
+    #! 这居然能删去吗😂
+    # list_str = list_str[1:] + list_str[:-1]
+    # list = list_str.split(",")
+    # for i in range(len(list)):
+    #     list[i] = list[i].strip()
+    # return list

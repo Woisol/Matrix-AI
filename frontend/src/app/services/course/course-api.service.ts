@@ -12,13 +12,13 @@ export class CourseApi {
   // @todo 将错误返回值改回 []
   getTodoCourseList$() {
     return this.api.get$<TodoCourse[]>('/courses/todo').pipe(
-      catchError(() => of(testTodoCourseList))
+      catchError(() => of([]))
     );
   }
 
   getAllCourseList$() {
     return this.api.get$<AllCourse[]>('/courses').pipe(
-      catchError(() => of(testAllCourseList))
+      catchError(() => of([]))
     );
   }
 

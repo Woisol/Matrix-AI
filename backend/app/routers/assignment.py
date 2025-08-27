@@ -1,10 +1,11 @@
-import uuid, datetime
+import uuid, ast, datetime
 from fastapi import APIRouter, HTTPException, Query, Path, Body,  Form
+from tortoise import exceptions as torExceptions
 
 from app.models.assignment import Assignment as AssignmentModel
 from app.models.course import Course as CourseModel
 from app.schemas.assignment import AssignData, Submit, TestSample, AssignCreateRequest
-from tortoise import exceptions as torExceptions
+from app.utils.assign import listStrToList
 
 
 assign_router = APIRouter(prefix="/api", tags=["assignment"])
@@ -33,7 +34,7 @@ async def get_assignment(
             assignId=assignment.id,
             title=assignment.title,
             description=assignment.description,
-            assignOriginalCode=assignment.original_code,
+            assignOriginalCode=listStrToList(assignment.original_code),
             submit=submit if assignment.submissions else None
         )
     except torExceptions.DoesNotExist:
@@ -68,7 +69,7 @@ async def create_assignment(
             assignId=assignment.id,
             title=assignment.title,
             description=assignment.description,
-            assignOriginalCode=assignment.original_code
+            assignOriginalCode=listStrToList(assignment.original_code)
         )
     except torExceptions.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"Course with id {course_id} not found")

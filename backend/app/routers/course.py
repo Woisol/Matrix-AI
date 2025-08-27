@@ -1,14 +1,13 @@
 import uuid
 from fastapi import APIRouter, HTTPException, Query, Path, Body, Form
+from tortoise import exceptions as torExceptions
 from typing import Optional, List
-from datetime import datetime
 
 from app.schemas.general import CourseId, AssignId
 from app.models.course import Course as CourseModel
 from app.models.assignment import Assignment
 from app.schemas.course import Course as CourseSchema,CourseBase, TodoCourse, CourseCreateRequest, AssignmentListItem
 from app.schemas.assignment import AssignData
-from tortoise import exceptions as torExceptions
 
 from app.utils.assign import AssignDBtoSchema
 
