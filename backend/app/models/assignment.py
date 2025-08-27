@@ -35,8 +35,8 @@ class Assignment(Model):
     start_date = fields.DatetimeField(null=True,description="开始时间")
     end_date = fields.DatetimeField(null=True, description="截止时间")  # ddl
 
-    # 作业原始代码和答案
-    original_code = fields.CharField(max_length=10000, description="作业原始代码文件列表 JSON")
+    # # 作业原始代码和答案
+    # original_code = fields.CharField(max_length=10000, description="作业原始代码文件列表 JSON")
 
     codes: ReverseRelation["AssignmentCode"]
     submissions: ReverseRelation["AssignmentSubmission"]
