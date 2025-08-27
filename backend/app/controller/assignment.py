@@ -6,10 +6,10 @@ from fastapi import HTTPException, Path, Form
 from tortoise import exceptions as torExceptions
 
 from app.models.course import Course as CourseModel
-from app.models.assignment import Assignment as AssignmentModel, AssignmentCode
+from app.models.assignment import Assignment as AssignmentModel, AssignmentCode, AssignmentSubmission
 from app.models.playground import Playground
 from app.schemas.general import CourseId, AssignId
-from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, CodeFileInfo
+from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, CodeFileInfo, JudgeResult
 
 from app.utils.assign import listStrToList
 
@@ -21,24 +21,27 @@ class AssignmentController:
             if not assignment:
                 raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found")
 
-            submit = None
-            if assignment.submissions:
-                testSample = TestSample(
-                    input=listStrToList(assignment.codes[0].sample_input),
-                    expectOutput=listStrToList(assignment.codes[0].sample_expect_output),
-                    realOutput=listStrToList(assignment.submissions[0].sample_real_output),
-                )
-                submit = Submit(
-                    score=assignment.submissions[0].score,
-                    time=assignment.submissions[0].submitted_at,
-                    testSample=testSample,
-                    submitCode=listStrToList(assignment.submissions[0].submit_code),
-                )
-
             _codes = await assignment.codes.all()
             if not _codes:
                 raise HTTPException(status_code=404, detail=f"Code for assignment id {assign_id} not found or invalid")
             codes = _codes[0]
+
+            _submissions = await assignment.submissions.all()
+            submit = None
+            if _submissions:
+                submissions = _submissions[0]
+                testSample = TestSample(
+                    input=listStrToList(codes.sample_input),
+                    expectOutput=listStrToList(codes.sample_expect_output),
+                    realOutput=listStrToList(submissions.sample_real_output),
+                )
+                submit = Submit(
+                    score=submissions.score,
+                    time=submissions.submitted_at,
+                    testSample=testSample,
+                    submitCode=listStrToList(submissions.submit_code),
+                )
+
 
             return AssignData(
                 assignId=assignment.id,
@@ -109,13 +112,55 @@ class AssignmentController:
             return output
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    async def submit_code(course_id:CourseId,assign_id:AssignId, submitRequest:SubmitRequest ):
+
+    async def submit_code(course_id:CourseId,assign_id:AssignId, submitRequest:SubmitRequest )->Submit:
         try:
-            # 处理提交逻辑
-            output = await Playground.run_code(
+            assignment = await AssignmentModel.get(id=assign_id)
+            _codes = await assignment.codes.all()
+            if not _codes:
+                raise HTTPException(status_code=404, detail=f"Code for assignment id {assign_id} not found or invalid")
+            codes = _codes[0]
+            sample_input = listStrToList(codes.sample_input)
+            sample_output = listStrToList(codes.sample_expect_output)
+
+            judgeRes:JudgeResult = await Playground.judge_code(
                 code=submitRequest.codeFile.content,
-                input="",
-                language="c_cpp",
+                testSample=TestSampleCreate(input=sample_input, expectOutput=sample_output),
             )
+            submit = Submit(
+                score=judgeRes.score,
+                time=datetime.now(),
+                testSample=TestSample(
+                    input=sample_input,
+                    expectOutput=sample_output,
+                    realOutput=judgeRes.testRealOutput,
+                ),
+                submitCode=[submitRequest.codeFile],
+            )
+
+            # 检查是否已有提交记录，有则更新，无则创建
+            _submission = await assignment.submissions.all()
+            submitModel:AssignmentSubmission | None = None
+            if _submission:
+                submission = _submission[0]
+                # 更新现有提交
+                submission.score = submit.score
+                submission.sample_real_output = json.dumps(judgeRes.testRealOutput, ensure_ascii=False)
+                submission.submit_code = json.dumps([submitRequest.codeFile.model_dump()], ensure_ascii=False)
+                #~~ 确实需要手动更新 因为设置了 auto_now_add 而非 auto_now
+                # submission.submitted_at = datetime.now()
+                submitModel = submission
+            else:
+                # 创建新提交
+                submitModel = await AssignmentSubmission.create(
+                    id=uuid.uuid4().hex,
+                    assignment=assignment,
+                    student_id="Matrix AI",
+                    score=submit.score,
+                    sample_real_output=json.dumps(judgeRes.testRealOutput, ensure_ascii=False),
+                    submit_code=json.dumps([submitRequest.codeFile.model_dump()], ensure_ascii=False),
+                )
+            await submitModel.save()
+            return submit
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

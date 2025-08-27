@@ -5,13 +5,16 @@ from app.models.assignment import Assignment
 from app.schemas.course import AssignmentListItem
 from app.schemas.assignment import Submit
 
-def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[AssignmentListItem]:
+async def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[AssignmentListItem]:
     result: list[AssignmentListItem] = []
     for assignment in assignments:
         # 从 ReverseRelation 读取 submissions（需要在查询时 prefetch_related("assignments__submissions")）
         score = 0
-        submissions:Submit = getattr(assignment, "submissions", None)
-        if submissions:
+        _submissions = await assignment.submissions.all()
+        # submissions:Submit = getattr(assignment, "submissions", None)
+        if _submissions:
+            submissions = _submissions[0]
+
             score = submissions.score if submissions.score is not None else 0
 
         result.append({
@@ -26,7 +29,8 @@ def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[AssignmentListIt
 
 def listStrToList(list_str: str) -> list[str]:
     """将字符串列表转换为 Python 列表"""
-    res = json.loads(list_str.replace("'", '"'))
+    res = json.loads(list_str)
+    # .replace("'", '"')
     return res
     # return list(ast.literal_eval(list_str))
 
