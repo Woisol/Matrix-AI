@@ -27,6 +27,7 @@ class MatrixAnalysisContent(BaseModel):
     title:str = Field(..., description="标题")
     content: MdCodeContent = Field(..., description="内容")
     complexity: Optional[Complexity] = Field(None, description="复杂度")
+
 class MatrixAnalysisProps(BaseModel):
     content: list[MatrixAnalysisContent] = Field(..., description="分析内容参数")
     summary: Optional[MdContent]
@@ -94,3 +95,4 @@ class AiGenAnalysis(BaseModel):
 class Analysis(BaseModel):
     basic: BasicAnalysis = Field(..., description="基础分析")
     aiGen: Optional[AiGenAnalysis] = Field(None, description="AI生成分析")
+    

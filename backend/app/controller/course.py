@@ -8,9 +8,12 @@ from app.models.assignment import Assignment
 from app.schemas.course import Course as CourseSchema,CourseBase, TodoCourse, CourseCreateRequest, AssignmentListItem
 
 from app.utils.assign import AssignDBtoSchema
+
+
 class CourseController:
     """课程控制器"""
-    async def list_courses():
+    @classmethod
+    async def list_courses(cls):
         """获取所有课程列表"""
         try:
             courses = await CourseModel.all().prefetch_related("assignments", "assignments__submissions")
@@ -31,7 +34,8 @@ class CourseController:
             raise HTTPException(status_code=404, detail="No courses found")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    async def list_todo_courses():
+    @classmethod
+    async def list_todo_courses(cls):
         """获取待完成的课程列表（未完成的课程）"""
         try:
             courses = await CourseModel.filter(completed=False).prefetch_related("assignments", "assignments__submissions")
@@ -50,7 +54,9 @@ class CourseController:
             return course_list
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    async def get_course(course_id: str = Path(..., description="课程ID")):
+
+    @classmethod
+    async def get_course(cls, course_id: str = Path(..., description="课程ID")):
         """根据ID获取单个课程详情"""
         try:
             course = await CourseModel.get(id=course_id).prefetch_related("assignments", "assignments__submissions")
@@ -67,8 +73,11 @@ class CourseController:
             raise HTTPException(status_code=404, detail=f"Course with id {course_id} not found")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
+    
+    
+    @classmethod
     async def create_course(
+        cls,
         courseName: str = Form(...,min_length=1, description="课程名称"),
         type: str = Form("public", description="课程类型: public, private"),
         status: str = Form("open", description="课程状态: open, close"),
