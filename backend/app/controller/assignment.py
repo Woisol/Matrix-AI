@@ -15,7 +15,8 @@ from app.utils.assign import listStrToList
 
 
 class AssignmentController:
-    async def get_assignment(assign_id: str) -> AssignData:
+    @classmethod
+    async def get_assignment(cls,assign_id: str) -> AssignData:
         try:
             assignment = await AssignmentModel.get(id=assign_id).prefetch_related("codes").prefetch_related("submissions")
             if not assignment:
@@ -46,8 +47,11 @@ class AssignmentController:
             raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found or invalid")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
+    
+    
+    @classmethod
     async def create_assignment(
+        cls,
         course_id: str,
         title: str,
         description: str,
@@ -88,7 +92,8 @@ class AssignmentController:
             raise HTTPException(status_code=400, detail="Invalid data provided")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    async def test_submit(submitRequest: TestSubmitRequest) -> str:
+    @classmethod
+    async def test_submit(cls, submitRequest: TestSubmitRequest) -> str:
         try:
             # 处理提交逻辑
             output = await Playground.run_code(
@@ -99,7 +104,8 @@ class AssignmentController:
             return output
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    async def submit_code(course_id:CourseId,assign_id:AssignId, submitRequest:SubmitRequest ):
+    @classmethod
+    async def submit_code(cls, course_id: CourseId, assign_id: AssignId, submitRequest: SubmitRequest):
         try:
             # 处理提交逻辑
             output = await Playground.run_code(
