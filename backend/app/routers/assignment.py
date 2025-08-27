@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Path, Form
-from app.schemas.assignment import AssignData
+from fastapi import APIRouter, Path, Form, Body
+from app.schemas.assignment import AssignData, AssignCreateRequest, SubmitRequest
 from app.controller.assignment import AssignmentController
 
 
@@ -12,6 +12,8 @@ async def get_assignment(assign_id: str = Path(..., description="作业ID")):
 @assign_router.post("/courses/{course_id}/assignments", response_model=AssignData)
 async def create_assignment(
     course_id: str = Path(..., description="课程ID"),
+    #! 传入为 form，复用较麻烦不管了……
+    # assignCreate: AssignCreateRequest = Body(...)
     title: str = Form(..., description="作业标题"),
     description: str = Form(..., description="作业描述"),
     assignOriginalCode: str = Form(..., description="作业原始代码"),
@@ -24,3 +26,7 @@ async def create_assignment(
         assignOriginalCode=assignOriginalCode,
         ddl=ddl,
     )
+
+@assign_router.post("/playground/submission", response_model=str)
+async def submit_code(submitRequest: SubmitRequest = Body(...)):
+    return await AssignmentController.submit_code(submitRequest=submitRequest)

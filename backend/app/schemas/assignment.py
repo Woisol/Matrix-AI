@@ -7,7 +7,7 @@ from  app.schemas.general import AssignId
 
 # 使用 Annotated 来定义自定义字符串类型
 MdContent = Annotated[str, Field(description="Markdown内容")]
-MdCodeContent = Annotated[str, Field(description="Markdown代码内容")]
+MdCodeContent = Annotated[str, Field(description="Markdown代码内容，注意包含```xxx```")]
 CodeContent = Annotated[str, Field(description="代码内容")]
 
 class CodeLanguage(str, Enum):
@@ -43,6 +43,11 @@ class TestSample(BaseModel):
     realOutput: list[MdCodeContent] = Field(..., description="真实输出（列表）")
     expectOutput: list[MdCodeContent] = Field(..., description="期望输出（列表）")
 
+class SubmitRequest(BaseModel):
+    codeFile: CodeFileInfo = Field(..., description="提交的代码文件")
+    input:str = Field(..., description="用户输入")
+    language: CodeLanguage = Field(..., description="代码语言，目前仅含 c_cpp")
+
 class Submit(BaseModel):
     score: float = Field(..., description="提交分数")
     time: datetime = Field(..., description="提交时间")
@@ -66,6 +71,8 @@ class AssignData(BaseModel):
     description: str = Field(..., description="作业描述")
     assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
     submit: Optional[Submit] = Field(None, description="作业提交记录")
+
+#**----------------------------Matrix-Analysis-----------------------------------------------------
 
 class BasicAnalysis(BaseModel):
     resolution:Optional[MatrixAnalysisProps] = Field(None, description="题目解答")
