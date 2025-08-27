@@ -64,7 +64,7 @@ class AssignData(BaseModel):
     assignId: AssignId = Field(..., description="作业ID")
     title: str = Field(..., description="作业标题")
     description: str = Field(..., description="作业描述")
-    assignOriginalCode: str = Field(..., description="作业原始代码")
+    assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
     submit: Optional[Submit] = Field(None, description="作业提交记录")
 
 class BasicAnalysis(BaseModel):

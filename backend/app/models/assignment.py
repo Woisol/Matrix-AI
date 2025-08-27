@@ -60,9 +60,9 @@ class AssignmentCode(Model):
     """作业代码模型"""
     id = fields.CharField(max_length=50, pk=True, description="作业代码ID")
     assignment = fields.ForeignKeyField("models.Assignment", related_name="codes", description="所属作业")
-    original_code = fields.JSONField(default=list, description="作业原始代码文件列表")
-    sample_input = fields.JSONField(default=list, description="测试样例输入列表")
-    sample_expect_output = fields.JSONField(default=list, description="样例期望输出列表")
+    original_code = fields.CharField(max_length=10000, description="作业原始代码文件列表")
+    sample_input = fields.CharField(max_length=10000, description="测试样例输入列表")
+    sample_expect_output = fields.CharField(max_length=10000, description="样例期望输出列表")
     # submit = fields.JSONField(default=object, description="提交内容")
 
     class Meta:
@@ -80,8 +80,8 @@ class AssignmentSubmission(Model):
     student_id = fields.CharField(max_length=50, description="学生ID")
     score = fields.FloatField(null=True, description="提交分数")
     submitted_at = fields.DatetimeField(auto_now_add=True, description="提交时间")
-    sample_real_output = fields.JSONField(default=list, description="样例真实输出列表")
-    submit_code = fields.JSONField(default=list, description="提交代码文件列表")
+    sample_real_output = fields.CharField(max_length=10000, description="样例真实输出列表")
+    submit_code = fields.CharField(max_length=10000, description="提交代码文件列表")
 
     class Meta:
         table = "assignment_submissions"
