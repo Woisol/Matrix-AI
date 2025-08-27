@@ -38,15 +38,24 @@ class SubmitScoreStatus(str, Enum):
     PASSED = "passed"
     FULL_SCORE = "full_score"
 
-class TestSample(BaseModel):
+class TestSampleCreate(BaseModel):
+    # input: str = Field(..., description="输入（列表）")
+    # expectOutput: str = Field(..., description="期望输出（列表）")
     input: list[MdCodeContent] = Field(..., description="输入（列表）")
-    realOutput: list[MdCodeContent] = Field(..., description="真实输出（列表）")
     expectOutput: list[MdCodeContent] = Field(..., description="期望输出（列表）")
+class TestSample(TestSampleCreate):
+    realOutput: list[MdCodeContent] = Field(..., description="真实输出（列表）")
 
-class SubmitRequest(BaseModel):
+class TestSubmitRequest(BaseModel):
     codeFile: CodeFileInfo = Field(..., description="提交的代码文件")
     input:str = Field(..., description="用户输入")
     language: CodeLanguage = Field(..., description="代码语言，目前仅含 c_cpp")
+class SubmitRequest(BaseModel):
+    codeFile: CodeFileInfo = Field(..., description="提交的代码文件")
+
+class JudgeResult(BaseModel):
+    score: float = Field(..., description="得分")
+    testRealOutput: list[MdCodeContent] = Field(..., description="真实输出（列表）")
 
 class Submit(BaseModel):
     score: float = Field(..., description="提交分数")

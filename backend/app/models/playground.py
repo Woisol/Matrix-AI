@@ -4,11 +4,14 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from app.schemas.assignment import CodeContent, CodeLanguage
+from app.schemas.assignment import CodeContent, CodeLanguage, JudgeResult
 
 
 class Playground:
     """代码运行和测试环境简要实现（单文件 C/C++）"""
+    # def __init__(self):
+    #     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 
     @staticmethod
     async def run_code(code: CodeContent, input: str, language: CodeLanguage) -> str:
@@ -58,6 +61,7 @@ class Playground:
                 compile_proc = await asyncio.create_subprocess_exec(
                     *compiler_cmd,
                     str(src_path),
+                    #@todo check
                     "-O2",
                     "-std=c++17",
                     "-o",
@@ -107,3 +111,4 @@ class Playground:
                 return r_stdout.decode("utf-8", errors="replace")
         except Exception as e:
             return f"Runner Error: {e}"
+    # async def judge_code(code:CodeContent)-> JudgeResult:

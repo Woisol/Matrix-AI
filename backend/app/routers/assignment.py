@@ -1,5 +1,6 @@
+import json
 from fastapi import APIRouter, Path, Form, Body
-from app.schemas.assignment import AssignData, AssignCreateRequest, SubmitRequest
+from app.schemas.assignment import AssignData, AssignCreateRequest, TestSubmitRequest, TestSampleCreate
 from app.controller.assignment import AssignmentController
 
 
@@ -17,16 +18,30 @@ async def create_assignment(
     title: str = Form(..., description="作业标题"),
     description: str = Form(..., description="作业描述"),
     assignOriginalCode: str = Form(..., description="作业原始代码"),
+    testSample: str = Form(..., description="测试样例"),
     ddl: str = Form(..., description="作业截止日期"),
 ):
+    #! 极其混乱，请求传输必须为 str，访问 .input 需要 json，但存储又需要 str
+    _testSampleJSON: TestSampleCreate = TestSampleCreate.model_validate_json(testSample)
+
     return await AssignmentController.create_assignment(
         course_id=course_id,
         title=title,
         description=description,
         assignOriginalCode=assignOriginalCode,
+        testSample=_testSampleJSON,
         ddl=ddl,
     )
 
 @assign_router.post("/playground/submission", response_model=str)
-async def submit_code(submitRequest: SubmitRequest = Body(...)):
+async def test_submit(submitRequest: TestSubmitRequest = Body(...)):
+    return await AssignmentController.test_submit(submitRequest=submitRequest)
+
+@assign_router.post("/courses/{course_id}/assignments/{assign_id}/submission", response_model=str)
+async def submit_code(
+    course_id: str = Path(..., description="课程ID"),
+    assign_id: str = Path(..., description="作业ID"),
+    submitRequest: TestSubmitRequest = Body(...)
+ ):
     return await AssignmentController.submit_code(submitRequest=submitRequest)
+
