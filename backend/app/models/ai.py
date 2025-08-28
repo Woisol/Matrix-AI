@@ -19,7 +19,7 @@ class AI:
         MODEL="deepseek-r1-distill-qwen-7b"
         MAX_TOKENS=1000
         TEMPERATURE=0.7
-        
+
         @classmethod
         def MESSAGES(cls, prompt: str) -> list[dict[str,str]]:
             return [
@@ -37,7 +37,7 @@ class AI:
             max_tokens=cls.AICONFIG.MAX_TOKENS,
             temperature=cls.AICONFIG.TEMPERATURE,
         )
-    
+
         return response.choices[0].message.content if response.choices[0].message.content else ""
 
 class AIQueue:
@@ -65,7 +65,7 @@ class AIAnalysisGenerator:
             _resolContent = await AI.getResponse(prompt=AIPrompt.RESOLUTION(
                 assign_data.title, assign_data.description, assign_data.assignOriginalCode[0].content))
 
-            resolContents = [c.strip() for c in _resolContent.split("\n") if c.strip() != ""]
+            resolContents = [c.strip() for c in _resolContent.split("---") if c.strip() != ""]
 
             # 生成标题
             resolTitle = [await AI.getResponse(AIPrompt.TITLE_CODE(code)) for code in resolContents]
@@ -82,7 +82,7 @@ class AIAnalysisGenerator:
                     ) for t, c ,complex in zip(resolTitle, resolContents, resolComplexity)
                 ],
                 #@todo implement summary prompt and logic
-                summary="",
+                summary=None,
                 showInEditor=False
             )
 
