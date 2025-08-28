@@ -6,21 +6,16 @@ class AIMessage(BaseModel):
     role: str
     content: str
 
-class AIConfig:
-    MODEL:str
-    MAX_TOKENS:int
-    TEMPERATURE:float
-    MESSAGES: callable[Optional[list[AIMessage]]] = None
-
 class AI:
-    AICONFIG : AIConfig = AIConfig(
+    class AICONFIG:
         MODEL=r"deepseek-r1-distill-qwen-7b",
         MAX_TOKENS=1000,
         TEMPERATURE=0.7,
-        MESSAGES= lambda prompt: [
-            AIMessage(role="system", content=prompt),
-            # AIMessage(role="user", content="请给出详细的解题步骤和思路。")
-        ]
+        def MESSAGES(prompt: str) -> list[AIMessage]:
+            return [
+                AIMessage(role="system", content=prompt),
+                # AIMessage(role="user", content="请给出详细的解题步骤和思路。")
+            ]
     )
     client =  OpenAI(api_key=os.getenv("sk-b8dc10dafd2445a3b62830eb625634bf"),
                             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
