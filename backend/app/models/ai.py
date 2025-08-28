@@ -66,7 +66,7 @@ class AIAnalysisGenerator:
             _resolContent = await AI.getResponse(prompt=AIPrompt.RESOLUTION(
                 assign_data.title, assign_data.description, assign_data.assignOriginalCode[0].content))
 
-            resolContents = [c.strip() for c in _resolContent.split("\n") if c.strip() != ""]
+            resolContents = [c.strip() for c in _resolContent.split("---") if c.strip() != ""]
 
             # 生成标题
             resolTitle = [await AI.getResponse(AIPrompt.TITLE_CODE(code)) for code in resolContents]
@@ -83,7 +83,7 @@ class AIAnalysisGenerator:
                     ) for t, c ,complex in zip(resolTitle, resolContents, resolComplexity)
                 ],
                 #@todo implement summary prompt and logic
-                summary="",
+                summary=None,
                 showInEditor=False
             )
 
