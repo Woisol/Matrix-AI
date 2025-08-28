@@ -4,7 +4,7 @@ from app.schemas.assignment import AssignData, AssignCreateRequest, Submit, Subm
 from app.controller.assignment import AssignmentController
 
 
-assign_router = APIRouter(prefix="/api", tags=["assignment"])
+assign_router = APIRouter(tags=["assignment"])
 
 @assign_router.get("/courses/{course_id}/assignments/{assign_id}", response_model=AssignData)
 async def get_assignment(assign_id: str = Path(..., description="作业ID")):
