@@ -14,7 +14,7 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
   imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent],
   standalone: true,
   template: `
-    <nz-tabs class="tab-expend">
+    <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
       <nz-tab nzTitle="描述">
         @if (assignData) {
           <h3>{{assignData.title}}</h3>
@@ -259,6 +259,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() assignData!: AssignData | undefined;
   @Input() analysis!: Analysis | undefined;
   @Input() onAnalysisAiGenRequest = () => { };
+  @Input() selectedTabIndex = signal(0);
 
   submitScoreStatus = signal<SubmitScoreStatus>('not-submitted')
 
