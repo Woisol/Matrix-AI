@@ -12,19 +12,19 @@ export class AssignService {
   // @todo 将错误返回值改回 []
   getAssignData$(courseId: CourseId, assigId: AssignId) {
     return this.api.get$<AssignData>(`/courses/${courseId}/assignments/${assigId}`).pipe(
-      catchError(() => of(testAssigData))
+      catchError(() => of(undefined))
     );
   }
 
   getAnalysisBasic$(courseId: CourseId, assigId: AssignId) {
     return this.api.get$<BasicAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/basic`).pipe(
-      catchError(() => of(testAnalysis.basic))
+      catchError(() => of(undefined))
     );
   }
 
   getAnalysisAiGen$(courseId: CourseId, assigId: AssignId) {
     return this.api.get$<AiGenAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/detail`).pipe(
-      catchError(() => of(testAnalysis.aiGen))
+      catchError(() => of(undefined))
     );
   }
 
