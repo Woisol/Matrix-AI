@@ -27,12 +27,18 @@
                 "glob": "**/*",
                 "input": "node_modules/monaco-editor/min",
                 "output": "/assets/monaco-editor"
+              },
+              {
+                "glob": "**/*.{ttf,woff,woff2,eot,svg,css}",
+                "input": "node_modules/monaco-editor/esm/vs",
+                "output": "/assets/monaco-editor/vs"
               }
             ],
             "styles": [
               "src/theme.less",
               "src/styles.css",
-              "node_modules/prismjs/themes/prism-okaidia.css"
+              "node_modules/prismjs/themes/prism-okaidia.css",
+              "node_modules/monaco-editor/min/vs/editor/editor.main.css"
             ],
             "scripts": [
               "node_modules/prismjs/prism.js",
@@ -46,13 +52,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "2MB",
+                  "maximumError": "5MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "10kB",
+                  "maximumError": "20kB"
                 }
               ],
               "outputHashing": "all"
