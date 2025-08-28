@@ -94,12 +94,87 @@ class AIAnalysisGenerator:
 
     @classmethod
     async def genKnowledgeAnalysis(cls, course_id: str, assign_id: str) -> MatrixAnalysisProps:
-        raise NotImplementedError("Knowledge analysis generation not implemented yet")
+        # raise NotImplementedError("Knowledge analysis generation not implemented yet")
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+            # course_data: CourseData = await CourseController.get_course(course_id)
+
+            # 获取知识点分析
+            knowledContent = await AI.getResponse(prompt=AIPrompt.KNOWLEDGEANALYSIS(
+                assign_data.title, assign_data.description, assign_data.assignOriginalCode[0].content))
+
+            analysis = MatrixAnalysisProps(
+                content=[
+                    MatrixAnalysisContent(
+                        title="知识点分析",
+                        content=knowledContent,
+                        complexity=None
+                    )
+                ],
+                #@todo implement summary prompt and logic
+                summary="",
+                showInEditor=False
+            )
+
+            return analysis
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @classmethod
     async def genCodeAnalysis(cls, course_id: str, assign_id: str) -> MatrixAnalysisProps:
-        raise NotImplementedError("Code analysis generation not implemented yet")
+        # raise NotImplementedError("Code analysis generation not implemented yet")
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+            # course_data: CourseData = await CourseController.get_course(course_id)
+
+            # 获取代码分析
+            codeAnalContent = await AI.getResponse(prompt=AIPrompt.RESOLUTION(
+                assign_data.title, assign_data.description, assign_data.assignOriginalCode[0].content))
+
+            analysis = MatrixAnalysisProps(
+                content=[
+                    MatrixAnalysisContent(
+                        title="代码分析",
+                        content=codeAnalContent,
+                        complexity=None
+                    )
+                ],
+                #@todo implement summary prompt and logic
+                summary="",
+                showInEditor=False
+            )
+
+            return analysis
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @classmethod
     async def genLearningSuggestions(cls, course_id: str, assign_id: str) -> MatrixAnalysisProps:
-        raise NotImplementedError("Learning suggestions generation not implemented yet")
+        # raise NotImplementedError("Learning suggestions generation not implemented yet")
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+            # course_data: CourseData = await CourseController.get_course(course_id)
+
+            # 获取学习建议
+            learnSugContent = await AI.getResponse(prompt=AIPrompt.LEARNING_SUGGESTIONS(
+                assign_data.title, assign_data.description, assign_data.assignOriginalCode[0].content))
+
+            analysis = MatrixAnalysisProps(
+                content=[
+                    MatrixAnalysisContent(
+                        title="学习建议",
+                        content=learnSugContent,
+                        complexity=None
+                    )
+                ],
+                #@todo implement summary prompt and logic
+                summary="",
+                showInEditor=False
+            )
+
+            return analysis
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+    
