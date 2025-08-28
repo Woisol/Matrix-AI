@@ -11,8 +11,9 @@ async def get_assignment(assign_id: str = Path(..., description="作业ID")):
     return await AssignmentController.get_assignment(assign_id=assign_id)
 
 @assign_router.post("/courses/{course_id}/assignments", response_model=AssignData)
-async def create_assignment(
+async def set_assignment(
     course_id: str = Path(..., description="课程ID"),
+    assignId: str | None = Form(..., description="作业ID"),
     #! 传入为 form，复用较麻烦不管了……
     # assignCreate: AssignCreateRequest = Body(...)
     title: str = Form(..., description="作业标题"),
@@ -25,7 +26,8 @@ async def create_assignment(
     _testSampleJSON: TestSampleCreate = TestSampleCreate.model_validate_json(testSample)
 
     return await AssignmentController.set_assignment(
-        course_id=course_id,
+        courseId=course_id,
+        assignId=assignId,
         title=title,
         description=description,
         assignOriginalCode=assignOriginalCode,
@@ -39,7 +41,6 @@ async def delete_assignment(
     assign_id: str = Path(..., description="作业ID"),
 ):
     await AssignmentController.delete_assignment(course_id=course_id, assign_id=assign_id)
-    return True
 
 @assign_router.post("/playground/submission", response_model=str)
 async def test_submit(submitRequest: TestSubmitRequest = Body(...)):

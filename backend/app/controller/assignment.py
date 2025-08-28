@@ -52,9 +52,10 @@ class AssignmentController:
 
 
     @classmethod
-    async def create_assignment(
+    async def set_assignment(
         cls,
-        course_id: str,
+        assignId: str | None,
+        courseId: str,
         title: str,
         description: str,
         assignOriginalCode: str,
@@ -63,37 +64,50 @@ class AssignmentController:
         ddl: Optional[str],
     ) -> AssignData:
         try:
-            course = await CourseModel.get(id=course_id)
+            course = await CourseModel.get(id=courseId)
             # .prefetch_related("codes", "submissions") 用于 ManyToMany 😂
-            assignment = await AssignmentModel.create(
-                id=uuid.uuid4().hex,
-                title=title,
-                description=description,
-                type="program",
-                end_date=ddl if ddl else None,
-                # original_code=assignOriginalCode,
-            )
-            # _input_str = json.dumps(testSample.input, ensure_ascii=False)
-            code = await AssignmentCode.create(
-                id=uuid.uuid4().hex,
-                #! K.P.……
-                assignment=assignment,
-                original_code=assignOriginalCode,
-                # sample_input='',
-                # sample_expect_output='',
-                sample_input=json.dumps(testSample.input, ensure_ascii=False),
-                sample_expect_output=json.dumps(testSample.expectOutput, ensure_ascii=False),
-            )
-            await course.assignments.add(assignment)
+
+            if assignId:
+                assignment = await AssignmentModel.get(id=assignId).prefetch_related("codes")
+                assignment.title = title
+                assignment.description = description
+                assignment.end_date = ddl if ddl else None
+                await assignment.save()
+
+                assignment.codes[0].original_code = assignOriginalCode
+                assignment.codes[0].sample_input = json.dumps(testSample.input, ensure_ascii=False)
+                assignment.codes[0].sample_expect_output = json.dumps(testSample.expectOutput, ensure_ascii=False)
+                await assignment.codes[0].save()
+            else:
+                assignment = await AssignmentModel.create(
+                    id=uuid.uuid4().hex,
+                    title=title,
+                    description=description,
+                    type="program",
+                    end_date=ddl if ddl else None,
+                    # original_code=assignOriginalCode,
+                )
+                # _input_str = json.dumps(testSample.input, ensure_ascii=False)
+                code = await AssignmentCode.create(
+                    id=uuid.uuid4().hex,
+                    #! K.P.……
+                    assignment=assignment,
+                    original_code=assignOriginalCode,
+                    # sample_input='',
+                    # sample_expect_output='',
+                    sample_input=json.dumps(testSample.input, ensure_ascii=False),
+                    sample_expect_output=json.dumps(testSample.expectOutput, ensure_ascii=False),
+                )
+                await course.assignments.add(assignment)
             return AssignData(
                 assignId=assignment.id,
                 title=assignment.title,
                 description=assignment.description,
                 # 从刚创建的 AssignmentCode 里读取原始代码（为 JSON 字符串）
-                assignOriginalCode=listStrToList(code.original_code),
+                assignOriginalCode=listStrToList(assignment.codes[0].original_code),
             )
         except torExceptions.DoesNotExist:
-            raise HTTPException(status_code=404, detail=f"Course with id {course_id} not found")
+            raise HTTPException(status_code=404, detail=f"Course with id {courseId} not found")
         except torExceptions.ValidationError as e:
             #! 缺了 str(e) 这个不知道搞了多久()
             raise HTTPException(status_code=400, detail=f"Invalid data provided: {str(e)}")
@@ -105,6 +119,7 @@ class AssignmentController:
         try:
             assignment = await AssignmentModel.get(id=assign_id)
             await assignment.delete()
+            return True
         except torExceptions.DoesNotExist:
             raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found")
         except Exception as e:

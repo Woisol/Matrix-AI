@@ -22,13 +22,15 @@ async def get_course(
     return await CourseController.get_course(course_id=course_id)
 
 @course_router.post("/courses", response_model=CourseBase)
-async def create_course(
+async def set_course(
+    courseId: str | None = Form(None, description="课程ID，若不传则创建新课程"),
     courseName: str = Form(...,min_length=1, description="课程名称"),
     type: str = Form("public", description="课程类型: public, private"),
     status: str = Form("open", description="课程状态: open, close"),
+    completed: bool | None = Form(None, description="课程是否完成"),
     assignmentIds: Optional[str] = Form(None, description="关联的作业ID列表")
 ):
-    return await CourseController.create_course(courseName=courseName,type=type,status=status,assignmentIds=assignmentIds)
+    return await CourseController.set_course(courseId=courseId, courseName=courseName, type=type, status=status, completed=completed, assignmentIds=assignmentIds)
 
 @course_router.delete("/courses/{course_id}", response_model=bool)
 async def delete_course(
