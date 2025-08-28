@@ -220,13 +220,8 @@ export class CodeEditorComponent implements OnChanges {
   }
 
   onTestRequest() {
-    this.assignService.testRequest$(this.codeFile, this.testPanelInput(), 'c_cpp').subscribe({
-      next: (output) => {
-        this.testPanelOutput.set(output);
-      },
-      error: (error) => {
-        this.testPanelOutput.set('运行错误: ' + error);
-      }
+    this.assignService.testRequest$(this.codeFile, this.testPanelInput(), 'c_cpp').subscribe(output => {
+      this.testPanelOutput.set(output);
     });
   }
 
