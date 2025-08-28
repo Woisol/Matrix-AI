@@ -55,7 +55,7 @@ class AIController:
             #@todo add to queue instead
             codeAnal = await AIAnalysisGenerator.genCodeAnalysis(course_id, assign_id)
             learnSug = await AIAnalysisGenerator.genLearningSuggestions(course_id, assign_id)
-            return await AiGenAnalysis(
+            return AiGenAnalysis(
                 codeAnalysis=codeAnal,
                 learningSuggestions=learnSug
             )

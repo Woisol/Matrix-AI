@@ -1,29 +1,32 @@
 import os
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
 from openai import OpenAI
 
-from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, CodeFileInfo, MatrixAnalysisProps, MatrixAnalysisContent, BasicAnalysis
+from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, CodeFileInfo, MatrixAnalysisProps, MatrixAnalysisContent, BasicAnalysis,Complexity
 from app.constants.prompt import AIPrompt
-from assignment import AssignmentController
+from app.controller.assignment import AssignmentController
+
 
 class AIMessage(BaseModel):
     role: str
     content: str
 
+
 class AI:
     class AICONFIG:
-        MODEL=r"deepseek-r1-distill-qwen-7b",
-        MAX_TOKENS=1000,
-        TEMPERATURE=0.7,
-        def MESSAGES(prompt: str) -> list[AIMessage]:
+        MODEL="deepseek-r1-distill-qwen-7b"
+        MAX_TOKENS=1000
+        TEMPERATURE=0.7
+        
+        @classmethod
+        def MESSAGES(cls, prompt: str) -> list[dict[str,str]]:
             return [
-                AIMessage(role="system", content=prompt),
+                {'role': "system", "content": prompt},
                 # AIMessage(role="user", content="请给出详细的解题步骤和思路。")
             ]
-    )
-    client =  OpenAI(api_key=os.getenv("sk-b8dc10dafd2445a3b62830eb625634bf"),
+    client =  OpenAI(api_key="sk-b8dc10dafd2445a3b62830eb625634bf",
                             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
     @classmethod
@@ -34,9 +37,8 @@ class AI:
             max_tokens=cls.AICONFIG.MAX_TOKENS,
             temperature=cls.AICONFIG.TEMPERATURE,
         )
-        #TODO: 完善AI返回的格式与校验
-
-        return response.choices[0].message.content
+    
+        return response.choices[0].message.content if response.choices[0].message.content else ""
 
 class AIQueue:
     #@todo 使用队列
@@ -68,12 +70,16 @@ class AIAnalysisGenerator:
             # 生成标题
             resolTitle = [await AI.getResponse(AIPrompt.TITLE_CODE(code)) for code in resolContents]
 
+            # 生成复杂度
+            resolComplexity = [await AI.getResponse(AIPrompt.COMPLEXITY(code)) for code in resolContents]
+
             analysis = MatrixAnalysisProps(
                 content=[
                     MatrixAnalysisContent(
                         title=t,
-                        content=c
-                    ) for t, c in zip(resolTitle, resolContents)
+                        content=c,
+                        complexity= Complexity(time=complex.split("\n")[0].split(":")[-1].strip(),space=complex.split("\n")[1].split(":")[-1].strip())
+                    ) for t, c ,complex in zip(resolTitle, resolContents, resolComplexity)
                 ],
                 #@todo implement summary prompt and logic
                 summary="",
