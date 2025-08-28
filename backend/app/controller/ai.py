@@ -1,21 +1,8 @@
 import uuid, json
-import requests
-from datetime import datetime
-from typing import Optional
 
-from fastapi import HTTPException, Path, Form
-from tortoise import exceptions as torExceptions
-
-from app.models.course import Course as CourseModel
-from app.models.assignment import Assignment as AssignmentModel
+from app.models.assignment import Assignment as AssignmentModel, Analysis
 from app.models.ai import AI, AIAnalysisGenerator
-from app.schemas.course import Course as CourseData
-from app.schemas.general import CourseId, AssignId
-from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, CodeFileInfo, MatrixAnalysisProps, MatrixAnalysisContent, BasicAnalysis, AiGenAnalysis
-from app.schemas.ai import AiResponse
-from app.constants.prompt import AIPrompt
-from assignment import AssignmentController
-from course import CourseController
+from app.schemas.assignment import BasicAnalysis, AiGenAnalysis
 
 import os
 from openai import OpenAI
@@ -27,6 +14,7 @@ class AIController:
     """用于控制测试相关的AI服务的控制器.由于申请api时间有限，现使用通义千问的统一模型接口进行测试"""
     @classmethod
     async def getBasic(cls, course_id: str, assign_id: str) -> BasicAnalysis:
+        #@todo 可能需要重新生成功能 /basic/again ？
         assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis")
         analysis = assignment.analysis[0] if assignment.analysis else None
         if analysis:
@@ -37,7 +25,16 @@ class AIController:
         else:
             #@todo add to queue instead
             resol = await AIAnalysisGenerator.genResolutions(course_id, assign_id)
-            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(course_id, assign_id)
+            #@todo expect exception, 完成 knowledgeAnalysis 后 knowled 为正确格式正常
+            knowled = ""
+            # await AIAnalysisGenerator.genKnowledgeAnalysis(course_id, assign_id)
+            analysis = await Analysis.create(
+                assignment=assignment,
+                resolution=json.dumps(resol.model_dump_json()),
+                knowledge_analysis="{}"
+                # json.dumps(knowled.model_dump_json())
+            )
+            await analysis.save()
             return BasicAnalysis(
                 resolution=resol,
                 knowledgeAnalysis=knowled

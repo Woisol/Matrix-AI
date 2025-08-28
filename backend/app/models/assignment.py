@@ -4,7 +4,8 @@ from tortoise.fields import ReverseRelation
 from tortoise.models import Model
 
 # 移除循环导入 - 使用字符串引用而非直接导入
-# from app.models.analysis import Analysis
+#! 倒是可以只导入一个否则似乎数据库结构创建错误
+from app.models.analysis import Analysis
 
 #! 单独定义，据 C4：
 # 1. 职责分离
