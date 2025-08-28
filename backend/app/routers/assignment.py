@@ -40,7 +40,7 @@ async def delete_assignment(
     course_id: str = Path(..., description="课程ID"),
     assign_id: str = Path(..., description="作业ID"),
 ):
-    await AssignmentController.delete_assignment(course_id=course_id, assign_id=assign_id)
+    return await AssignmentController.delete_assignment(course_id=course_id, assign_id=assign_id)
 
 @assign_router.post("/playground/submission", response_model=str)
 async def test_submit(submitRequest: TestSubmitRequest = Body(...)):
