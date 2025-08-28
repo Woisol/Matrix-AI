@@ -38,7 +38,9 @@ import { ActivatedRoute } from "@angular/router";
   `]
 })
 
+
 export class AssignmentComponent implements OnDestroy {
+  private _emptyCodeFile = { fileName: '', content: '' }
   private route: ActivatedRoute = inject(ActivatedRoute);
   private assignService = inject(AssignService);
 
@@ -48,7 +50,7 @@ export class AssignmentComponent implements OnDestroy {
   // 直接存放数据对象而不是 Observable，便于模板使用
   assignData = signal<AssignData | undefined>(undefined);
   analysis = signal<Analysis | undefined>(undefined);
-  codeFile: WritableSignal<CodeFileInfo> = signal({ fileName: '', content: '' });
+  codeFile: WritableSignal<CodeFileInfo> = signal(this._emptyCodeFile);
 
   selectedTabIndex = signal(0);
 
@@ -73,7 +75,7 @@ export class AssignmentComponent implements OnDestroy {
       // 初始代码：优先提交代码->原始代码->空
       const codeFile = data?.submit?.submitCode?.[0]
         ?? data?.assignOriginalCode?.[0]
-        ?? '';
+        ?? this._emptyCodeFile;
       this.codeFile.set(codeFile);
     });
     this.subs.push(sub);
