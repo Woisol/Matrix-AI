@@ -2,14 +2,15 @@ from pydantic import BaseModel, Field
 from tortoise import fields
 from tortoise.models import Model
 
-from app.models.assignment import Assignment
+# 移除循环导入 - 使用字符串引用而非直接导入
+# from app.models.assignment import Assignment
 class Analysis(Model):
     """AI 分析模型"""
-    assignment = fields.ReverseRelation["Assignment"]
-    resolution = fields.JSONField(..., description="题目解法")
-    knowledge_analysis = fields.JSONField(..., description="知识点分析")
-    code_analysis = fields.JSONField(..., description="提交代码分析")
-    learning_suggestions = fields.JSONField(..., description="学习建议")
+    assignment = fields.ForeignKeyField("models.Assignment", related_name="analysis", description="所属作业")
+    resolution = fields.JSONField(description="题目解法")
+    knowledge_analysis = fields.JSONField(description="知识点分析")
+    code_analysis = fields.JSONField(description="提交代码分析")
+    learning_suggestions = fields.JSONField(description="学习建议")
 
     class Meta:
         table = "assignment_analysis"

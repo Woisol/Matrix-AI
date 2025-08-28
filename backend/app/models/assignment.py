@@ -3,7 +3,8 @@ from tortoise import fields
 from tortoise.fields import ReverseRelation
 from tortoise.models import Model
 
-from app.models.analysis import Analysis
+# 移除循环导入 - 使用字符串引用而非直接导入
+# from app.models.analysis import Analysis
 
 #! 单独定义，据 C4：
 # 1. 职责分离
@@ -42,7 +43,7 @@ class Assignment(Model):
 
     codes: ReverseRelation["AssignmentCode"]
     submissions: ReverseRelation["AssignmentSubmission"]
-    analysis: ReverseRelation["Analysis"]
+    analysis: ReverseRelation["Analysis"]  # 使用字符串引用避免循环导入
 
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
