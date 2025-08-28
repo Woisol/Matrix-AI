@@ -8,6 +8,7 @@ import { AssignId, CourseId } from "../../api/type/general";
 import { AssignService } from "../../services/assign/assign.service";
 import { Subscription } from "rxjs";
 import { ActivatedRoute } from "@angular/router";
+import { NotificationService } from "../../services/notification/notification.service";
 
 @Component({
   selector: "app-assignment",
@@ -41,6 +42,8 @@ import { ActivatedRoute } from "@angular/router";
 
 export class AssignmentComponent implements OnDestroy {
   private _emptyCodeFile = { fileName: '', content: '' }
+  notify = inject(NotificationService)
+
   private route: ActivatedRoute = inject(ActivatedRoute);
   private assignService = inject(AssignService);
 
@@ -127,23 +130,20 @@ export class AssignmentComponent implements OnDestroy {
   onSubmitRequest = () => {
     // debugger
     if (!this.codeFile().fileName || !this.codeFile().content) {
-      // alert('请先输入代码');
-      return;
+      this.notify.error("不能提交空代码！", "提交禁止")
+      // return;
     }
     if (!this.courseId || !this.assignId) {
       return;
     }
-    this.assignService.submitRequest$(this.courseId, this.assignId, this.codeFile()).subscribe({
-      next: (response) => {
-        this.assignData.update(ad => ({
-          ...ad!,
-          submit: response as Submit
-        }));
-        this.selectedTabIndex.set(1);
-      },
-      error: (error) => {
-        // alert('提交失败: ' + error);
-      }
+    this.assignService.submitRequest$(this.courseId, this.assignId, this.codeFile()).subscribe(response => {
+      if (!response) return;
+      this.assignData.update(ad => ({
+        ...ad!,
+        submit: response as Submit
+      }));
+      this.selectedTabIndex.set(1);
+      this.notify.success("提交成功！")
     });
   }
 }

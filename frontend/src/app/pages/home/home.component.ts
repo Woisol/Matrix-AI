@@ -22,7 +22,7 @@ export interface CarouselItem {
 
 @Component({
   selector: "app-home",
-  imports: [RouterLink, NzImageModule, NzCarouselModule, NzButtonModule, NzIconModule, NzListModule, NzCollapseModule, NzTableModule, NzTagModule, NzBadgeModule, NzSpaceModule, DatePipe, AssignListComponent],
+  imports: [RouterLink, NzImageModule, NzCarouselModule, NzButtonModule, NzIconModule, NzListModule, NzCollapseModule, NzTableModule, NzTagModule, NzBadgeModule, NzSpaceModule, AssignListComponent],
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
