@@ -24,7 +24,7 @@ async def create_assignment(
     #! 极其混乱，请求传输必须为 str，访问 .input 需要 json，但存储又需要 str
     _testSampleJSON: TestSampleCreate = TestSampleCreate.model_validate_json(testSample)
 
-    return await AssignmentController.create_assignment(
+    return await AssignmentController.set_assignment(
         course_id=course_id,
         title=title,
         description=description,
@@ -32,6 +32,14 @@ async def create_assignment(
         testSample=_testSampleJSON,
         ddl=ddl,
     )
+
+@assign_router.delete("/courses/{course_id}/assignments/{assign_id}", response_model=bool)
+async def delete_assignment(
+    course_id: str = Path(..., description="课程ID"),
+    assign_id: str = Path(..., description="作业ID"),
+):
+    await AssignmentController.delete_assignment(course_id=course_id, assign_id=assign_id)
+    return True
 
 @assign_router.post("/playground/submission", response_model=str)
 async def test_submit(submitRequest: TestSubmitRequest = Body(...)):

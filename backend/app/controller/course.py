@@ -73,8 +73,8 @@ class CourseController:
             raise HTTPException(status_code=404, detail=f"Course with id {course_id} not found")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    
-    
+
+
     @classmethod
     async def create_course(
         cls,
@@ -128,5 +128,16 @@ class CourseController:
             raise HTTPException(status_code=400, detail=f"Invalid data provided")
         except HTTPException:
             raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+    @classmethod
+    async def delete_course(cls, course_id: str):
+        """删除课程"""
+        try:
+            course = await CourseModel.get(id=course_id)
+            await course.delete()
+        except torExceptions.DoesNotExist:
+            raise HTTPException(status_code=404, detail=f"Course with id {course_id} not found")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
