@@ -99,6 +99,17 @@ class AssignmentController:
             raise HTTPException(status_code=400, detail=f"Invalid data provided: {str(e)}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+    @classmethod
+    async def delete_assignment(cls, course_id: str, assign_id: str) -> None:
+        try:
+            assignment = await AssignmentModel.get(id=assign_id)
+            await assignment.delete()
+        except torExceptions.DoesNotExist:
+            raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
     @classmethod
     async def test_submit(cls, submitRequest: TestSubmitRequest) -> str:
         try:
