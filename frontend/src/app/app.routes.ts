@@ -21,5 +21,9 @@ export const routes: Routes = [
   {
     path: 'course/private/:courseId/assignment/:assignId',
     loadComponent: () => import('./pages/assignment/assigment.component').then(m => m.AssignmentComponent),
-  }
+  },
+  {
+    path: 'admin',
+    loadComponent: () => import('./pages/admin/admin.component').then(m => m.AdminComponent)
+  },
 ];
