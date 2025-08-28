@@ -104,8 +104,9 @@ class AssignmentController:
                 assignId=assignment.id,
                 title=assignment.title,
                 description=assignment.description,
-                # 从刚创建的 AssignmentCode 里读取原始代码（为 JSON 字符串）
-                assignOriginalCode=listStrToList(assignment.codes[0].original_code),
+                #~~ 从刚创建的 AssignmentCode 里读取原始代码（为 JSON 字符串）
+                # 偷懒了，直接使用 assignment.codes[0] 在创建路径下需要另外 fetch
+                assignOriginalCode=listStrToList(assignOriginalCode),
             )
         except torExceptions.DoesNotExist:
             raise HTTPException(status_code=404, detail=f"Course with id {courseId} not found")
