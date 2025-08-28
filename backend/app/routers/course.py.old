@@ -15,7 +15,7 @@ from app.schemas.course import (
 from tortoise.exceptions import DoesNotExist
 
 
-course_router = APIRouter(prefix="/api", tags=["course"])
+course_router = APIRouter(tags=["course"])
 
 
 @course_router.get("/courses", response_model=List[CourseListResponse])
@@ -26,7 +26,7 @@ async def get_courses(
     """
     【课程列表】获取课程列表
     """
-    
+
 
 
 @course_router.post("/courses", response_model=CourseResponse)
@@ -42,7 +42,7 @@ async def create_course(course_data: CourseCreate = Body(..., description="课�
             description=course_data.description,
             creator_name=course_data.creator_name
         )
-        
+
         return CourseResponse(
             id=course.id,
             name=course.name,
@@ -64,7 +64,7 @@ async def get_course_detail(course_id: int = Path(..., description="课程ID")):
     """
     try:
         course = await Course.get(id=course_id)
-        
+
         return CourseResponse(
             id=course.id,
             name=course.name,
@@ -91,13 +91,13 @@ async def update_course(
     """
     try:
         course = await Course.get(id=course_id)
-        
+
         # 更新提供的字段
         update_data = course_update.model_dump(exclude_unset=True)
         if update_data:
             await course.update_from_dict(update_data)
             await course.save()
-        
+
         return MessageResponse(message="课程信息更新成功")
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="课程不存在")
@@ -115,7 +115,7 @@ async def create_assignment(
     try:
         # 验证课程存在
         course = await Course.get(id=course_id)
-        
+
         assignment = await CourseAssignment.create(
             course_id=course_id,
             title=assignment_data.title,
@@ -129,7 +129,7 @@ async def create_assignment(
             answer_file=assignment_data.answer_file,
             support_files=assignment_data.support_files
         )
-        
+
         return CourseAssignmentResponse(
             id=assignment.id,
             course_id=course_id,
@@ -161,7 +161,7 @@ async def get_assignment_detail(
     """
     try:
         assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
-        
+
         return CourseAssignmentDetail(
             id=assignment.id,
             course_id=course_id,
@@ -193,7 +193,7 @@ async def update_assignment(
     """
     try:
         assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
-        
+
         # 更新字段映射
         update_data = {}
         if assignment_update.startdate is not None:
@@ -208,11 +208,11 @@ async def update_assignment(
             update_data["plcheck"] = assignment_update.plcheck
         if assignment_update.submit_limitation is not None:
             update_data["submit_limitation"] = assignment_update.submit_limitation
-        
+
         if update_data:
             await assignment.update_from_dict(update_data)
             await assignment.save()
-        
+
         return MessageResponse(message="作业信息更新成功")
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="作业不存在")
@@ -229,7 +229,7 @@ async def delete_assignment(
     try:
         assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
         await assignment.delete()
-        
+
         return MessageResponse(message="作业删除成功")
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="作业不存在")
@@ -245,10 +245,10 @@ async def get_assignment_answer(
     """
     try:
         assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
-        
+
         if not assignment.answer_file:
             raise HTTPException(status_code=404, detail="答案文件不存在")
-        
+
         return {"answer": assignment.answer_file}
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="作业不存在")
@@ -267,15 +267,15 @@ async def get_submissions(
     try:
         # 验证作业存在
         assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
-        
+
         query = CourseAssignmentSubmission.filter(assignment_id=ca_id)
-        
+
         # 如果指定了学生姓名，只查询该学生的提交
         if student_name:
             query = query.filter(student_name=student_name)
-        
+
         submissions = await query.order_by("-submit_time")
-        
+
         result = []
         for submission in submissions:
             result.append(SubmissionResponse(
@@ -290,7 +290,7 @@ async def get_submissions(
                 submit_time=submission.submit_time,
                 judge_time=submission.judge_time
             ))
-        
+
         return result
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="作业不存在")
@@ -308,21 +308,21 @@ async def create_submission(
     try:
         # 验证作业存在
         assignment = await CourseAssignment.get(id=ca_id, course_id=course_id)
-        
+
         # 检查提交时间是否在允许范围内
         now = datetime.now()
         if now < assignment.start_date:
             raise HTTPException(status_code=400, detail="作业尚未开始")
         if now > assignment.end_date:
             raise HTTPException(status_code=400, detail="作业已结束")
-        
+
         # 检查提交次数限制（按学生姓名）
         submission_count = await CourseAssignmentSubmission.filter(
             assignment_id=ca_id, student_name=submission_data.student_name
         ).count()
         if submission_count >= assignment.submit_limitation:
             raise HTTPException(status_code=400, detail="已达到提交次数限制")
-        
+
         # 创建提交记录
         submission = await CourseAssignmentSubmission.create(
             assignment_id=ca_id,
@@ -332,7 +332,7 @@ async def create_submission(
         )
 
 
-        
+
         return MessageResponse(message="提交成功")
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="作业不存在")
@@ -351,7 +351,7 @@ async def get_submission_detail(
         submission = await CourseAssignmentSubmission.get(
             id=sub_ca_id, assignment_id=ca_id
         )
-        
+
         return SubmissionResponse(
             id=submission.id,
             assignment_id=ca_id,
@@ -382,20 +382,20 @@ async def rejudge_submission(
         submission = await CourseAssignmentSubmission.get(
             id=sub_ca_id, assignment_id=ca_id
         )
-        
+
         # 检查评测方式
         if rejudge_data.wayToCallJudge not in ["normal", "force"]:
             raise HTTPException(status_code=400, detail="无效的评测方式")
-        
+
         # 如果是normal方式，检查提交是否正在评测中
         if rejudge_data.wayToCallJudge == "normal" and submission.status == "judging":
             raise HTTPException(status_code=400, detail="提交正在评测中，无法重新评测")
-        
+
         # 更新提交状态
         submission.status = "judging"
         submission.judge_time = datetime.now()
         await submission.save()
-        
+
         return MessageResponse(message="重新评测已启动")
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="提交不存在")
@@ -412,14 +412,14 @@ async def get_last_submission(
     """
     try:
         query = CourseAssignmentSubmission.filter(assignment_id=ca_id)
-        
+
         if student_name:
             query = query.filter(student_name=student_name)
-        
+
         submission = await query.order_by("-submit_time").first()
         if not submission:
             raise HTTPException(status_code=404, detail="没有提交记录")
-        
+
         return SubmissionResponse(
             id=submission.id,
             assignment_id=ca_id,
@@ -449,10 +449,10 @@ async def get_last_submission_feedback(
         submission = await CourseAssignmentSubmission.filter(
             assignment_id=ca_id, student_name=student_name
         ).order_by("-submit_time").first()
-        
+
         if not submission:
             raise HTTPException(status_code=404, detail="没有提交记录")
-        
+
         return SubmissionFeedback(
             score=submission.score,
             feedback=submission.feedback,
