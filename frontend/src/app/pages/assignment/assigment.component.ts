@@ -1,4 +1,4 @@
-import { Component, inject, signal, WritableSignal, OnDestroy } from "@angular/core";
+import { Component, inject, signal, WritableSignal, OnDestroy, OnInit } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
 import { testAssigData } from "../../api/test/assig";
@@ -101,6 +101,19 @@ export class AssignmentComponent implements OnDestroy {
     });
     this.subs.push(sub);
   }
+
+  // ngOnInit(): void {
+  //   var _codeFileChangeIndex: number = 0;
+  //   var _codeFileChangeArr = [
+  //     { fileName: 'main.cpp', content: '0' },
+  //     { fileName: 'main.cpp', content: '1' },
+  //     { fileName: 'main.cpp', content: '2' },
+  //     { fileName: 'main.cpp', content: '3' }
+  //   ];
+  //   setInterval(() => {
+  //     this.codeFile.set(_codeFileChangeArr[(_codeFileChangeIndex++) % _codeFileChangeArr.length]);
+  //   }, 1000)
+  // }
 
   ngOnDestroy() {
     this.subs.forEach(s => s.unsubscribe());

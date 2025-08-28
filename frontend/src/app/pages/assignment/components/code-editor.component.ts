@@ -132,6 +132,10 @@ export class CodeEditorComponent implements OnChanges {
   @Output() codeChange = new EventEmitter<string>();
   @Output() editorReady = new EventEmitter<monaco.editor.IStandaloneCodeEditor>();
 
+  editor: monaco.editor.IStandaloneCodeEditor | undefined;
+  // 缓存待设置的内容，用于编辑器初始化后设置
+  private pendingContent: string | null = null;
+
   testPanelOpen = signal(false);
   testPanelSize = signal(['100%', 300]);
   testPanelInput = signal('');
@@ -161,10 +165,38 @@ export class CodeEditorComponent implements OnChanges {
       // 仅当相关输入变化时重建配置对象
       this.editorOptions = this.buildOptions();
     }
+
+    if (changes['codeFile']) {
+      const newContent = changes['codeFile'].currentValue?.content || '';
+      // 外部 codeFile 变化时更新内容
+      if (this.editor) {
+        this.editor.setValue(newContent);
+      } else {
+        // 编辑器还未初始化，缓存内容待后续设置
+        this.pendingContent = newContent;
+      }
+      //! 这个所谓的 [(ngModel)] 完全没有双向绑定()
+      // this.editorContent = changes['codeFile'].currentValue.content || '';
+    }
+
+    // if (changes['editorContent']) {
+    //   console.debug(changes['editorContent'].currentValue);
+    // }
   }
 
   onEditorInit(editor: monaco.editor.IStandaloneCodeEditor) {
     console.log('Editor initialized');
+    this.editor = editor;
+
+    // 如果有待设置的内容，立即设置
+    if (this.pendingContent !== null) {
+      editor.setValue(this.pendingContent);
+      this.pendingContent = null; // 清除缓存
+    } else if (this.codeFile?.content) {
+      // 设置初始内容
+      editor.setValue(this.codeFile.content);
+    }
+
     this.editorReady.emit(editor);
 
     // 额外注册 C / C++ （monaco 默认不包含，需要手动注册简单占位，可引入第三方语法高亮扩展）
