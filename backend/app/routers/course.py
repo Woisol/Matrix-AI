@@ -5,7 +5,7 @@ from typing import Optional, List
 from app.controller.course import CourseController
 from app.schemas.course import Course as CourseSchema,CourseBase, TodoCourse, CourseCreateRequest, AssignmentListItem
 
-course_router = APIRouter(prefix="/api", tags=["course"])
+course_router = APIRouter(tags=["course"])
 
 @course_router.get("/courses", response_model=List[CourseSchema])
 async def list_courses():
