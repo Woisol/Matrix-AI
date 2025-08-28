@@ -29,3 +29,9 @@ async def create_course(
     assignmentIds: Optional[str] = Form(None, description="关联的作业ID列表")
 ):
     return await CourseController.create_course(courseName=courseName,type=type,status=status,assignmentIds=assignmentIds)
+
+@course_router.delete("/courses/{course_id}", response_model=bool)
+async def delete_course(
+    course_id: str = Path(..., description="课程ID")
+):
+    return await CourseController.delete_course(course_id=course_id)
