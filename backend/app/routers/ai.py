@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from controller import ai
+from app.controller.ai import AIController
 from app.schemas import ai as ai_schema
 
 
@@ -10,4 +10,11 @@ async def basic_analysis(
     course_id: str,
     assign_id: str,
 ):
-    return await ai.TestAiController.genResolutions(course_id, assign_id)
+    return await AIController.getBasic(course_id, assign_id)
+
+@ai_route.get("/courses/{course_id}/assignments/{assign_id}/analysis/aiGen")
+async def generate_analysis(
+    course_id: str,
+    assign_id: str,
+):
+    return await AIController.getAiGen(course_id, assign_id)
