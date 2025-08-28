@@ -19,20 +19,17 @@ class AIController:
         analysis = assignment.analysis[0] if assignment.analysis else None
         if analysis:
             return BasicAnalysis(
-                resolution=json.loads(analysis.resolution),
-                knowledgeAnalysis=json.loads(analysis.knowledge_analysis)
+                resolution=analysis.resolution,
+                knowledgeAnalysis=analysis.knowledge_analysis
             )
         else:
             #@todo add to queue instead
             resol = await AIAnalysisGenerator.genResolutions(course_id, assign_id)
-            #@todo expect exception, 完成 knowledgeAnalysis 后 knowled 为正确格式正常
-            knowled = ""
-            # await AIAnalysisGenerator.genKnowledgeAnalysis(course_id, assign_id)
+            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(course_id, assign_id)
             analysis = await Analysis.create(
                 assignment=assignment,
                 resolution=json.dumps(resol.model_dump_json()),
-                knowledge_analysis="{}"
-                # json.dumps(knowled.model_dump_json())
+                knowledge_analysis=json.dumps(knowled.model_dump_json())
             )
             await analysis.save()
             return BasicAnalysis(
