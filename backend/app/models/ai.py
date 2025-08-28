@@ -1,7 +1,13 @@
 import os
 from pydantic import BaseModel, Field
 from typing import Optional
+from fastapi import HTTPException
 from openai import OpenAI
+
+from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, CodeFileInfo, MatrixAnalysisProps, MatrixAnalysisContent, BasicAnalysis
+from app.constants.prompt import AIPrompt
+from assignment import AssignmentController
+
 class AIMessage(BaseModel):
     role: str
     content: str
@@ -33,6 +39,7 @@ class AI:
         return response.choices[0].message.content
 
 class AIQueue:
+    #@todo 使用队列
     """AI 任务队列，用于管理和处理多个 AI 请求"""
     def __init__(self):
         self.queue = []
@@ -43,4 +50,49 @@ class AIQueue:
     def process_queue(self):
         while self.queue:
             item = self.queue.pop(0)
-            # Process the item
+            raise NotImplementedError("AI 任务处理逻辑未实现")
+
+class AIAnalysisGenerator:
+    @classmethod
+    async def genResolutions(cls, course_id: str, assign_id: str) -> MatrixAnalysisProps:
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+            # course_data: CourseData = await CourseController.get_course(course_id)
+
+            # 获取所有可能解法
+            _resolContent = await AI.getResponse(prompt=AIPrompt.RESOLUTION(
+                assign_data.title, assign_data.description, assign_data.assignOriginalCode[0].content))
+
+            resolContents = [c.strip() for c in _resolContent.split("\n") if c.strip() != ""]
+
+            # 生成标题
+            resolTitle = [await AI.getResponse(AIPrompt.TITLE_CODE(code)) for code in resolContents]
+
+            analysis = MatrixAnalysisProps(
+                content=[
+                    MatrixAnalysisContent(
+                        title=t,
+                        content=c
+                    ) for t, c in zip(resolTitle, resolContents)
+                ],
+                #@todo implement summary prompt and logic
+                summary="",
+                showInEditor=False
+            )
+
+            return analysis
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+    @classmethod
+    async def genKnowledgeAnalysis(cls, course_id: str, assign_id: str) -> MatrixAnalysisProps:
+        raise NotImplementedError("Knowledge analysis generation not implemented yet")
+
+    @classmethod
+    async def genCodeAnalysis(cls, course_id: str, assign_id: str) -> MatrixAnalysisProps:
+        raise NotImplementedError("Code analysis generation not implemented yet")
+
+    @classmethod
+    async def genLearningSuggestions(cls, course_id: str, assign_id: str) -> MatrixAnalysisProps:
+        raise NotImplementedError("Learning suggestions generation not implemented yet")

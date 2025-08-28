@@ -3,6 +3,8 @@ from tortoise import fields
 from tortoise.fields import ReverseRelation
 from tortoise.models import Model
 
+from app.models.analysis import Analysis
+
 #! 单独定义，据 C4：
 # 1. 职责分离
 # Models: 负责数据库存储和ORM映射
@@ -40,6 +42,7 @@ class Assignment(Model):
 
     codes: ReverseRelation["AssignmentCode"]
     submissions: ReverseRelation["AssignmentSubmission"]
+    analysis: ReverseRelation["Analysis"]
 
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
