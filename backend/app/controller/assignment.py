@@ -88,7 +88,8 @@ class AssignmentController:
                     # original_code=assignOriginalCode,
                 )
                 # _input_str = json.dumps(testSample.input, ensure_ascii=False)
-                code = await AssignmentCode.create(
+                # code =
+                await AssignmentCode.create(
                     id=uuid.uuid4().hex,
                     #! K.P.……
                     assignment=assignment,
