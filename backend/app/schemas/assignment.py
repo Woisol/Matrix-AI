@@ -47,6 +47,12 @@ class TestSampleCreate(BaseModel):
 class TestSample(TestSampleCreate):
     realOutput: list[MdCodeContent] = Field(..., description="真实输出（列表）")
 
+class TestSampleResult(BaseModel):
+    input: MdCodeContent = Field(..., description="输入（非列表）")
+    expectOutput: MdCodeContent = Field(..., description="期望输出（非列表）")
+    realOutput: MdCodeContent = Field(..., description="真实输出（非列表）")
+
+
 class TestSubmitRequest(BaseModel):
     codeFile: CodeFileInfo = Field(..., description="提交的代码文件")
     input:str = Field(..., description="用户输入")
@@ -66,7 +72,7 @@ class Submit(BaseModel):
     # 1 validation error for AssignData submit
     # Field required [type=missing, input_value={'assignId': '6f131513800...trix AI!" << endl;}`}]'}, input_type=dict]
     # For further information visit https://errors.pydantic.dev/2.9/v/missing
-    testSample: TestSample = Field(..., description="测试样例")
+    testSample: list[TestSampleResult] = Field(..., description="测试样例")
     submitCode: list[CodeFileInfo] = Field(..., description="提交代码文件列表")
 
 class AssignCreateRequest(BaseModel):
@@ -95,4 +101,3 @@ class AiGenAnalysis(BaseModel):
 class Analysis(BaseModel):
     basic: BasicAnalysis = Field(..., description="基础分析")
     aiGen: Optional[AiGenAnalysis] = Field(None, description="AI生成分析")
-    
