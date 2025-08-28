@@ -102,6 +102,7 @@ export class TopBarComponent {
 
   protected readonly navItems: NavItem[] = [
     { label: '课程', path: '/course/private' },
+    { label: '管理', path: '/admin' },
   ]
   protected readonly userName: string;
   protected readonly userAvatar: string; // Placeholder for user avatar URL
