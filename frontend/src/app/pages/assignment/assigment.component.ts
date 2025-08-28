@@ -2,7 +2,7 @@ import { Component, inject, signal, WritableSignal, OnDestroy, OnInit } from "@a
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
 import { testAssigData } from "../../api/test/assig";
-import { Analysis, AssignData, CodeFileInfo } from "../../api/type/assigment";
+import { Analysis, AssignData, CodeFileInfo, Submit } from "../../api/type/assigment";
 import { CodeEditorComponent } from "./components/code-editor.component";
 import { AssignId, CourseId } from "../../api/type/general";
 import { AssignService } from "../../services/assign/assign.service";
@@ -17,7 +17,7 @@ import { ActivatedRoute } from "@angular/router";
   <div class="assignment-con">
     <nz-splitter>
       <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true">
-        <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [onAnalysisAiGenRequest]="loadAnalysisAiGen" />
+        <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [onAnalysisAiGenRequest]="loadAnalysisAiGen" [selectedTabIndex]="selectedTabIndex" />
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
         <code-editor [codeFile]="codeFile()" [onSubmitRequest]="onSubmitRequest"/>
@@ -49,6 +49,8 @@ export class AssignmentComponent implements OnDestroy {
   assignData = signal<AssignData | undefined>(undefined);
   analysis = signal<Analysis | undefined>(undefined);
   codeFile: WritableSignal<CodeFileInfo> = signal({ fileName: '', content: '' });
+
+  selectedTabIndex = signal(0);
 
   private subs: Subscription[] = [];
 
@@ -131,7 +133,11 @@ export class AssignmentComponent implements OnDestroy {
     }
     this.assignService.submitRequest$(this.courseId, this.assignId, this.codeFile()).subscribe({
       next: (response) => {
-        // alert('提交成功');
+        this.assignData.update(ad => ({
+          ...ad!,
+          submit: response as Submit
+        }));
+        this.selectedTabIndex.set(1);
       },
       error: (error) => {
         // alert('提交失败: ' + error);
