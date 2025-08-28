@@ -9,9 +9,9 @@ from app.models.course import Course as CourseModel
 from app.models.assignment import Assignment as AssignmentModel, AssignmentCode, AssignmentSubmission
 from app.models.playground import Playground
 from app.schemas.general import CourseId, AssignId
-from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, CodeFileInfo, JudgeResult
+from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, TestSampleResult, CodeFileInfo, JudgeResult, MdCodeContent
 
-from app.utils.assign import listStrToList
+from app.utils.assign import listStrToList, testSampleToResultList
 
 
 class AssignmentController:
@@ -31,18 +31,12 @@ class AssignmentController:
             submit = None
             if _submissions:
                 submissions = _submissions[0]
-                testSample = TestSample(
-                    input=listStrToList(codes.sample_input),
-                    expectOutput=listStrToList(codes.sample_expect_output),
-                    realOutput=listStrToList(submissions.sample_real_output),
-                )
                 submit = Submit(
                     score=submissions.score,
                     time=submissions.submitted_at,
-                    testSample=testSample,
+                    testSample=testSampleToResultList(sample_input=listStrToList(codes.sample_input),sample_output=listStrToList(codes.sample_expect_output),real_output=listStrToList(submissions.sample_real_output),),
                     submitCode=listStrToList(submissions.submit_code),
                 )
-
 
             return AssignData(
                 assignId=assignment.id,
@@ -135,11 +129,7 @@ class AssignmentController:
             submit = Submit(
                 score=judgeRes.score,
                 time=datetime.now(),
-                testSample=TestSample(
-                    input=sample_input,
-                    expectOutput=sample_output,
-                    realOutput=judgeRes.testRealOutput,
-                ),
+                testSample=testSampleToResultList(sample_input=sample_input, sample_output=sample_output, real_output=judgeRes.testRealOutput),
                 submitCode=[submitRequest.codeFile],
             )
 

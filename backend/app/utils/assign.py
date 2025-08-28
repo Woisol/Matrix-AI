@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Iterable
 from app.models.assignment import Assignment
 from app.schemas.course import AssignmentListItem
-from app.schemas.assignment import Submit
+from app.schemas.assignment import Submit, TestSample, TestSampleResult, MdCodeContent
 
 async def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[AssignmentListItem]:
     result: list[AssignmentListItem] = []
@@ -42,3 +42,13 @@ def listStrToList(list_str: str) -> list[str]:
     # for i in range(len(list)):
     #     list[i] = list[i].strip()
     # return list
+
+def testSampleToResultList(sample_input:list[str], sample_output:list[str], real_output:list[str]) -> list[TestSampleResult]:
+    return [
+        TestSampleResult(
+            input=sample_input[i],
+            expectOutput=sample_output[i],
+            realOutput=real_output[i] if i < len(real_output) else "",
+        )
+        for i in range(len(sample_input))
+    ]
