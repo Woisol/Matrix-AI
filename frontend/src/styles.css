@@ -103,7 +103,7 @@ a {
   }
 }
 
-button:not(.ant-tabs-tab-btn) {
+button:not(.ant-tabs-tab-btn, .nz-icon-btn) {
   padding: 0.5em 1em;
   color: white;
   background: var(--color-primary);

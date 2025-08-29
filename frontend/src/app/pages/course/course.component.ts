@@ -52,7 +52,6 @@ export class CourseComponent implements OnInit {
   courseApi = inject(CourseApi);
 
   route = inject(ActivatedRoute)
-  courseInfo = inject(CourseInfo)
   course: AllCourse | undefined;
   courseId: CourseId | undefined;
 
