@@ -110,6 +110,8 @@ class AssignmentController:
             )
         except torExceptions.DoesNotExist:
             raise HTTPException(status_code=404, detail=f"Course with id {courseId} not found")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON data provided: {str(e)}")
         except torExceptions.ValidationError as e:
             #! 缺了 str(e) 这个不知道搞了多久()
             raise HTTPException(status_code=400, detail=f"Invalid data provided: {str(e)}")
