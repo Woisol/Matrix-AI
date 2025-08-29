@@ -7,8 +7,6 @@ from app.schemas.assignment import BasicAnalysis, AiGenAnalysis
 import os
 from openai import OpenAI
 
-# url = "http://10.10.1.11:38666/v1/chat/completions"
-#模型使用url+request库进行调用，需要把格式包入message体中
 
 class AIController:
     """用于控制测试相关的AI服务的控制器.由于申请api时间有限，现使用通义千问的统一模型接口进行测试"""
