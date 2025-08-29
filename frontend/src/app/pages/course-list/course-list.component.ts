@@ -25,27 +25,27 @@ import { RouterLink } from '@angular/router';
     <section class="section">
       <h3 class="section-title">进行中的课程</h3>
       <nz-list [nzDataSource]="ongoingCourses()" nzItemLayout="horizontal" [nzRenderItem]="ongoingTpl" [nzSplit]="false" [nzLoading]="false">
-      <ng-template #ongoingTpl let-item>
-        <nz-list-item class="course-item" [routerLink]="['/course/private', item.courseId]">
-          <nz-list-item-meta
-            [nzTitle]="titleTpl"
-            [nzDescription]="descTpl">
-          </nz-list-item-meta>
-          <ng-template #titleTpl>
-            <span class="course-name">{{ item.courseName }}</span>
-          </ng-template>
-          <ng-template #descTpl>
-            <span class="course-progress" [class.completed]="item.completed">{{ item.completed ? '已完成' : '进行中' }}</span>
-          </ng-template>
-          <div class="right-tags">
-            @if (item.completed) {
-              <nz-tag nzColor="green">已完成</nz-tag>
-            } @else {
-              <nz-tag nzColor="blue">学习中</nz-tag>
-            }
-          </div>
-        </nz-list-item>
-      </ng-template>
+        <ng-template #ongoingTpl let-item>
+          <nz-list-item class="course-item" [routerLink]="['/course/private', item.courseId]">
+            <nz-list-item-meta
+              [nzTitle]="titleTpl"
+              [nzDescription]="descTpl">
+            </nz-list-item-meta>
+            <ng-template #titleTpl>
+              <span class="course-name">{{ item.courseName }}</span>
+            </ng-template>
+            <ng-template #descTpl>
+              <span class="course-progress" [class.completed]="item.completed">{{ item.completed ? '已完成' : '进行中' }}</span>
+            </ng-template>
+            <div class="right-tags">
+              @if (item.completed) {
+                <nz-tag nzColor="green">已完成</nz-tag>
+              } @else {
+                <nz-tag nzColor="blue">学习中</nz-tag>
+              }
+            </div>
+          </nz-list-item>
+        </ng-template>
       </nz-list>
       @if (ongoingCourses().length === 0) {
         <div class="empty">暂无进行中课程</div>
@@ -106,6 +106,7 @@ import { RouterLink } from '@angular/router';
 export class CourseListComponent {
   private courseInfo = inject(CourseInfo);
 
+  //@todo 不应该是 signal？
   allCourses = signal(this.courseInfo.allCourseList);
   ongoingCourses = computed(() => this.allCourses().filter(c => !c.completed));
   completedCourses = computed(() => this.allCourses().filter(c => c.completed));
