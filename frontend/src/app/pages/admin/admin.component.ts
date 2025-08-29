@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { NzListModule } from 'ng-zorro-antd/list';
 import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -9,10 +9,13 @@ import { CourseInfo } from '../../services/course/course-store.service';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { AssignId, CourseId } from '../../api/type/general';
 import { CourseApi } from '../../services/course/course-api.service';
+import { ControlDialogComponent } from './components/control-dialog.component';
+import { CourseTransProps } from '../../api/type/course';
+import { AssignTransProps } from '../../api/type/assigment';
 
 @Component({
   selector: 'app-admin',
-  imports: [NzListModule, NzCollapseModule, NzButtonModule, NzIconModule, NzBadgeModule, NzModalModule],
+  imports: [NzListModule, NzCollapseModule, NzButtonModule, NzIconModule, NzBadgeModule, NzModalModule, ControlDialogComponent],
   standalone: true,
   template: `
     <div class="admin-container">
@@ -143,6 +146,17 @@ import { CourseApi } from '../../services/course/course-api.service';
           }
         </nz-list>
       </div>
+
+      <!-- 添加/编辑对话框 -->
+      <control-dialog
+        [showModal]="showDialog"
+        [type]="dialogType()"
+        [courseTrans]="editingCourse"
+        [assignTrans]="editingAssignment"
+        (modalVisibleChange)="showDialog = $event"
+        (courseSubmit)="handleCourseSubmit($event)"
+        (assignmentSubmit)="handleAssignmentSubmit($event)">
+      </control-dialog>
     </div>
   `,
   styles: [`
@@ -362,9 +376,13 @@ export class AdminComponent {
   courseInfo = inject(CourseInfo);
   courseApi = inject(CourseApi)
   message = inject(NzMessageService);
-
   modal = inject(NzModalService);
-  // confirm = inject(NzModalService).confirm;
+
+  // Dialog 相关属性
+  showDialog = false;
+  dialogType = signal<'course' | 'assignment'>('course');
+  editingCourse: CourseTransProps | null = null;
+  editingAssignment: AssignTransProps | null = null;
 
   /**
    * 复制课程ID到剪贴板
@@ -390,16 +408,32 @@ export class AdminComponent {
   }
 
   handleAddCourse() {
-
+    this.dialogType.set('course');
+    this.editingCourse = null;
+    this.editingAssignment = null;
+    this.showDialog = true;
   }
 
   /**
-   * 处理课程上传
+   * 处理课程上传（编辑）
    */
   handleUploadCourse(courseId: CourseId) {
-    console.log('Upload course:', courseId);
-    this.message.info('课程上传功能待实现');
-    // TODO: 实现课程上传逻辑
+    // 找到对应的课程数据
+    const course = this.courseInfo.allCourseList.find(c => c.courseId === courseId);
+    if (course) {
+      // 转换为 CourseTransProps 格式
+      this.editingCourse = {
+        courseId: course.courseId,
+        courseName: course.courseName,
+        completed: course.completed,
+        assignmentIds: course.assignment?.map(a => a.assignId).join(',') || ''
+      } as CourseTransProps;
+      this.dialogType.set('course');
+      this.editingAssignment = null;
+      this.showDialog = true;
+    } else {
+      this.message.error('未找到对应的课程数据');
+    }
   }
 
   /**
@@ -423,15 +457,55 @@ export class AdminComponent {
     });
   }
 
-  handleAddAssignment() { }
+  handleAddAssignment() {
+    this.dialogType.set('assignment');
+    this.editingCourse = null;
+    this.editingAssignment = null;
+    this.showDialog = true;
+  }
 
   /**
-   * 处理作业上传
+   * 处理作业上传（编辑）
    */
   handleUploadAssignment(assignId: AssignId) {
-    console.log('Upload assignment:', assignId);
-    this.message.info('作业上传功能待实现');
-    // TODO: 实现作业上传逻辑
+    // 在所有课程中查找对应的作业
+    let foundAssignment = null;
+    for (const course of this.courseInfo.allCourseList) {
+      const assignment = course.assignment?.find(a => a.assignId === assignId);
+      if (assignment) {
+        foundAssignment = assignment;
+        break;
+      }
+    }
+
+    if (foundAssignment) {
+      // 转换为 AssignTransProps 格式
+      this.editingAssignment = {
+        assignId: foundAssignment.assignId,
+        title: foundAssignment.assignmentName,
+        description: '', // 这些字段在 AssignmentListItem 中不存在，需要从其他地方获取
+        assignOriginalCode: '[{"fileName": "main.cpp", "content": ""}]',
+        testSample: '{"input":[],"expectOutput":[]}',
+        ddl: foundAssignment.ddl ? foundAssignment.ddl.toString() : ''
+      } as AssignTransProps;
+      this.dialogType.set('assignment');
+      this.editingCourse = null;
+      this.showDialog = true;
+    } else {
+      this.message.warning('编辑作业功能需要更多数据，当前仅显示基本信息');
+      // 创建一个基本的编辑对象
+      this.editingAssignment = {
+        assignId: assignId,
+        title: '',
+        description: '',
+        assignOriginalCode: '[{"fileName": "main.cpp", "content": ""}]',
+        testSample: '{"input":[],"expectOutput":[]}',
+        ddl: ''
+      } as AssignTransProps;
+      this.dialogType.set('assignment');
+      this.editingCourse = null;
+      this.showDialog = true;
+    }
   }
 
   /**
@@ -452,6 +526,57 @@ export class AdminComponent {
           }
         });
       }
+    });
+  }
+
+  /**
+   * 处理课程提交
+   */
+  handleCourseSubmit(courseData: CourseTransProps) {
+    console.log('Course submitted:', courseData);
+
+    if (this.editingCourse) {
+      // 更新课程
+      this.message.info('课程更新功能待实现');
+      // TODO: 调用更新课程API
+    } else {
+      // 创建新课程
+      this.courseApi.addCourse$(courseData).subscribe((result: any) => {
+        if (result) {
+          this.message.success('课程创建成功');
+          // 刷新课程列表
+          this.refreshCourseList();
+        } else {
+          this.message.error('课程创建失败');
+        }
+      });
+    }
+  }
+
+  /**
+   * 处理作业提交
+   */
+  handleAssignmentSubmit(assignmentData: AssignTransProps) {
+    console.log('Assignment submitted:', assignmentData);
+
+    if (this.editingAssignment) {
+      // 更新作业
+      this.message.info('作业更新功能待实现');
+      // TODO: 调用更新作业API
+    } else {
+      // 创建新作业
+      this.message.info('作业创建功能待实现');
+      // TODO: 调用创建作业API
+    }
+  }
+
+  /**
+   * 刷新课程列表
+   */
+  private refreshCourseList() {
+    // 重新获取课程列表
+    this.courseApi.getAllCourseList$().subscribe(data => {
+      this.courseInfo.allCourseList = data;
     });
   }
 }
