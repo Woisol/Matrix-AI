@@ -6,10 +6,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { CourseInfo } from '../../services/course/course-store.service';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { AssignId, CourseId } from '../../api/type/general';
+import { CourseApi } from '../../services/course/course-api.service';
 
 @Component({
   selector: 'app-admin',
-  imports: [NzListModule, NzCollapseModule, NzButtonModule, NzIconModule, NzBadgeModule],
+  imports: [NzListModule, NzCollapseModule, NzButtonModule, NzIconModule, NzBadgeModule, NzModalModule],
   standalone: true,
   template: `
     <div class="admin-container">
@@ -18,6 +21,9 @@ import { CourseInfo } from '../../services/course/course-store.service';
           管理中心
         </h2>
         <p class="admin-description">此页面仅为方便数据管理，不做展示使用</p>
+        <button style="margin-right: 8px" (click)="handleAddCourse()">添加课程</button>
+        <button (click)="handleAddAssignment()">添加作业</button>
+        <small>（请提前复制好课程 ID）</small>
       </div>
 
       <div class="course-management">
@@ -27,7 +33,8 @@ import { CourseInfo } from '../../services/course/course-store.service';
               <nz-collapse nzGhost>
                 <nz-collapse-panel
                   [nzHeader]="courseHeaderTpl"
-                  [nzExtra]="courseExtraTpl">
+                  [nzExtra]="courseExtraTpl"
+                  [nzActive]="true">
 
                   <!-- 课程头部模板 -->
                   <ng-template #courseHeaderTpl>
@@ -100,7 +107,7 @@ import { CourseInfo } from '../../services/course/course-store.service';
                               nzSize="small"
                               nzGhost
                               class="action-btn delete-btn"
-                              (click)="handleDeleteAssignment(assignment.assignId)"
+                              (click)="handleDeleteAssignment(course.courseId, assignment.assignId)"
                               title="删除作业">
                               <span nz-icon nzType="delete" nzTheme="outline"></span>
                             </button>
@@ -353,7 +360,11 @@ import { CourseInfo } from '../../services/course/course-store.service';
 })
 export class AdminComponent {
   courseInfo = inject(CourseInfo);
-  private message = inject(NzMessageService);
+  courseApi = inject(CourseApi)
+  message = inject(NzMessageService);
+
+  modal = inject(NzModalService);
+  // confirm = inject(NzModalService).confirm;
 
   /**
    * 复制课程ID到剪贴板
@@ -378,10 +389,14 @@ export class AdminComponent {
     });
   }
 
+  handleAddCourse() {
+
+  }
+
   /**
    * 处理课程上传
    */
-  handleUploadCourse(courseId: string) {
+  handleUploadCourse(courseId: CourseId) {
     console.log('Upload course:', courseId);
     this.message.info('课程上传功能待实现');
     // TODO: 实现课程上传逻辑
@@ -390,16 +405,30 @@ export class AdminComponent {
   /**
    * 处理课程删除
    */
-  handleDeleteCourse(courseId: string) {
-    console.log('Delete course:', courseId);
-    this.message.warning('课程删除功能待实现');
-    // TODO: 实现课程删除逻辑
+  handleDeleteCourse(courseId: CourseId) {
+    this.modal.confirm({
+      nzTitle: '确认删除课程',
+      nzContent: `您确定要删除课程(${courseId})吗？`,
+      nzOkDanger: true,
+      nzClosable: false,
+      nzOkText: '删除',
+      nzOnOk: () => {
+        this.courseApi.deleteCourse$(courseId).subscribe(success => {
+          if (success) {
+            this.message.success(`课程(${courseId})已删除`);
+            window.location.reload();
+          }
+        });
+      }
+    });
   }
+
+  handleAddAssignment() { }
 
   /**
    * 处理作业上传
    */
-  handleUploadAssignment(assignId: string) {
+  handleUploadAssignment(assignId: AssignId) {
     console.log('Upload assignment:', assignId);
     this.message.info('作业上传功能待实现');
     // TODO: 实现作业上传逻辑
@@ -408,9 +437,21 @@ export class AdminComponent {
   /**
    * 处理作业删除
    */
-  handleDeleteAssignment(assignId: string) {
-    console.log('Delete assignment:', assignId);
-    this.message.warning('作业删除功能待实现');
-    // TODO: 实现作业删除逻辑
+  handleDeleteAssignment(courseId: CourseId, assignId: AssignId) {
+    this.modal.confirm({
+      nzTitle: '确认删除作业',
+      nzContent: `您确定要删除作业(${assignId})吗？`,
+      nzOkDanger: true,
+      nzClosable: false,
+      nzOkText: '删除',
+      nzOnOk: () => {
+        this.courseApi.deleteAssignment$(courseId, assignId).subscribe(success => {
+          if (success) {
+            this.message.success(`作业(${assignId})已删除`);
+            window.location.reload();
+          }
+        });
+      }
+    });
   }
 }
