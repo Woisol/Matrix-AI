@@ -20,10 +20,10 @@ import { CourseApi } from '../../services/course/course-api.service';
         <h2>
           管理中心
         </h2>
-        <p class="admin-description">此页面仅为方便数据管理，不做展示使用</p>
-        <button style="margin-right: 8px" (click)="handleAddCourse()">添加课程</button>
+        <p class="admin-description">此页面仅为方便数据管理，不做展示使用
+        <button style="margin: 0 16px" (click)="handleAddCourse()">添加课程</button>
         <button (click)="handleAddAssignment()">添加作业</button>
-        <small>（请提前复制好课程 ID）</small>
+        <small>（请提前复制好课程 ID）</small></p>
       </div>
 
       <div class="course-management">
