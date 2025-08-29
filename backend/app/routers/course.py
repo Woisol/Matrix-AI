@@ -23,16 +23,17 @@ async def get_course(
 
 @course_router.post("/courses", response_model=CourseBase)
 async def set_course(
-    courseId: str | None = Form(None, description="课程ID，若不传则创建新课程"),
-    courseName: str = Form(...,min_length=1, description="课程名称"),
-    type: str = Form("public", description="课程类型: public, private"),
-    status: str = Form("open", description="课程状态: open, close"),
-    completed: bool | str | None = Form(None, description="课程是否完成"),
-    assignmentIds: Optional[str] = Form(None, description="关联的作业ID列表")
+    course:CourseCreateRequest = Body(..., description="课程信息")
+    # courseId: str | None = Form(None, description="课程ID，若不传则创建新课程"),
+    # courseName: str = Form(...,min_length=1, description="课程名称"),
+    # type: str = Form("public", description="课程类型: public, private"),
+    # status: str = Form("open", description="课程状态: open, close"),
+    # completed: bool | str | None = Form(None, description="课程是否完成"),
+    # assignmentIds: str | None = Form(None, description="关联的作业ID列表")
 ):
-    if isinstance(completed, str):
-        completed = completed.lower() == 'true'
-    return await CourseController.set_course(courseId=courseId, courseName=courseName, type=type, status=status, completed=completed, assignmentIds=assignmentIds)
+    # if isinstance(course.completed, str):
+    #     course.completed = course.completed.lower() == 'true'
+    return await CourseController.set_course(courseId=course.courseId, courseName=course.courseName, type=course.type, status=course.status, completed=course.completed, assignmentIds=course.assignmentIds)
 
 @course_router.delete("/courses/{course_id}", response_model=bool)
 async def delete_course(

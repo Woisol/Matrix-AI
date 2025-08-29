@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ChangeDetectorRef } from "@angular/core";
+import { Component, inject, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ChangeDetectorRef, computed, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { NzFormModule } from "ng-zorro-antd/form";
 import { NzInputModule } from "ng-zorro-antd/input";
@@ -12,6 +12,8 @@ import { NzCheckboxModule } from "ng-zorro-antd/checkbox";
 import { AssignService } from "../../../services/assign/assign.service";
 import { CourseApi } from "../../../services/course/course-api.service";
 import { NzModalModule } from "ng-zorro-antd/modal";
+import { NotificationService } from "../../../services/notification/notification.service";
+import { AssignId, CourseId } from "../../../api/type/general";
 
 @Component({
   selector: 'control-dialog',
@@ -33,7 +35,7 @@ import { NzModalModule } from "ng-zorro-antd/modal";
         <nz-form-item>
           <nz-form-label>课程ID</nz-form-label>
           <nz-form-control nzErrorTip="请输入课程ID">
-            <input nz-input formControlName="courseId" placeholder="请输入课程ID" />
+            <input nz-input formControlName="courseId" placeholder="请输入课程ID" [disabled]="isUpdate()" />
           </nz-form-control>
         </nz-form-item>
 
@@ -89,9 +91,15 @@ import { NzModalModule } from "ng-zorro-antd/modal";
     @if (type === 'assignment') {
       <form nz-form nzLayout="vertical" [formGroup]="validateAssignForm">
         <nz-form-item>
+          <nz-form-label>课程ID</nz-form-label>
+          <nz-form-control nzErrorTip="请输入课程ID">
+            <input nz-input formControlName="courseId" placeholder="请输入课程ID" />
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item>
           <nz-form-label>作业ID</nz-form-label>
           <nz-form-control nzErrorTip="请输入作业ID">
-            <input nz-input formControlName="assignId" placeholder="请输入作业ID" />
+            <input nz-input formControlName="assignId" placeholder="请输入作业ID" [disabled]="isUpdate()"/>
           </nz-form-control>
         </nz-form-item>
 
@@ -186,17 +194,20 @@ export class ControlDialogComponent implements OnInit, OnChanges {
   @Input() assignTrans: AssignTransProps | null = null;
 
   @Output() modalVisibleChange = new EventEmitter<boolean>();
-  @Output() courseSubmit = new EventEmitter<CourseTransProps>();
-  @Output() assignmentSubmit = new EventEmitter<AssignTransProps>();
 
   courseInfo = inject(CourseInfo);
   private formBuilder = inject(FormBuilder);
-  private cdr = inject(ChangeDetectorRef);
+  // private cdr = inject(ChangeDetectorRef);
   submitting = false;
+  courseApi = inject(CourseApi)
+  //! type 不是 signal 导致不会触发
+  // isEdit = computed(() => this.type === 'course' ? !!this.courseTrans : !!this.assignTrans);
+  isUpdate = signal(this.type === 'course' ? !!this.courseTrans : !!this.assignTrans)
+  notify = inject(NotificationService)
 
   validateCourseForm = this.formBuilder.group({
-    courseId: this.formBuilder.control<string>(''),
-    courseName: this.formBuilder.control<string>('', [Validators.required, Validators.minLength(1)]),
+    courseId: this.formBuilder.control<CourseId>(''),
+    courseName: this.formBuilder.control<AssignId>('', [Validators.required, Validators.minLength(1)]),
     type: this.formBuilder.control<'public' | 'private'>('public', [Validators.required]),
     status: this.formBuilder.control<'open' | 'close'>('open', [Validators.required]),
     completed: this.formBuilder.control<boolean>(false),
@@ -204,7 +215,8 @@ export class ControlDialogComponent implements OnInit, OnChanges {
   });
 
   validateAssignForm = this.formBuilder.group({
-    assignId: this.formBuilder.control<string>(''),
+    courseId: this.formBuilder.control<CourseId>(''),
+    assignId: this.formBuilder.control<AssignId>(''),
     title: this.formBuilder.control<string>('', [Validators.required, Validators.minLength(1)]),
     description: this.formBuilder.control<string>('', [Validators.required, Validators.minLength(1)]),
     assignOriginalCode: this.formBuilder.control<string>('[{"fileName": "main.cpp", "content": ""}]', [Validators.required]),
@@ -226,12 +238,14 @@ export class ControlDialogComponent implements OnInit, OnChanges {
       // 当类型改变时，重置所有表单并初始化
       this.resetForms();
       this.initializeForms();
+      this.isUpdate.set(this.type === 'course' ? !!this.courseTrans : !!this.assignTrans);
       // 手动触发变更检测以确保模板重新渲染
-      this.cdr.detectChanges();
+      // this.cdr.detectChanges();
     } else if (changes['courseTrans'] || changes['assignTrans']) {
       // 当数据改变时，初始化表单
       this.initializeForms();
-      this.cdr.detectChanges();
+      this.isUpdate.set(this.type === 'course' ? !!this.courseTrans : !!this.assignTrans);
+      // this.cdr.detectChanges();
     }
   }
 
@@ -260,17 +274,15 @@ export class ControlDialogComponent implements OnInit, OnChanges {
    * 获取模态框标题
    */
   getModalTitle(): string {
-    const isEdit = this.type === 'course' ? !!this.courseTrans : !!this.assignTrans;
     const entityName = this.type === 'course' ? '课程' : '作业';
-    return `${isEdit ? '编辑' : '新建'}${entityName}`;
+    return `${this.isUpdate() ? '编辑' : '新建'}${entityName}`;
   }
 
   /**
    * 获取确认按钮文本
    */
   getOkText(): string {
-    const isEdit = this.type === 'course' ? !!this.courseTrans : !!this.assignTrans;
-    return isEdit ? '更新' : '创建';
+    return this.isUpdate() ? '更新' : '创建';
   }
 
   /**
@@ -300,15 +312,28 @@ export class ControlDialogComponent implements OnInit, OnChanges {
       this.submitting = true;
       const formData = this.validateCourseForm.value as CourseTransProps;
 
-      // 发出提交事件
-      this.courseSubmit.emit(formData);
+      if (formData.courseId) {
+        this.courseApi.updateCourse$(formData).subscribe(data => {
+          if (data) {
+            this.notify.success(`课程${data.courseId}更新成功`);
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000)
+          }
+          this.requestFinally();
+        })
+      } else {
+        this.courseApi.addCourse$(formData).subscribe(data => {
+          if (data) {
+            this.notify.success(`创建成功，课程 ID 为${data.courseId}`);
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000)
+          }
+          this.requestFinally();
+        })
+      }
 
-      // 模拟提交延迟
-      setTimeout(() => {
-        this.submitting = false;
-        this.resetForms();
-        this.modalVisibleChange.emit(false);
-      }, 1000);
     } else {
       // 标记所有字段为脏状态以显示验证错误
       Object.keys(this.validateCourseForm.controls).forEach(key => {
@@ -324,17 +349,29 @@ export class ControlDialogComponent implements OnInit, OnChanges {
   private onSubmitAssignment(): void {
     if (this.validateAssignForm.valid) {
       this.submitting = true;
-      const formData = this.validateAssignForm.value as AssignTransProps;
+      const formData = this.validateAssignForm.value as AssignTransProps & { courseId: CourseId };
 
-      // 发出提交事件
-      this.assignmentSubmit.emit(formData);
-
-      // 模拟提交延迟
-      setTimeout(() => {
-        this.submitting = false;
-        this.resetForms();
-        this.modalVisibleChange.emit(false);
-      }, 1000);
+      if (formData.assignId) {
+        this.courseApi.updateAssignment$(formData).subscribe(data => {
+          if (data) {
+            this.notify.success(`作业${data.assignId}更新成功`);
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000)
+          }
+          this.requestFinally();
+        });
+      } else {
+        this.courseApi.addAssignment$(formData).subscribe(data => {
+          if (data) {
+            this.notify.success(`创建成功，作业 ID 为${data.assignId}`);
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000)
+          }
+          this.requestFinally();
+        });
+      }
     } else {
       // 标记所有字段为脏状态以显示验证错误
       Object.keys(this.validateAssignForm.controls).forEach(key => {
@@ -388,5 +425,11 @@ export class ControlDialogComponent implements OnInit, OnChanges {
       control?.markAsUntouched();
       control?.markAsPristine();
     });
+  }
+
+  private requestFinally() {
+    this.submitting = false;
+    this.resetForms();
+    this.modalVisibleChange.emit(false);
   }
 }
