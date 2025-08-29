@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional, Annotated
 from datetime import datetime
 
-from  app.schemas.general import AssignId
+from  app.schemas.general import CourseId, AssignId
 
 # 使用 Annotated 来定义自定义字符串类型
 MdContent = Annotated[str, Field(description="Markdown内容")]
@@ -78,8 +78,11 @@ class Submit(BaseModel):
 class AssignCreateRequest(BaseModel):
     title: str = Field(..., description="作业标题")
     description: str = Field(..., description="作业描述")
-    assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
-    ddl: Optional[datetime] = Field(None, description="作业截止时间")
+    assignOriginalCode: str = Field(..., description="作业原始代码")
+    testSample: str = Field(..., description="测试样例 JSON 字符串")
+    ddl: datetime | None = Field(None, description="作业截止时间")
+    assignId: AssignId | None = Field(None, description="作业ID，若为空则创建新作业")
+    courseId: CourseId | None = Field(None, description="课程ID，前端多传")
 
 class AssignData(BaseModel):
     assignId: AssignId = Field(..., description="作业ID")

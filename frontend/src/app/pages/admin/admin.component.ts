@@ -153,9 +153,7 @@ import { AssignTransProps } from '../../api/type/assigment';
         [type]="dialogType()"
         [courseTrans]="editingCourse"
         [assignTrans]="editingAssignment"
-        (modalVisibleChange)="showDialog = $event"
-        (courseSubmit)="handleCourseSubmit($event)"
-        (assignmentSubmit)="handleAssignmentSubmit($event)">
+        (modalVisibleChange)="showDialog = $event">
       </control-dialog>
     </div>
   `,
@@ -527,47 +525,6 @@ export class AdminComponent {
         });
       }
     });
-  }
-
-  /**
-   * 处理课程提交
-   */
-  handleCourseSubmit(courseData: CourseTransProps) {
-    console.log('Course submitted:', courseData);
-
-    if (this.editingCourse) {
-      // 更新课程
-      this.message.info('课程更新功能待实现');
-      // TODO: 调用更新课程API
-    } else {
-      // 创建新课程
-      this.courseApi.addCourse$(courseData).subscribe((result: any) => {
-        if (result) {
-          this.message.success('课程创建成功');
-          // 刷新课程列表
-          this.refreshCourseList();
-        } else {
-          this.message.error('课程创建失败');
-        }
-      });
-    }
-  }
-
-  /**
-   * 处理作业提交
-   */
-  handleAssignmentSubmit(assignmentData: AssignTransProps) {
-    console.log('Assignment submitted:', assignmentData);
-
-    if (this.editingAssignment) {
-      // 更新作业
-      this.message.info('作业更新功能待实现');
-      // TODO: 调用更新作业API
-    } else {
-      // 创建新作业
-      this.message.info('作业创建功能待实现');
-      // TODO: 调用创建作业API
-    }
   }
 
   /**
