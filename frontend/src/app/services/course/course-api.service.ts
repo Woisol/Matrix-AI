@@ -3,9 +3,11 @@ import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { testAllCourseList, testTodoCourseList } from "../../api/test/course";
 import { ApiHttpService } from "../../api/util/api-http.service";
-import { AllCourse, TodoCourse } from "../../api/type/course";
+import { AllCourse, CourseTransProps, TodoCourse } from "../../api/type/course";
 import { HttpErrorResponse } from "@angular/common/http";
 import { NotificationService } from "../notification/notification.service";
+import { AssignTransProps } from "../../api/type/assigment";
+import { CourseId } from "../../api/type/general";
 
 @Injectable({ providedIn: 'root' })
 export class CourseApi {
@@ -42,10 +44,20 @@ export class CourseApi {
     );
   }
 
-  addCourse$(course: Partial<AllCourse>) {
+  addCourse$(course: CourseTransProps) {
     return this.api.post$<AllCourse>('/courses', course).pipe(
       catchError((e: HttpErrorResponse) => {
         let msg = `无法添加课程: ` + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message);
+        this.notify.error(msg);
+        return of(undefined)
+      })
+    );
+  }
+
+  updateCourse$(course: CourseTransProps) {
+    return this.api.post$<AllCourse>(`/courses`, course).pipe(
+      catchError((e: HttpErrorResponse) => {
+        let msg = `无法更新课程(${course.courseId}): ` + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message);
         this.notify.error(msg);
         return of(undefined)
       })
@@ -58,6 +70,26 @@ export class CourseApi {
         let msg = `无法删除课程(${courseId}): ` + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message);
         this.notify.error(msg);
         return of(false)
+      })
+    );
+  }
+
+  addAssignment$(formdata: AssignTransProps & { courseId: CourseId }) {
+    return this.api.post$<AssignTransProps>(`/courses/${formdata.courseId}/assignments`, formdata).pipe(
+      catchError((e: HttpErrorResponse) => {
+        let msg = `无法添加课程(${formdata.courseId})中的作业: ` + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message);
+        this.notify.error(msg);
+        return of(undefined)
+      })
+    );
+  }
+
+  updateAssignment$(formdata: AssignTransProps & { courseId: CourseId }) {
+    return this.api.post$<AssignTransProps>(`/courses/${formdata.courseId}/assignments`, formdata).pipe(
+      catchError((e: HttpErrorResponse) => {
+        let msg = `无法更新课程(${formdata.courseId})中的作业(${formdata.assignId}): ` + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message);
+        this.notify.error(msg);
+        return of(undefined)
       })
     );
   }

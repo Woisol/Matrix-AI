@@ -12,27 +12,28 @@ async def get_assignment(assign_id: str = Path(..., description="作业ID")):
 
 @assign_router.post("/courses/{course_id}/assignments", response_model=AssignData)
 async def set_assignment(
-    course_id: str = Path(..., description="课程ID"),
-    assignId: str | None = Form(..., description="作业ID"),
-    #! 传入为 form，复用较麻烦不管了……
-    # assignCreate: AssignCreateRequest = Body(...)
-    title: str = Form(..., description="作业标题"),
-    description: str = Form(..., description="作业描述"),
-    assignOriginalCode: str = Form(..., description="作业原始代码"),
-    testSample: str = Form(..., description="测试样例"),
-    ddl: str = Form(..., description="作业截止日期"),
+    assign:AssignCreateRequest = Body(..., description="作业信息"),
+    # course_id: str = Path(..., description="课程ID"),
+    # assignId: str | None = Form(..., description="作业ID"),
+    # #! 传入为 form，复用较麻烦不管了……
+    # # assignCreate: AssignCreateRequest = Body(...)
+    # title: str = Form(..., description="作业标题"),
+    # description: str = Form(..., description="作业描述"),
+    # assignOriginalCode: str = Form(..., description="作业原始代码"),
+    # testSample: str = Form(..., description="测试样例"),
+    # ddl: str = Form(..., description="作业截止日期"),
 ):
     #! 极其混乱，请求传输必须为 str，访问 .input 需要 json，但存储又需要 str
-    _testSampleJSON: TestSampleCreate = TestSampleCreate.model_validate_json(testSample)
+    _testSampleJSON: TestSampleCreate = TestSampleCreate.model_validate_json(assign.testSample)
 
     return await AssignmentController.set_assignment(
-        courseId=course_id,
-        assignId=assignId,
-        title=title,
-        description=description,
-        assignOriginalCode=assignOriginalCode,
+        courseId=assign.courseId,
+        assignId=assign.assignId,
+        title=assign.title,
+        description=assign.description,
+        assignOriginalCode=assign.assignOriginalCode,
         testSample=_testSampleJSON,
-        ddl=ddl,
+        ddl=assign.ddl,
     )
 
 @assign_router.delete("/courses/{course_id}/assignments/{assign_id}", response_model=bool)
