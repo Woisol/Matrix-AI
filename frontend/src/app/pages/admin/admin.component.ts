@@ -12,6 +12,7 @@ import { CourseApi } from '../../services/course/course-api.service';
 import { ControlDialogComponent } from './components/control-dialog.component';
 import { CourseTransProps } from '../../api/type/course';
 import { AssignTransProps } from '../../api/type/assigment';
+import { AssignService } from '../../services/assign/assign.service';
 
 @Component({
   selector: 'app-admin',
@@ -373,6 +374,7 @@ import { AssignTransProps } from '../../api/type/assigment';
 export class AdminComponent {
   courseInfo = inject(CourseInfo);
   courseApi = inject(CourseApi)
+  assignApi = inject(AssignService)
   message = inject(NzMessageService);
   modal = inject(NzModalService);
 
@@ -467,42 +469,41 @@ export class AdminComponent {
    */
   handleUploadAssignment(assignId: AssignId) {
     // 在所有课程中查找对应的作业
+    let _courseId = "";
     let foundAssignment = null;
     for (const course of this.courseInfo.allCourseList) {
       const assignment = course.assignment?.find(a => a.assignId === assignId);
       if (assignment) {
+        _courseId = course.courseId;
         foundAssignment = assignment;
         break;
       }
     }
 
+
     if (foundAssignment) {
-      // 转换为 AssignTransProps 格式
-      this.editingAssignment = {
-        assignId: foundAssignment.assignId,
-        title: foundAssignment.assignmentName,
-        description: '', // 这些字段在 AssignmentListItem 中不存在，需要从其他地方获取
-        assignOriginalCode: '[{"fileName": "main.cpp", "content": ""}]',
-        testSample: '{"input":[],"expectOutput":[]}',
-        ddl: foundAssignment.ddl ? foundAssignment.ddl.toString() : ''
-      } as AssignTransProps;
-      this.dialogType.set('assignment');
-      this.editingCourse = null;
-      this.showDialog = true;
+      let _descript = "";
+      this.assignApi.getAssignData$(_courseId, foundAssignment?.assignId).subscribe(data => {
+        if (!data) {
+          this.message.warning('未找到对应的作业数据，请更新本地数据');
+          return;
+        }
+        _descript = data.description;
+        // 转换为 AssignTransProps 格式
+        this.editingAssignment = {
+          assignId: foundAssignment.assignId,
+          title: foundAssignment.assignmentName,
+          description: _descript,
+          assignOriginalCode: '[{"fileName": "main.cpp", "content": ""}]',
+          testSample: '{"input":[],"expectOutput":[]}',
+          ddl: foundAssignment.ddl ? foundAssignment.ddl.toString() : ''
+        } as AssignTransProps;
+        this.dialogType.set('assignment');
+        this.editingCourse = null;
+        this.showDialog = true;
+      })
     } else {
-      this.message.warning('编辑作业功能需要更多数据，当前仅显示基本信息');
-      // 创建一个基本的编辑对象
-      this.editingAssignment = {
-        assignId: assignId,
-        title: '',
-        description: '',
-        assignOriginalCode: '[{"fileName": "main.cpp", "content": ""}]',
-        testSample: '{"input":[],"expectOutput":[]}',
-        ddl: ''
-      } as AssignTransProps;
-      this.dialogType.set('assignment');
-      this.editingCourse = null;
-      this.showDialog = true;
+      this.message.warning('未找到对应的作业数据');
     }
   }
 
