@@ -7,6 +7,7 @@ export type MdContent = string
 export type MdCodeContent = string
 //! CodeContent 不需要
 export type CodeContent = string
+export type JSONStr = string
 
 export type CodeLanguage = 'c_cpp'
 // | 'javascript' | 'typescript'
@@ -44,6 +45,12 @@ export type AssignData = {
   assignOriginalCode: CodeFileInfo[]
 
   submit?: Submit
+}
+
+export type AssignTransProps = Omit<AssignData, 'assignOriginalCode' | 'submit'> & {
+  assignOriginalCode: JSONStr
+  testSample: string
+  ddl: string
 }
 
 export type BasicAnalysis = {

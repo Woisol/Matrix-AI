@@ -17,3 +17,7 @@ export type AssignmentListItem = {
   score: number | null
   ddl: Date | null
 }
+
+export type CourseTransProps = Omit<AllCourse, 'assignment'> & {
+  assignmentIds: string // 逗号分隔
+}
