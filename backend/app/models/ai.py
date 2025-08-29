@@ -129,8 +129,8 @@ class AIAnalysisGenerator:
             # course_data: CourseData = await CourseController.get_course(course_id)
 
             # 获取代码分析
-            codeAnalContent = await AI.getResponse(prompt=AIPrompt.RESOLUTION(
-                assign_data.title, assign_data.description, assign_data.assignOriginalCode[0].content))
+            codeAnalContent = await AI.getResponse(prompt=AIPrompt.CODEANALYSIS(
+                assign_data.title, assign_data.description, assign_data.submit.submitCode[0].content if assign_data.submit else ""))
 
             analysis = MatrixAnalysisProps(
                 content=[
