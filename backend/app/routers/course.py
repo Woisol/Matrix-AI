@@ -27,9 +27,11 @@ async def set_course(
     courseName: str = Form(...,min_length=1, description="课程名称"),
     type: str = Form("public", description="课程类型: public, private"),
     status: str = Form("open", description="课程状态: open, close"),
-    completed: bool | None = Form(None, description="课程是否完成"),
+    completed: bool | str | None = Form(None, description="课程是否完成"),
     assignmentIds: Optional[str] = Form(None, description="关联的作业ID列表")
 ):
+    if isinstance(completed, str):
+        completed = completed.lower() == 'true'
     return await CourseController.set_course(courseId=courseId, courseName=courseName, type=type, status=status, completed=completed, assignmentIds=assignmentIds)
 
 @course_router.delete("/courses/{course_id}", response_model=bool)
