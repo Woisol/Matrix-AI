@@ -21,7 +21,7 @@
   --size-top-bar: 48px;
   --size-radius: 16px;
   --size-radius-sm: 8px;
-
+  --color-shadow: rgba(0, 0, 0, 0.3);
   /* swiper */
   --swiper-theme-color: white !important;
 }
