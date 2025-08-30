@@ -94,10 +94,10 @@ class AI:
                     if 'choices' in json_data:
                         content = json_data['choices'][0]['delta'].get('content','')
                         if content:
-                            ai_answer += content
+                            ai_response += content
                 except json.JSONDecodeError:
                     continue
-        return ai_answer
+        return ai_response
 
 
 class AIQueue:
