@@ -89,6 +89,7 @@ class AssignData(BaseModel):
     title: str = Field(..., description="作业标题")
     description: str = Field(..., description="作业描述")
     assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
+    ddl: datetime | None = Field(None, description="作业截止时间")
     submit: Submit | None = Field(None, description="作业提交记录")
 
 #**----------------------------Matrix-Analysis-----------------------------------------------------
