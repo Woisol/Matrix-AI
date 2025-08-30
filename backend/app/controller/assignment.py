@@ -1,5 +1,5 @@
 import uuid, json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException, Path, Form
@@ -43,6 +43,7 @@ class AssignmentController:
                 title=assignment.title,
                 description=assignment.description,
                 assignOriginalCode=listStrToList(codes.original_code),
+                ddl=assignment.end_date,
                 submit=submit,
             )
         except torExceptions.DoesNotExist:
@@ -150,6 +151,8 @@ class AssignmentController:
     async def submit_code(cls, course_id: CourseId, assign_id: AssignId, submitRequest: SubmitRequest):
         try:
             assignment = await AssignmentModel.get(id=assign_id)
+            if(assignment.end_date and assignment.end_date < datetime.now(timezone.utc)):
+                raise HTTPException(status_code=400, detail="Deadline has passed")
             _codes = await assignment.codes.all()
             if not _codes:
                 raise HTTPException(status_code=404, detail=f"Code for assignment id {assign_id} not found or invalid")
@@ -192,5 +195,7 @@ class AssignmentController:
                 )
             await submitModel.save()
             return submit
+        except HTTPException as he:
+            raise he
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
