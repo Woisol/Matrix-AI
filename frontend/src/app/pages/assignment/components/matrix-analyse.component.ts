@@ -34,11 +34,11 @@ export interface MatrixAnalysisProps {
         </nz-tab>
       }
     </nz-tabs>
+    @if (analysis?.summary) {
     <summary class="analyse-summary">
-      @if (analysis?.summary) {
         <markdown class="markdown-patched" [data]="analysis?.summary"></markdown>
-      }
-    </summary>
+      </summary>
+    }
   `,
   styles: [`
     .analyse-con {

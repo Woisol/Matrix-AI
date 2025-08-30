@@ -23,6 +23,7 @@ import {
   AppstoreOutline,
   CloseOutline,
   UploadOutline,
+  ReloadOutline,
 } from '@ant-design/icons-angular/icons';
 import { MarkdownModule } from 'ngx-markdown';
 import { provideMonacoEditor } from 'ngx-monaco-editor-v2';
@@ -42,7 +43,8 @@ const icons: IconDefinition[] = [
   FileTextOutline,
   AppstoreOutline,
   UploadOutline,
-  CloseOutline
+  CloseOutline,
+  ReloadOutline
 ];
 
 export const appConfig: ApplicationConfig = {

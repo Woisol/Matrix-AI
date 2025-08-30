@@ -8,10 +8,12 @@ import { NzProgressModule } from "ng-zorro-antd/progress";
 import { getSubmitScoreStatus } from "../../../api/util/assig";
 import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
 import { MatrixAnalyseComponent } from "./matrix-analyse.component";
+import { NzIconModule } from "ng-zorro-antd/icon";
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 
 @Component({
   selector: "course-info-tab",
-  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent],
+  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -103,9 +105,9 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
                 <matrix-analyse [analysis]="analysis.aiGen.learningSuggestions"></matrix-analyse>
               }
             }
-              <section class="reGen">
-                <button (click)="onAnalysisBasicRequestRegen()">重新生成</button>
-              </section>
+            <section class="reGen">
+              <button (click)="handleAnalysisRegen()" nz-tooltip nzTooltipTitle="重新生成基础分析"><span nz-icon nzType="reload" nzTheme="outline"></span></button>
+            </section>
 
           }
         </nz-tab>
@@ -255,6 +257,20 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
       text-align: center;
       margin: 0;
     }
+    button{
+      box-shadow: 0 2px 8px var(--color-primary);
+    }
+
+  }
+
+  .reGen{
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    z-index: 10;
+    button{
+      box-shadow: 0 2px 8px var(--color-shadow);
+    }
   }
   `],
   // styleUrl
@@ -262,7 +278,7 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
 export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() assignData!: AssignData | undefined;
   @Input() analysis!: Analysis | undefined;
-  @Input() onAnalysisBasicRequestRegen = () => { };
+  @Input() handleAnalysisRegen = () => { };
   @Input() onAnalysisAiGenRequest = (notify: boolean = false) => { };
   @Input() selectedTabIndex = signal(0);
 

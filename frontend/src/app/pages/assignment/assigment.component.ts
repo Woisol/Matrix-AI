@@ -18,7 +18,7 @@ import { NotificationService } from "../../services/notification/notification.se
   <div class="assignment-con">
     <nz-splitter>
       <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true">
-        <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [onAnalysisBasicRequestRegen]="loadAnalysisBasicRegen" [onAnalysisAiGenRequest]="loadAnalysisAiGen" [selectedTabIndex]="selectedTabIndex" />
+        <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [handleAnalysisRegen]="handleAnalysisRegen" [onAnalysisAiGenRequest]="loadAnalysisAiGen" [selectedTabIndex]="selectedTabIndex" />
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
         <code-editor [codeFile]="codeFile()" [onSubmitRequest]="onSubmitRequest"/>
@@ -100,8 +100,10 @@ export class AssignmentComponent implements OnDestroy {
     this.subs.push(sub);
   }
 
-  loadAnalysisBasicRegen = () => {
+  handleAnalysisRegen = () => {
     this.loadAnalysisBasic(true);
+    // if (this.analysis()?.aiGen)
+    //   this.loadAnalysisAiGen(true);
     this.notify.info("已经请求重新分析，预计要 1~2 分钟，请耐心等待")
   }
 
