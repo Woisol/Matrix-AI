@@ -94,10 +94,10 @@ class AI:
                     if 'choices' in json_data:
                         content = json_data['choices'][0]['delta'].get('content','')
                         if content:
-                            ai_answer += content
+                            ai_response += content
                 except json.JSONDecodeError:
                     continue
-        return ai_answer
+        return ai_response
 
 
 class AIQueue:
@@ -122,7 +122,7 @@ class AIAnalysisGenerator:
     """AI分析生成器，提供各种类型的分析功能"""
     
     @classmethod
-    async def generate_resolutions(
+    async def genResolutions(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
@@ -201,7 +201,7 @@ class AIAnalysisGenerator:
             )
 
     @classmethod
-    async def generate_knowledge_analysis(
+    async def genKnowledgeAnalysis(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
@@ -248,7 +248,7 @@ class AIAnalysisGenerator:
             )
 
     @classmethod
-    async def generate_code_analysis(
+    async def genCodeAnalysis(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
@@ -300,7 +300,7 @@ class AIAnalysisGenerator:
             )
 
     @classmethod
-    async def generate_learning_suggestions(
+    async def genLearningSuggestions(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
