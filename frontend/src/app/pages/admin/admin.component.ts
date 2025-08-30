@@ -494,7 +494,7 @@ export class AdminComponent {
           assignId: foundAssignment.assignId,
           title: foundAssignment.assignmentName,
           description: _descript,
-          assignOriginalCode: '[{"fileName": "main.cpp", "content": ""}]',
+          assignOriginalCode: JSON.stringify(data.assignOriginalCode) ?? '[{"fileName": "main.cpp", "content": ""}]',
           testSample: '{"input":[],"expectOutput":[]}',
           ddl: foundAssignment.ddl ? foundAssignment.ddl.toString() : ''
         } as AssignTransProps;
