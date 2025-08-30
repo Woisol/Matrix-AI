@@ -34,7 +34,7 @@ class AIController:
                 resolution=resol,
                 knowledgeAnalysis=knowled
             )
-
+    @classmethod
     async def getAiGen(cls, course_id: str, assign_id: str) -> AiGenAnalysis:
         assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis")
         analysis = assignment.analysis[0] if assignment.analysis else None
