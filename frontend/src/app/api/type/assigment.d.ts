@@ -43,6 +43,7 @@ export type AssignData = {
   description: MdContent
   //! 但是实际上只会有一个文件
   assignOriginalCode: CodeFileInfo[]
+  ddl?: Date
 
   submit?: Submit
 }

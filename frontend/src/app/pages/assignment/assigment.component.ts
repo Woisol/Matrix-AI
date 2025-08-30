@@ -1,4 +1,4 @@
-import { Component, inject, signal, WritableSignal, OnDestroy, OnInit } from "@angular/core";
+import { Component, inject, signal, WritableSignal, OnDestroy, OnInit, computed } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
 import { testAssigData } from "../../api/test/assig";
@@ -65,6 +65,9 @@ export class AssignmentComponent implements OnDestroy {
       this.courseId = params.get('courseId') as CourseId;
       this.assignId = params.get('assignId') as AssignId;
       this.loadAssign();
+      if (this.assignData()?.ddl && this.assignData()?.ddl! > new Date()) {
+        return;
+      }
       this.loadAnalysisBasic();
       this.loadAnalysisAiGen();
     });
@@ -99,6 +102,12 @@ export class AssignmentComponent implements OnDestroy {
 
   loadAnalysisAiGen = (notify: boolean = false) => {
     if (!this.courseId || !this.assignId) return;
+    if (this.assignData()?.ddl && this.assignData()?.ddl! > new Date()) {
+      if (notify)
+        this.notify.error("截止后才能查看提交分析哦", "生成禁止")
+      return;
+    }
+
     const sub = this.assignService.getAnalysisAiGen$(this.courseId, this.assignId, notify).subscribe(data => {
       const prev = this.analysis();
       this.analysis.set({
@@ -129,6 +138,10 @@ export class AssignmentComponent implements OnDestroy {
   //! 注意闭包！否则传入后 this 指向不正确！
   onSubmitRequest = () => {
     // debugger
+    if (this.assignData()?.ddl && this.assignData()?.ddl! < new Date()) {
+      this.notify.error("已经过了截止时间了呢", "提交禁止")
+      return;
+    }
     if (!this.codeFile().fileName || !this.codeFile().content) {
       this.notify.error("不能提交空代码！", "提交禁止")
       // return;

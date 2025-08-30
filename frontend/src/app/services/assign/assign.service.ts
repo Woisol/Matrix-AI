@@ -36,6 +36,12 @@ export class AssignService {
   getAnalysisAiGen$(courseId: CourseId, assigId: AssignId, notify: boolean = false) {
     return this.api.get$<AiGenAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/aiGen`).pipe(
       catchError((e: HttpErrorResponse) => {
+        if (e.status === 400) {
+          if (notify)
+            this.notify.error("坏蛋😢，改了本地时间也不能提前查看提交分析哦", "生成禁止")
+          return of(undefined)
+        }
+
         if (e.status === 403) {
           if (notify)
             this.notify.info('AI生成分析功能需要在提交后才能使用哦~');
@@ -67,7 +73,7 @@ export class AssignService {
     // @todo 后端实现后尝试实现 大文件上传 代码
     return this.api.post$(`/courses/${courseId}/assignments/${assignId}/submission`, { codeFile }).pipe(
       catchError((e: HttpErrorResponse) => {
-        this.notify.error('无法提交作业: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message))
+        this.notify.error(e.status === 400 ? "已经过了截止时间了呢" : '无法提交作业: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message))
         return of(undefined)
       })
     );

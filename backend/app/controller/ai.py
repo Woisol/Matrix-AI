@@ -1,4 +1,4 @@
-import uuid, json
+import json
 
 from fastapi import HTTPException
 
@@ -8,7 +8,7 @@ from app.schemas.assignment import BasicAnalysis, AiGenAnalysis
 
 import os
 from openai import OpenAI
-
+from datetime import datetime, timezone
 
 class AIController:
     """用于控制测试相关的AI服务的控制器.由于申请api时间有限，现使用通义千问的统一模型接口进行测试"""
@@ -39,6 +39,9 @@ class AIController:
     @classmethod
     async def getAiGen(cls, course_id: str, assign_id: str) -> AiGenAnalysis:
         assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis","submissions")
+        if assignment.end_date and assignment.end_date > datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Deadline not meet yet")
+
         submited = True if assignment.submissions and assignment.submissions[0] else False
         if not submited:
             raise HTTPException(status_code=403, detail="AI生成分析功能需要在提交作业后才能使用哦~")

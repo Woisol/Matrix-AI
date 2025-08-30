@@ -72,7 +72,7 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
         }
       </nz-tab>
 
-      @if (analysis) {
+      @if (assignData?.submit && ddlGrant() && analysis) {
         <nz-tab nzTitle="分析">
           @if (!analysis) {
             <div class="empty-content">
@@ -262,6 +262,8 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() selectedTabIndex = signal(0);
 
   submitScoreStatus = signal<SubmitScoreStatus>('not-submitted')
+  //! 暂不考虑更新，要看自己刷新⚫
+  ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! > new Date());
 
   ngOnInit() {
     // console.log('ngOnInit - assignData:', this.assignData);
@@ -270,6 +272,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['assignData']) {
       this.submitScoreStatus.set(this.assignData?.submit ? getSubmitScoreStatus(this.assignData.submit.score) : 'not-submitted');
+      this.ddlGrant.set(!this.assignData?.ddl || this.assignData?.ddl! > new Date());
       // console.log('assignData changed:', changes['assignData'].currentValue);
     }
   }
