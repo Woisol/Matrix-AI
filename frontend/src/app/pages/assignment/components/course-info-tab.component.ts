@@ -90,7 +90,7 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
             @if(!analysis.aiGen){
               <section class="aiGen">
                 <p>想了解你提交代码的质量？<br/>想进一步学习更多相关知识点？</p>
-                <button (click)="onAnalysisAiGenRequest()">AI 个性分析</button>
+                <button (click)="onAnalysisAiGenRequest(true)">AI 个性分析</button>
               </section>
             }
             @else{
@@ -258,7 +258,7 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
 export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() assignData!: AssignData | undefined;
   @Input() analysis!: Analysis | undefined;
-  @Input() onAnalysisAiGenRequest = () => { };
+  @Input() onAnalysisAiGenRequest = (notify: boolean) => { };
   @Input() selectedTabIndex = signal(0);
 
   submitScoreStatus = signal<SubmitScoreStatus>('not-submitted')

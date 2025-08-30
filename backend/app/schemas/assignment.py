@@ -26,12 +26,12 @@ class Complexity(BaseModel):
 class MatrixAnalysisContent(BaseModel):
     title:str = Field(..., description="标题")
     content: MdCodeContent = Field(..., description="内容")
-    complexity: Optional[Complexity] = Field(None, description="复杂度")
+    complexity: Complexity | None = Field(None, description="复杂度")
 
 class MatrixAnalysisProps(BaseModel):
     content: list[MatrixAnalysisContent] = Field(..., description="分析内容参数")
-    summary: Optional[MdContent]
-    showInEditor: Optional[bool] = Field(None, description="「辑器中显示」按钮")
+    summary: MdContent | None
+    showInEditor: bool | None = Field(None, description="「辑器中显示」按钮")
 
 class SubmitScoreStatus(str, Enum):
     NOT_SUBMITTED = "not_submitted"
@@ -89,18 +89,18 @@ class AssignData(BaseModel):
     title: str = Field(..., description="作业标题")
     description: str = Field(..., description="作业描述")
     assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
-    submit: Optional[Submit] = Field(None, description="作业提交记录")
+    submit: Submit | None = Field(None, description="作业提交记录")
 
 #**----------------------------Matrix-Analysis-----------------------------------------------------
 
 class BasicAnalysis(BaseModel):
-    resolution:Optional[MatrixAnalysisProps] = Field(None, description="题目解答")
-    knowledgeAnalysis: Optional[MatrixAnalysisProps] = Field(None, description="知识点分析")
+    resolution:MatrixAnalysisProps | None = Field(None, description="题目解答")
+    knowledgeAnalysis: MatrixAnalysisProps | None = Field(None, description="知识点分析")
 
 class AiGenAnalysis(BaseModel):
-    codeAnalysis:Optional[ MatrixAnalysisProps] = Field(None, description="当前代码分析")
-    learningSuggestions: Optional[MatrixAnalysisProps] = Field(None, description="学习建议")
+    codeAnalysis: MatrixAnalysisProps | None = Field(None, description="当前代码分析")
+    learningSuggestions: MatrixAnalysisProps | None = Field(None, description="学习建议")
 
 class Analysis(BaseModel):
     basic: BasicAnalysis = Field(..., description="基础分析")
-    aiGen: Optional[AiGenAnalysis] = Field(None, description="AI生成分析")
+    aiGen: AiGenAnalysis | None = Field(None, description="AI生成分析")
