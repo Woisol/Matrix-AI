@@ -127,14 +127,14 @@ class CourseController:
                 # await course.assignments.add(*assignments)
 
             # 重新获取课程数据（包含关联的作业）
-            course = await CourseModel.get(id=course.id)
+            # course = await CourseModel.get(id=course.id)
 
-            course_data = CourseBase(
-                courseId=course.id,
-                courseName=course.course_name,
-            )
+            # course_data = CourseBase(
+            #     courseId=course.id,
+            #     courseName=course.course_name,
+            # )
 
-            return course_data
+            return True
         except torExceptions.ValidationError:
             raise HTTPException(status_code=400, detail=f"Invalid data provided")
         except HTTPException:
