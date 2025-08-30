@@ -10,7 +10,7 @@ assign_router = APIRouter(tags=["assignment"])
 async def get_assignment(assign_id: str = Path(..., description="作业ID")):
     return await AssignmentController.get_assignment(assign_id=assign_id)
 
-@assign_router.post("/courses/{course_id}/assignments", response_model=AssignData)
+@assign_router.post("/courses/{course_id}/assignments", response_model=bool)
 async def set_assignment(
     assign:AssignCreateRequest = Body(..., description="作业信息"),
     # course_id: str = Path(..., description="课程ID"),

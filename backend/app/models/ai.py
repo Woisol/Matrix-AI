@@ -25,7 +25,7 @@ class AIMessage(BaseModel):
 
 class AIRequest(BaseModel):
     """AI请求模型，用于包装API调用参数"""
-    
+
     url: str = "http://10.10.1.11:38666/v1/chat/completions"
     # 模型使用url+request库进行调用，需要把格式包入message体中
     message: List[Dict[str, Any]]
@@ -37,7 +37,7 @@ class AIRequest(BaseModel):
 
 class AI:
     """AI服务类，处理与OpenAI API的交互"""
-    
+
     class AIConfig:
         """AI配置类"""
         MODEL = "deepseek-r1-distill-qwen-7b"
@@ -51,12 +51,12 @@ class AI:
                 {"role": "system", "content": prompt},
                 # {"role": "user", "content": "请给出详细的解题步骤和思路。"}
             ]
-        
+
     # 从环境变量获取API密钥，提高安全性
     client = OpenAI(
         api_key=os.getenv("OPENAI_API_KEY", "sk-b8dc10dafd2445a3b62830eb625634bf"),
         base_url=os.getenv(
-            "OPENAI_BASE_URL", 
+            "OPENAI_BASE_URL",
             "https://dashscope.aliyuncs.com/compatible-mode/v1"
         )
     )
@@ -71,9 +71,9 @@ class AI:
             temperature=cls.AIConfig.TEMPERATURE,
         )
 
-        return (response.choices[0].message.content 
+        return (response.choices[0].message.content
                 if response.choices[0].message.content else "")
-    
+
     @classmethod
     async def get_response_from_request(cls, prompt: str) -> str:
         """通过官方给的API请求获取AI响应"""
@@ -102,7 +102,7 @@ class AI:
 
 class AIQueue:
     """AI任务队列，用于管理和处理多个AI请求"""
-    
+
     def __init__(self) -> None:
         """初始化任务队列"""
         self.queue: List[Any] = []
@@ -120,21 +120,21 @@ class AIQueue:
 
 class AIAnalysisGenerator:
     """AI分析生成器，提供各种类型的分析功能"""
-    
+
     @classmethod
-    async def generate_resolutions(
+    async def genResolutions(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成解题分析
-        
+
         Args:
             course_id: 课程ID
             assign_id: 作业ID
-            
+
         Returns:
             MatrixAnalysisProps: 解题分析结果
-            
+
         Raises:
             HTTPException: 当处理过程中出现错误时
         """
@@ -145,8 +145,8 @@ class AIAnalysisGenerator:
             # 获取所有可能解法
             resol_content = await AI.get_response(
                 prompt=AIPrompt.RESOLUTION(
-                    assign_data.title, 
-                    assign_data.description, 
+                    assign_data.title,
+                    assign_data.description,
                     assign_data.assignOriginalCode[0].content
                 )
             )
@@ -157,13 +157,13 @@ class AIAnalysisGenerator:
 
             # 生成标题
             resol_titles = [
-                await AI.get_response(AIPrompt.TITLE_CODE(code)) 
+                await AI.get_response(AIPrompt.TITLE_CODE(code))
                 for code in resol_contents
             ]
 
             # 生成复杂度
             resol_complexities = [
-                await AI.get_response(AIPrompt.COMPLEXITY(code)) 
+                await AI.get_response(AIPrompt.COMPLEXITY(code))
                 for code in resol_contents
             ]
 
@@ -175,7 +175,7 @@ class AIAnalysisGenerator:
                 lines = complexity_text.split("\n")
                 time_complexity = lines[0].split(":")[-1].strip()
                 space_complexity = lines[1].split(":")[-1].strip()
-                
+
                 content.append(MatrixAnalysisContent(
                     title=title,
                     content=content_text,
@@ -196,21 +196,21 @@ class AIAnalysisGenerator:
 
         except Exception as e:
             raise HTTPException(
-                status_code=500, 
+                status_code=500,
                 detail=f"Internal server error: {str(e)}"
             )
 
     @classmethod
-    async def generate_knowledge_analysis(
+    async def genKnowledgeAnalysis(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成知识点分析
-        
+
         Args:
             course_id: 课程ID
             assign_id: 作业ID
-            
+
         Returns:
             MatrixAnalysisProps: 知识点分析结果
         """
@@ -220,8 +220,8 @@ class AIAnalysisGenerator:
             # 获取知识点分析
             knowledge_content = await AI.get_response(
                 prompt=AIPrompt.KNOWLEDGEANALYSIS(
-                    assign_data.title, 
-                    assign_data.description, 
+                    assign_data.title,
+                    assign_data.description,
                     assign_data.assignOriginalCode[0].content
                 )
             )
@@ -243,21 +243,21 @@ class AIAnalysisGenerator:
 
         except Exception as e:
             raise HTTPException(
-                status_code=500, 
+                status_code=500,
                 detail=f"Internal server error: {str(e)}"
             )
 
     @classmethod
-    async def generate_code_analysis(
+    async def genCodeAnalysis(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成代码分析
-        
+
         Args:
             course_id: 课程ID
             assign_id: 作业ID
-            
+
         Returns:
             MatrixAnalysisProps: 代码分析结果
         """
@@ -272,8 +272,8 @@ class AIAnalysisGenerator:
             # 获取代码分析
             code_analysis_content = await AI.get_response(
                 prompt=AIPrompt.CODEANALYSIS(
-                    assign_data.title, 
-                    assign_data.description, 
+                    assign_data.title,
+                    assign_data.description,
                     submitted_code
                 )
             )
@@ -295,21 +295,21 @@ class AIAnalysisGenerator:
 
         except Exception as e:
             raise HTTPException(
-                status_code=500, 
+                status_code=500,
                 detail=f"Internal server error: {str(e)}"
             )
 
     @classmethod
-    async def generate_learning_suggestions(
+    async def genLearningSuggestions(
         cls, course_id: str, assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成学习建议
-        
+
         Args:
             course_id: 课程ID
             assign_id: 作业ID
-            
+
         Returns:
             MatrixAnalysisProps: 学习建议结果
         """
@@ -319,8 +319,8 @@ class AIAnalysisGenerator:
             # 获取学习建议
             learning_suggestion_content = await AI.get_response(
                 prompt=AIPrompt.LEARNING_SUGGESTIONS(
-                    assign_data.title, 
-                    assign_data.description, 
+                    assign_data.title,
+                    assign_data.description,
                     assign_data.assignOriginalCode[0].content
                 )
             )
@@ -342,6 +342,6 @@ class AIAnalysisGenerator:
 
         except Exception as e:
             raise HTTPException(
-                status_code=500, 
+                status_code=500,
                 detail=f"Internal server error: {str(e)}"
             )
