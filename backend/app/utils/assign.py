@@ -44,11 +44,12 @@ def listStrToList(list_str: str) -> list[str]:
     # return list
 
 def testSampleToResultList(sample_input:list[str], sample_output:list[str], real_output:list[str]) -> list[TestSampleResult]:
+    sample_range = min(len(sample_input), len(sample_output), len(real_output))
     return [
         TestSampleResult(
             input=sample_input[i],
             expectOutput=sample_output[i],
             realOutput=real_output[i] if i < len(real_output) else "",
         )
-        for i in range(len(sample_input))
+        for i in range(sample_range)
     ]

@@ -103,6 +103,10 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
                 <matrix-analyse [analysis]="analysis.aiGen.learningSuggestions"></matrix-analyse>
               }
             }
+              <section class="reGen">
+                <button (click)="onAnalysisBasicRequestRegen()">重新生成</button>
+              </section>
+
           }
         </nz-tab>
       }
@@ -258,7 +262,8 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
 export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() assignData!: AssignData | undefined;
   @Input() analysis!: Analysis | undefined;
-  @Input() onAnalysisAiGenRequest = (notify: boolean) => { };
+  @Input() onAnalysisBasicRequestRegen = () => { };
+  @Input() onAnalysisAiGenRequest = (notify: boolean = false) => { };
   @Input() selectedTabIndex = signal(0);
 
   submitScoreStatus = signal<SubmitScoreStatus>('not-submitted')
