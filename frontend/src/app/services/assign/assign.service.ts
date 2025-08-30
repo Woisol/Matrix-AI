@@ -23,8 +23,8 @@ export class AssignService {
     );
   }
 
-  getAnalysisBasic$(courseId: CourseId, assigId: AssignId) {
-    return this.api.get$<BasicAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/basic`).pipe(
+  getAnalysisBasic$(courseId: CourseId, assigId: AssignId, reGen: boolean = false) {
+    return this.api.get$<BasicAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/basic${reGen ? '?reGen=true' : ''}`, { timeoutMs: 10 * 60 * 1000 }).pipe(
       catchError((e: HttpErrorResponse) => {
         let msg = '无法获取作业基础分析数据: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message)
         this.notify.error(msg)
@@ -33,8 +33,8 @@ export class AssignService {
     );
   }
 
-  getAnalysisAiGen$(courseId: CourseId, assigId: AssignId, notify: boolean = false) {
-    return this.api.get$<AiGenAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/aiGen`).pipe(
+  getAnalysisAiGen$(courseId: CourseId, assigId: AssignId, notify: boolean = false, reGen: boolean = false) {
+    return this.api.get$<AiGenAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/aiGen${reGen ? '?reGen=true' : ''}`, { timeoutMs: 10 * 60 * 1000 }).pipe(
       catchError((e: HttpErrorResponse) => {
         if (e.status === 400) {
           if (notify)

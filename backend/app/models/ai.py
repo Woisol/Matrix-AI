@@ -227,14 +227,27 @@ class AIAnalysisGenerator:
                 )
             )
 
+            knowledge_contents = [
+                c.strip() for c in knowledge_content.split("---") if c.strip()
+            ]
+
+            # 生成标题
+            knowledge_titles = [
+                await AI.get_response(AIPrompt.TITLE_CODE(content))
+                for content in knowledge_contents
+            ]
+
+            # 构建分析内容
+            content = []
+            for title, content_text in zip(knowledge_titles, knowledge_contents):
+                content.append(MatrixAnalysisContent(
+                    title=title,
+                    content=content_text,
+                    complexity=None
+                ))
+
             analysis = MatrixAnalysisProps(
-                content=[
-                    MatrixAnalysisContent(
-                        title="知识点分析",
-                        content=knowledge_content,
-                        complexity=None
-                    )
-                ],
+                content=content,
                 # TODO: implement summary prompt and logic
                 summary="",
                 showInEditor=False
@@ -279,14 +292,27 @@ class AIAnalysisGenerator:
                 )
             )
 
+            code_analysis_contents = [
+                c.strip() for c in code_analysis_content.split("---") if c.strip()
+            ]
+
+            # 生成标题
+            code_analysis_titles = [
+                await AI.get_response(AIPrompt.TITLE_CODE(content))
+                for content in code_analysis_contents
+            ]
+
+            # 构建分析内容
+            content = []
+            for title, content_text in zip(code_analysis_titles, code_analysis_contents):
+                content.append(MatrixAnalysisContent(
+                    title=title,
+                    content=content_text,
+                    complexity=None
+                ))
+
             analysis = MatrixAnalysisProps(
-                content=[
-                    MatrixAnalysisContent(
-                        title="代码分析",
-                        content=code_analysis_content,
-                        complexity=None
-                    )
-                ],
+                content=content,
                 # TODO: implement summary prompt and logic
                 summary="",
                 showInEditor=False
@@ -326,14 +352,27 @@ class AIAnalysisGenerator:
                 )
             )
 
+            learning_suggestion_contents = [
+                c.strip() for c in learning_suggestion_content.split("---") if c.strip()
+            ]
+
+            # 生成标题
+            learning_suggestion_titles = [
+                await AI.get_response(AIPrompt.TITLE_CODE(content))
+                for content in learning_suggestion_contents
+            ]
+
+            # 构建分析内容
+            content = []
+            for title, content_text in zip(learning_suggestion_titles, learning_suggestion_contents):
+                content.append(MatrixAnalysisContent(
+                    title=title,
+                    content=content_text,
+                    complexity=None
+                ))
+
             analysis = MatrixAnalysisProps(
-                content=[
-                    MatrixAnalysisContent(
-                        title="学习建议",
-                        content=learning_suggestion_content,
-                        complexity=None
-                    )
-                ],
+                content=content,
                 # TODO: implement summary prompt and logic
                 summary="",
                 showInEditor=False

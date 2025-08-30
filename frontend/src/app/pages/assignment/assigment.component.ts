@@ -18,7 +18,7 @@ import { NotificationService } from "../../services/notification/notification.se
   <div class="assignment-con">
     <nz-splitter>
       <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true">
-        <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [onAnalysisAiGenRequest]="loadAnalysisAiGen" [selectedTabIndex]="selectedTabIndex" />
+        <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [onAnalysisBasicRequestRegen]="loadAnalysisBasicRegen" [onAnalysisAiGenRequest]="loadAnalysisAiGen" [selectedTabIndex]="selectedTabIndex" />
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
         <code-editor [codeFile]="codeFile()" [onSubmitRequest]="onSubmitRequest"/>
@@ -69,12 +69,12 @@ export class AssignmentComponent implements OnDestroy {
         return;
       }
       this.loadAnalysisBasic();
-      this.loadAnalysisAiGen();
+      // this.loadAnalysisAiGen();
     });
     this.subs.push(sub);
   }
 
-  private loadAssign() {
+  loadAssign() {
     if (!this.courseId || !this.assignId) return;
     const sub = this.assignService.getAssignData$(this.courseId, this.assignId).subscribe(data => {
       this.assignData.set(data);
@@ -87,9 +87,9 @@ export class AssignmentComponent implements OnDestroy {
     this.subs.push(sub);
   }
 
-  private loadAnalysisBasic() {
+  loadAnalysisBasic = (reGen: boolean = false) => {
     if (!this.courseId || !this.assignId) return;
-    const sub = this.assignService.getAnalysisBasic$(this.courseId, this.assignId).subscribe(data => {
+    const sub = this.assignService.getAnalysisBasic$(this.courseId, this.assignId, reGen).subscribe(data => {
       // 修复: 初次加载 analysis 为空时展开 undefined 会抛错
       const prev = this.analysis();
       this.analysis.set({
@@ -98,6 +98,11 @@ export class AssignmentComponent implements OnDestroy {
       });
     });
     this.subs.push(sub);
+  }
+
+  loadAnalysisBasicRegen = () => {
+    this.loadAnalysisBasic(true);
+    this.notify.info("已经请求重新分析，预计要 1~2 分钟，请耐心等待")
   }
 
   loadAnalysisAiGen = (notify: boolean = false) => {
@@ -116,6 +121,7 @@ export class AssignmentComponent implements OnDestroy {
       });
     });
     this.subs.push(sub);
+    this.notify.info("已经请求生成分析，预计要 1~2 分钟，请耐心等待")
   }
 
   // ngOnInit(): void {
