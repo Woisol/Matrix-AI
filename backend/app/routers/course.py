@@ -21,7 +21,7 @@ async def get_course(
 ):
     return await CourseController.get_course(course_id=course_id)
 
-@course_router.post("/courses", response_model=CourseBase)
+@course_router.post("/courses", response_model=bool)
 async def set_course(
     course:CourseCreateRequest = Body(..., description="课程信息")
     # courseId: str | None = Form(None, description="课程ID，若不传则创建新课程"),

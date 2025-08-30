@@ -7,10 +7,10 @@ from tortoise.models import Model
 class Analysis(Model):
     """AI 分析模型"""
     assignment = fields.ForeignKeyField("models.Assignment", related_name="analysis", description="所属作业")
-    resolution = fields.JSONField(description="题目解法")
-    knowledge_analysis = fields.JSONField(description="知识点分析")
-    code_analysis = fields.JSONField(description="提交代码分析")
-    learning_suggestions = fields.JSONField(description="学习建议")
+    resolution = fields.JSONField(null=True, description="题目解法")
+    knowledge_analysis = fields.JSONField(null=True, description="知识点分析")
+    code_analysis = fields.JSONField(null=True, description="提交代码分析")
+    learning_suggestions = fields.JSONField(null=True, description="学习建议")
 
     class Meta:
         table = "assignment_analysis"

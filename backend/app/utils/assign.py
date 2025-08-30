@@ -29,7 +29,7 @@ async def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[Assignment
 
 def listStrToList(list_str: str) -> list[str]:
     """将字符串列表转换为 Python 列表"""
-    res = json.loads(list_str)
+    res = json.loads(list_str, strict=False)
     # .replace("'", '"')
     return res
     # return list(ast.literal_eval(list_str))
