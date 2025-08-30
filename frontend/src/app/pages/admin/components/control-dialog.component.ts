@@ -128,19 +128,31 @@ import { AssignId, CourseId } from "../../../api/type/general";
             <textarea
               nz-input
               formControlName="assignOriginalCode"
-              placeholder='例如：[{"fileName": "main.cpp", "content": "#include <iostream>\nusing namespace std;\n\nint main() {\n    // your code here\n    return 0;\n}"}]'
+              placeholder='现在可以直接输入代码'
               [nzAutosize]="{ minRows: 4, maxRows: 8 }">
             </textarea>
           </nz-form-control>
         </nz-form-item>
 
         <nz-form-item>
-          <nz-form-label>测试样例</nz-form-label>
-          <nz-form-control nzHasFeedback nzExtra="JSON格式的测试输入输出">
+          <nz-form-label>测试样例-输入</nz-form-label>
+          <nz-form-control nzHasFeedback nzExtra="标准输入列表，使用|分隔">
             <textarea
               nz-input
-              formControlName="testSample"
-              placeholder='例如：{"input":["5 3"], "expectOutput":["8"]}'
+              formControlName="testSampleInput"
+              placeholder='例如：1|2|3'
+              [nzAutosize]="{ minRows: 3}">
+            </textarea>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>测试样例-输出</nz-form-label>
+          <nz-form-control nzHasFeedback nzExtra="标准输出列表，使用|分隔">
+            <textarea
+              nz-input
+              formControlName="testSampleOutput"
+              placeholder='例如：1|4|9'
               [nzAutosize]="{ minRows: 3, maxRows: 6 }">
             </textarea>
           </nz-form-control>
@@ -215,12 +227,13 @@ export class ControlDialogComponent implements OnInit, OnChanges {
   });
 
   validateAssignForm = this.formBuilder.group({
-    courseId: this.formBuilder.control<CourseId>(''),
+    courseId: this.formBuilder.control<CourseId>('', [Validators.required]),
     assignId: this.formBuilder.control<AssignId>(''),
     title: this.formBuilder.control<string>('', [Validators.required, Validators.minLength(1)]),
     description: this.formBuilder.control<string>('', [Validators.required, Validators.minLength(1)]),
-    assignOriginalCode: this.formBuilder.control<string>('[{"fileName": "main.cpp", "content": ""}]', [Validators.required]),
-    testSample: this.formBuilder.control<string>('{"input":[],"expectOutput":[]}'),
+    assignOriginalCode: this.formBuilder.control<string>('', [Validators.required]),
+    testSampleInput: this.formBuilder.control<string>(''),
+    testSampleOutput: this.formBuilder.control<string>(''),
     ddl: this.formBuilder.control<string>(''),
   });
 
@@ -349,7 +362,13 @@ export class ControlDialogComponent implements OnInit, OnChanges {
   private onSubmitAssignment(): void {
     if (this.validateAssignForm.valid) {
       this.submitting = true;
-      const formData = this.validateAssignForm.value as AssignTransProps & { courseId: CourseId };
+      const _rawData = this.validateAssignForm.value;
+
+      const formData = {
+        ..._rawData,
+        assignOriginalCode: JSON.stringify([{ fileName: "main.cpp", content: _rawData.assignOriginalCode }]),
+        testSample: JSON.stringify({ input: _rawData.testSampleInput?.split('|'), expectOutput: _rawData.testSampleOutput?.split('|') })
+      } as AssignTransProps & { courseId: CourseId };
 
       if (formData.assignId) {
         this.courseApi.updateAssignment$(formData).subscribe(data => {
@@ -404,8 +423,9 @@ export class ControlDialogComponent implements OnInit, OnChanges {
    */
   private resetAssignmentForm(): void {
     this.validateAssignForm.reset();
-    this.validateAssignForm.get('assignOriginalCode')?.setValue('[{"fileName": "main.cpp", "content": ""}]');
-    this.validateAssignForm.get('testSample')?.setValue('{"input":[],"expectOutput":[]}');
+    this.validateAssignForm.get('assignOriginalCode')?.setValue('');
+    this.validateAssignForm.get('testSampleInput')?.setValue('');
+    this.validateAssignForm.get('testSampleOutput')?.setValue('');
   }
 
   /**
