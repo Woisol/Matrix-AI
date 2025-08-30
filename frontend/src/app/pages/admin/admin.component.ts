@@ -494,10 +494,11 @@ export class AdminComponent {
           assignId: foundAssignment.assignId,
           title: foundAssignment.assignmentName,
           description: _descript,
-          assignOriginalCode: JSON.stringify(data.assignOriginalCode) ?? '[{"fileName": "main.cpp", "content": ""}]',
-          testSample: '{"input":[],"expectOutput":[]}',
+          assignOriginalCode: data.assignOriginalCode[0].content ?? '',
+          testSampleInput: '',
+          testSampleOutput: '',
           ddl: foundAssignment.ddl ? foundAssignment.ddl.toString() : ''
-        } as AssignTransProps;
+        } as AssignTransProps & { testSampleInput: string, testSampleOutput: string };
         this.dialogType.set('assignment');
         this.editingCourse = null;
         this.showDialog = true;
