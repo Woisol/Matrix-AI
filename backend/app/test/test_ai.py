@@ -49,8 +49,8 @@ class TestAIAnalysisGenerator(unittest.IsolatedAsyncioTestCase):
             submit=None,
         )
 
-        # 第一次调用 getResponse 返回所有解法（当前实现按换行切分）
-        solutions_text = await AI.getResponse(Prompt.AIPrompt.RESOLUTION(assign.title,
+        # 第一次调用 get_response 返回所有解法（当前实现按换行切分）
+        solutions_text = await AI.get_response(Prompt.AIPrompt.RESOLUTION(assign.title,
                                                                          assign.description,
                                                                          assign.assignOriginalCode[0].content))
         print(solutions_text)
