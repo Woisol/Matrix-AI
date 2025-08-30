@@ -33,9 +33,14 @@ export class AssignService {
     );
   }
 
-  getAnalysisAiGen$(courseId: CourseId, assigId: AssignId) {
-    return this.api.get$<AiGenAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/detail`).pipe(
+  getAnalysisAiGen$(courseId: CourseId, assigId: AssignId, notify: boolean = false) {
+    return this.api.get$<AiGenAnalysis>(`/courses/${courseId}/assignments/${assigId}/analysis/aiGen`).pipe(
       catchError((e: HttpErrorResponse) => {
+        if (e.status === 403) {
+          if (notify)
+            this.notify.info('AI生成分析功能需要在提交后才能使用哦~');
+          return of(undefined);
+        }
         let msg = '无法获取作业AI生成分析数据: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message)
         this.notify.error(msg)
         return of(undefined)

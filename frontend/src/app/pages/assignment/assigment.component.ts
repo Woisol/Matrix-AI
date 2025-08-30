@@ -97,9 +97,9 @@ export class AssignmentComponent implements OnDestroy {
     this.subs.push(sub);
   }
 
-  loadAnalysisAiGen() {
+  loadAnalysisAiGen = (notify: boolean = false) => {
     if (!this.courseId || !this.assignId) return;
-    const sub = this.assignService.getAnalysisAiGen$(this.courseId, this.assignId).subscribe(data => {
+    const sub = this.assignService.getAnalysisAiGen$(this.courseId, this.assignId, notify).subscribe(data => {
       const prev = this.analysis();
       this.analysis.set({
         basic: prev?.basic!,

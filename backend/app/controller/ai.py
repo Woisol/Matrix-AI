@@ -1,5 +1,7 @@
 import uuid, json
 
+from fastapi import HTTPException
+
 from app.models.assignment import Assignment as AssignmentModel, Analysis
 from app.models.ai import AI, AIAnalysisGenerator
 from app.schemas.assignment import BasicAnalysis, AiGenAnalysis
@@ -36,7 +38,11 @@ class AIController:
             )
     @classmethod
     async def getAiGen(cls, course_id: str, assign_id: str) -> AiGenAnalysis:
-        assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis")
+        assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis","submissions")
+        submited = True if assignment.submissions and assignment.submissions[0] else False
+        if not submited:
+            raise HTTPException(status_code=403, detail="AI生成分析功能需要在提交作业后才能使用哦~")
+
         analysis = assignment.analysis[0] if assignment.analysis else None
         if analysis:
             return AiGenAnalysis(
