@@ -15,6 +15,7 @@ from app.schemas.assignment import (
     MatrixAnalysisProps, Submit, TestSample, TestSampleCreate, TestSubmitRequest,
     SubmitRequest
 )
+from app.utils.ai import code_md_wrapper
 
 
 class AIMessage(BaseModel):
@@ -178,7 +179,7 @@ class AIAnalysisGenerator:
 
                 content.append(MatrixAnalysisContent(
                     title=title,
-                    content=content_text,
+                    content=code_md_wrapper(content_text),
                     complexity=Complexity(
                         time=time_complexity,
                         space=space_complexity
