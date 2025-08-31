@@ -286,12 +286,18 @@ class AIAnalysisGenerator:
 
                 logging.info(f"Received code analysis generate request")
 
+            _user = await User.filter(username=UserMatrixAI.username).all()
+            if not _user:
+                logging.error("No user")
+            user = _user[0]
+
             # 获取代码分析
             code_analysis_content = await AI.get_response(
                 prompt=AIPrompt.CODEANALYSIS(
                     assign_data.title,
                     assign_data.description,
-                    submitted_code
+                    submitted_code,
+                    user.code_style
                 )
             )
             code_analysis_contents = [
@@ -351,13 +357,18 @@ class AIAnalysisGenerator:
             if assign_data.submit and assign_data.submit.submitCode:
                 submitted_code = assign_data.submit.submitCode[0].content
 
+            _user = await User.filter(username=UserMatrixAI.username).all()
+            if not _user:
+                logging.error("No user")
+            user = _user[0]
 
             # 获取学习建议
             learning_suggestion_content = await AI.get_response(
                 prompt=AIPrompt.LEARNING_SUGGESTIONS(
                     assign_data.title,
                     assign_data.description,
-                    submitted_code
+                    submitted_code,
+                    user.knowledge_status
                 )
             )
             learning_suggestion_contents = [
@@ -402,6 +413,7 @@ class AIAnalysisGenerator:
 
     @classmethod
     async def genUserProfile(cls):
+        logging.info(f"Received user profile generate request")
         _user = await User.filter(username=UserMatrixAI.username).all()
         if _user:
             user = _user[0]
