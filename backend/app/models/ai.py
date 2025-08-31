@@ -1,5 +1,5 @@
 
-import os
+import os, logging
 import requests
 import json
 from typing import Any, Dict, List, Optional
@@ -143,6 +143,7 @@ class AIAnalysisGenerator:
             assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
             # course_data: CourseData = await CourseController.get_course(course_id)
 
+            logging.info(f"Received resolution generate request")
             # 获取所有可能解法
             resol_content = await AI.get_response(
                 prompt=AIPrompt.RESOLUTION(
@@ -151,7 +152,6 @@ class AIAnalysisGenerator:
                     assign_data.assignOriginalCode[0].content
                 )
             )
-
             resol_contents = [
                 c.strip() for c in resol_content.split("---") if c.strip()
             ]
@@ -161,7 +161,6 @@ class AIAnalysisGenerator:
                 await AI.get_response(AIPrompt.TITLE_CODE(code))
                 for code in resol_contents
             ]
-
             # 生成复杂度
             resol_complexities = [
                 await AI.get_response(AIPrompt.COMPLEXITY(code))
@@ -218,6 +217,8 @@ class AIAnalysisGenerator:
         try:
             assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
 
+            logging.info(f"Received knowledge analysis generate request")
+
             # 获取知识点分析
             knowledge_content = await AI.get_response(
                 prompt=AIPrompt.KNOWLEDGEANALYSIS(
@@ -226,17 +227,15 @@ class AIAnalysisGenerator:
                     assign_data.assignOriginalCode[0].content
                 )
             )
-
             knowledge_contents = [
                 c.strip() for c in knowledge_content.split("---") if c.strip()
             ]
 
             # 生成标题
             knowledge_titles = [
-                await AI.get_response(AIPrompt.TITLE_CODE(content))
+                await AI.get_response(AIPrompt.TITLE(content))
                 for content in knowledge_contents
             ]
-
             # 构建分析内容
             content = []
             for title, content_text in zip(knowledge_titles, knowledge_contents):
@@ -283,6 +282,8 @@ class AIAnalysisGenerator:
             if assign_data.submit and assign_data.submit.submitCode:
                 submitted_code = assign_data.submit.submitCode[0].content
 
+                logging.info(f"Received code analysis generate request")
+
             # 获取代码分析
             code_analysis_content = await AI.get_response(
                 prompt=AIPrompt.CODEANALYSIS(
@@ -291,17 +292,15 @@ class AIAnalysisGenerator:
                     submitted_code
                 )
             )
-
             code_analysis_contents = [
                 c.strip() for c in code_analysis_content.split("---") if c.strip()
             ]
 
             # 生成标题
             code_analysis_titles = [
-                await AI.get_response(AIPrompt.TITLE_CODE(content))
+                await AI.get_response(AIPrompt.TITLE(content))
                 for content in code_analysis_contents
             ]
-
             # 构建分析内容
             content = []
             for title, content_text in zip(code_analysis_titles, code_analysis_contents):
@@ -343,6 +342,8 @@ class AIAnalysisGenerator:
         try:
             assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
 
+            logging.info(f"Received learning suggestions generate request")
+
             # 获取学习建议
             learning_suggestion_content = await AI.get_response(
                 prompt=AIPrompt.LEARNING_SUGGESTIONS(
@@ -351,17 +352,15 @@ class AIAnalysisGenerator:
                     assign_data.assignOriginalCode[0].content
                 )
             )
-
             learning_suggestion_contents = [
                 c.strip() for c in learning_suggestion_content.split("---") if c.strip()
             ]
 
             # 生成标题
             learning_suggestion_titles = [
-                await AI.get_response(AIPrompt.TITLE_CODE(content))
+                await AI.get_response(AIPrompt.TITLE(content))
                 for content in learning_suggestion_contents
             ]
-
             # 构建分析内容
             content = []
             for title, content_text in zip(learning_suggestion_titles, learning_suggestion_contents):

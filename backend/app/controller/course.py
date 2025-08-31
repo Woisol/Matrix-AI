@@ -110,9 +110,11 @@ class CourseController:
                     completed=False
                 )
 
+                #@todo regain feature
                 # 如果提供了作业ID列表，关联作业
                 #! 暂时不支持直接修改 assignment
-                # if assignmentIdList:
+                # if assignmentIds and assignmentIds.strip():
+                #     assignmentIdList = [aid.strip() for aid in assignmentIds.split(",") if aid.strip()]
                 #     assignments = await Assignment.filter(id__in=assignmentIdList)
                 #     if len(assignments) != len(assignmentIdList):
                 #         # 有些作业ID不存在
@@ -123,7 +125,7 @@ class CourseController:
                 #             detail=f"Assignment IDs not found: {missing_ids}"
                 #         )
 
-                # 建立多对多关联
+                # # 建立多对多关联
                 # await course.assignments.add(*assignments)
 
             # 重新获取课程数据（包含关联的作业）
