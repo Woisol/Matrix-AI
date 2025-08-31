@@ -4,7 +4,7 @@
 from tortoise import Tortoise
 from tortoise.contrib.fastapi import register_tortoise
 from fastapi import FastAPI
-import os
+import os, logging
 from app.constants.user import UserMatrixAI
 
 # 数据库配置
@@ -33,7 +33,7 @@ async def ensure_user_table():
     from app.models.user import User
 
     # 检查是否已有默认用户，避免重复创建
-    default_user_exists = await User.exists(username="admin")
+    default_user_exists = await User.exists(username=UserMatrixAI.username)
 
     if not default_user_exists:
         # 创建默认管理员用户
@@ -42,12 +42,10 @@ async def ensure_user_table():
             code_style="",
             knowledge_status=""
         )
-        print("✅ 已创建默认管理员用户: admin")
+        logging.info(f"已创建默认管理员用户: {UserMatrixAI.username}")
 
     # 可以添加其他默认数据
     # 例如：默认课程、默认作业等
-
-    print("✅ 默认数据初始化完成")
 
 
 async def close_db():
