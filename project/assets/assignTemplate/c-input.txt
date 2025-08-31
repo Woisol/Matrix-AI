@@ -1,14 +1,14 @@
 C++字符串
-
+---
 # 要求
 输入一个字符串，返回其长度
-
+---
 #include<iostream>
 using namespace std;
 int main(){
   return 0;
 }
-
+---
 a|abc
-
+---
 1|3

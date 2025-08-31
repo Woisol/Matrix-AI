@@ -1,9 +1,11 @@
-import { Component, inject, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ChangeDetectorRef, computed, signal } from "@angular/core";
+import { Component, inject, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter, ChangeDetectorRef, computed, signal, OnDestroy } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { CommonModule } from "@angular/common";
 import { NzFormModule } from "ng-zorro-antd/form";
 import { NzInputModule } from "ng-zorro-antd/input";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzDatePickerModule } from "ng-zorro-antd/date-picker";
+import { NzIconModule } from "ng-zorro-antd/icon";
 import { CourseInfo } from "../../../services/course/course-store.service";
 import { AllCourse, CourseTransProps } from "../../../api/type/course";
 import { AssignData, AssignTransProps } from "../../../api/type/assigment";
@@ -17,7 +19,7 @@ import { AssignId, CourseId } from "../../../api/type/general";
 
 @Component({
   selector: 'control-dialog',
-  imports: [NzFormModule, ReactiveFormsModule, NzInputModule, NzSelectModule, NzCheckboxModule, NzModalModule, NzButtonModule, NzDatePickerModule],
+  imports: [CommonModule, NzFormModule, ReactiveFormsModule, NzInputModule, NzSelectModule, NzCheckboxModule, NzModalModule, NzButtonModule, NzDatePickerModule, NzIconModule],
   template: `
   <nz-modal
     [nzVisible]="showModal"
@@ -89,7 +91,24 @@ import { AssignId, CourseId } from "../../../api/type/general";
 
     <!-- 作业表单 -->
     @if (type === 'assignment') {
-      <form nz-form nzLayout="vertical" [formGroup]="validateAssignForm">
+      <div (drop)="snipetDrop($event)"
+            (dragover)="onDragOver($event)"
+            (dragenter)="onDragEnter($event)"
+            (dragleave)="onDragLeave($event)">
+      <form nz-form nzLayout="vertical" [formGroup]="validateAssignForm"
+
+            style="position: relative;">
+        <!-- @if (isDragOver()) { -->
+          <div class="drag-overlay" [class.active]="isDragOver()">
+            <div class="drag-message">
+              <span nz-icon nzType="drag" nzTheme="outline"></span>
+              <p>拖拽选中的文本到此处自动解析作业信息</p>
+              <small>内容按顺序为 标题、描述、初始代码、测试样例输入、输出，使用 --- 分隔</small>
+              <small>另外在本页面粘贴也可实现</small>
+            </div>
+          </div>
+        <!-- } -->
+        <small><span nz-icon nzType="bulb" nzTheme="outline"></span>现已支持文本拖拽和粘贴快捷导入作业信息！<br/>内容按顺序为 标题、描述、初始代码、测试样例输入、输出，使用 --- 分隔</small>
         <nz-form-item>
           <nz-form-label>课程ID</nz-form-label>
           <nz-form-control nzErrorTip="请输入课程ID">
@@ -170,6 +189,7 @@ import { AssignId, CourseId } from "../../../api/type/general";
           </nz-form-control>
         </nz-form-item>
       </form>
+      </div>
     }
     </div>
   </nz-modal>
@@ -197,9 +217,58 @@ import { AssignId, CourseId } from "../../../api/type/general";
       color: #8c8c8c;
       margin-top: 4px;
     }
+
+    /* 拖拽覆盖层样式 */
+    .drag-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      /*! 使用 color-mix 复用 var 添加透明度*/
+      background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+      backdrop-filter: blur(4px);
+      border: 2px dashed var(--color-primary);
+      border-radius: 6px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+      pointer-events: none;
+    }
+
+    .drag-overlay.active {
+      opacity: 1;
+    }
+
+    .drag-message {
+      text-align: center;
+      color: var(--color-primary);
+      font-size: 16px;
+    }
+
+    .drag-message [nz-icon] {
+      font-size: 32px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .drag-message p {
+      margin: 0 0 4px 0;
+      font-weight: 500;
+    }
+
+    .drag-message small {
+      font-size: 12px;
+      color: #666;
+      display: block;
+      margin-top: 4px;
+    }
   `],
 })
-export class ControlDialogComponent implements OnInit, OnChanges {
+export class ControlDialogComponent implements OnInit, OnChanges, OnDestroy {
   @Input() showModal: boolean = false;
   @Input() type: 'course' | 'assignment' = 'course';
   @Input() courseTrans: CourseTransProps | null = null;
@@ -216,6 +285,9 @@ export class ControlDialogComponent implements OnInit, OnChanges {
   // isEdit = computed(() => this.type === 'course' ? !!this.courseTrans : !!this.assignTrans);
   isUpdate = signal(this.type === 'course' ? !!this.courseTrans : !!this.assignTrans)
   notify = inject(NotificationService)
+
+  // 拖拽相关属性
+  isDragOver = signal(false);
 
   validateCourseForm = this.formBuilder.group({
     courseId: this.formBuilder.control<CourseId>(''),
@@ -239,6 +311,17 @@ export class ControlDialogComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.initializeForms();
+    window.addEventListener('paste', async () => {
+      const _content = await window.navigator.clipboard.readText();
+      if (_content.trim()) {
+        this.parseAssignmentContent(_content);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('paste', async () => {
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -451,5 +534,82 @@ export class ControlDialogComponent implements OnInit, OnChanges {
     this.submitting = false;
     this.resetForms();
     this.modalVisibleChange.emit(false);
+  }
+
+  // 拖拽处理方法
+  onDragOver(e: DragEvent) {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  onDragEnter(e: DragEvent) {
+    e.preventDefault();
+    this.isDragOver.set(true);
+  }
+
+  onDragLeave(e: DragEvent) {
+    e.preventDefault();
+    // 使用 relatedTarget 检查是否仍在当前元素内防止内部拖动触发 DragLeave
+    if (!e.relatedTarget || !(e.currentTarget as HTMLElement)?.contains(e.relatedTarget as Node)) {
+      this.isDragOver.set(false);
+    }
+  }
+
+  /**
+   * 处理文本拖拽放置
+   */
+  snipetDrop(e: DragEvent) {
+    e.preventDefault();
+
+    // 重置拖拽状态
+    this.isDragOver.set(false);
+
+    if (!e.dataTransfer) return;    // 优先处理文本拖拽
+    const textData = e.dataTransfer.getData('text/plain');
+
+    if (textData && textData.trim()) {
+      // 处理选中文本拖拽
+      this.parseAssignmentContent(textData);
+    } else {
+      this.notify.warning('未检测到有效的文本内容，请选中文本后拖拽。');
+    }
+  }
+
+  /**
+   * 解析作业内容格式并填充表单
+   * 使用 --- 分隔各部分内容
+   */
+  private parseAssignmentContent(content: string) {
+    try {
+      const inputs = content.split('---').map(s => s.trim()).filter(s => s);
+
+      // 填充表单
+      if (inputs[0]) {
+        this.validateAssignForm.patchValue({ title: inputs[0] });
+      }
+
+      if (inputs[1]) {
+        this.validateAssignForm.patchValue({ description: inputs[1] });
+      }
+
+      if (inputs[2]) {
+        this.validateAssignForm.patchValue({ assignOriginalCode: inputs[2] });
+      }
+
+      if (inputs[3]) {
+        this.validateAssignForm.patchValue({ testSampleInput: inputs[3] });
+      }
+
+      if (inputs[4]) {
+        this.validateAssignForm.patchValue({ testSampleOutput: inputs[4] });
+      }
+
+      this.notify.success('作业信息已自动填充！请检查并确认内容。');
+
+    } catch (error) {
+      this.notify.error('快捷解析失败，请检查文件格式是否正确：' + error);
+    }
   }
 }
