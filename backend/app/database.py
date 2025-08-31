@@ -5,13 +5,14 @@ from tortoise import Tortoise
 from tortoise.contrib.fastapi import register_tortoise
 from fastapi import FastAPI
 import os
+from app.constants.user import UserMatrixAI
 
 # 数据库配置
 TORTOISE_ORM = {
     "connections": {"default": "sqlite://db.sqlite3"},
     "apps": {
         "models": {
-            "models": ["app.models.course", "app.models.assignment", "aerich.models"],
+            "models": ["app.models.course", "app.models.assignment", "app.models.analysis", "app.models.user", "aerich.models"],
             "default_connection": "default",
         },
     },
@@ -22,10 +23,31 @@ async def init_db():
     """初始化数据库连接"""
     await Tortoise.init(
         db_url="sqlite://db.sqlite3",
-        modules={"models": ["app.models.course", "app.models.assignment"]}
+        modules={"models": ["app.models.course", "app.models.assignment", "app.models.analysis", "app.models.user"]}
     )
     # 生成数据库表
     await Tortoise.generate_schemas()
+
+async def ensure_user_table():
+    """初始化默认数据，避免重复创建"""
+    from app.models.user import User
+
+    # 检查是否已有默认用户，避免重复创建
+    default_user_exists = await User.exists(username="admin")
+
+    if not default_user_exists:
+        # 创建默认管理员用户
+        await User.create(
+            username=UserMatrixAI.username,
+            code_style="",
+            knowledge_status=""
+        )
+        print("✅ 已创建默认管理员用户: admin")
+
+    # 可以添加其他默认数据
+    # 例如：默认课程、默认作业等
+
+    print("✅ 默认数据初始化完成")
 
 
 async def close_db():
