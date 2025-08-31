@@ -1,4 +1,5 @@
 import uuid, json
+import asyncio, logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -194,8 +195,26 @@ class AssignmentController:
                     submit_code=json.dumps([submitRequest.codeFile.model_dump()], ensure_ascii=False),
                 )
             await submitModel.save()
+
+            # 创建后台任务异步删除之前的 AI 分析，不阻塞当前请求
+            asyncio.create_task(cls.remove_previous_ai_gen(assignment))
+
             return submit
         except HTTPException as he:
             raise he
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    @classmethod
+    async def remove_previous_ai_gen(cls, assignment: AssignmentModel):
+        """删除之前的 AI 生成分析"""
+        try:
+            _analysis = await assignment.analysis.all()
+
+            if _analysis:
+                analysis = _analysis[0]
+                analysis.code_analysis = None
+                analysis.learning_suggestions = None
+                await analysis.save()
+        except Exception as e:
+            # 静默处理错误，不影响主流程
+            logging.error(f"清除 {assignment.id} 的 AI 分析缓存时出错: {e}")

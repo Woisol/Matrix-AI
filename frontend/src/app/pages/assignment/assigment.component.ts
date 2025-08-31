@@ -163,6 +163,10 @@ export class AssignmentComponent implements OnDestroy {
         ...ad!,
         submit: response as Submit
       }));
+      this.analysis.set({
+        ...this.analysis()!,
+        aiGen: undefined
+      })
       this.selectedTabIndex.set(1);
       this.notify.success("提交成功！")
     });
