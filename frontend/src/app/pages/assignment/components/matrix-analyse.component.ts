@@ -21,7 +21,7 @@ export interface MatrixAnalysisProps {
   template: `
     <nz-tabs>
       @for (tab of analysis?.content; track $index) {
-        <nz-tab [nzTitle]="tab.title">
+        <nz-tab [nzTitle]="tab.title.trim() || '无标题'">
           <div class="analyse-con">
             <div class="complexity">
               @if (tab.complexity) {

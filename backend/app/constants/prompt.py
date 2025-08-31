@@ -70,6 +70,7 @@ class AIPrompt:
     def CODEANALYSIS(title: str, description: str, stu_content: str) -> str:
         """输入题目标题、描述和学生代码，让AI生成代码分析"""
 
+# 【B迷惑行为】（int main 直接 return 0）代码简洁，直接返回0，符合题目的要求。
         return f"""{AIPrompt.BASE_ROLE}你的任务是帮助学生理解和分析编程作业。以下是作业的详细信息：
 题干：【{title}】{description}
 学生提交的代码如下：
