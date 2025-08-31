@@ -10,10 +10,11 @@ import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
 import { MatrixAnalyseComponent } from "./matrix-analyse.component";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
+import { SubmitScoreComponent } from "./submit-score.component";
 
 @Component({
   selector: "course-info-tab",
-  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule],
+  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, SubmitScoreComponent],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -40,18 +41,7 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
             <p style="margin: 0;">
               <small>Powered by Matrix</small>
             </p>
-            <div class="submit-score">
-              <nz-progress nzType="dashboard" [nzWidth]="80" [nzPercent]="assignData!.submit?.score ?? 0" [nzShowInfo]="true" [nzStrokeColor]="{ '10%': '#ee7373ff', '100%': '#97e973ff' }" [nzFormat]="progressScoreFormat" />
-              <strong class="score-status">
-                {{
-                  submitScoreStatus() === 'not-submitted' ? '🤔你还没有提交呢' :
-                  submitScoreStatus() === 'not-passed' ? '✏️还没有通过本题呢，\n再检查一下叭~' :
-                  submitScoreStatus() === 'passed' ? '💪离满分就差一点点啦！\n再接再厉哦~' :
-                  '🎉恭喜你，满分了！\n请继续保持呢~'
-                }}
-              </strong>
-            </div>
-            <p><strong>提交时间:</strong> {{ assignData!.submit!.time | date:'yyyy-MM-dd HH:mm:ss' }}</p>
+            <submit-score [score]="assignData!.submit?.score" [submitTime]="assignData!.submit?.time"></submit-score>
             <!-- 测试样例 -->
             <nz-collapse class="test-sample-con">
             @for (testSample of assignData?.submit?.testSample; track $index) {
@@ -75,7 +65,7 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
       </nz-tab>
 
       @if (assignData?.submit && ddlGrant() && analysis) {
-        <nz-tab nzTitle="分析">
+        <nz-tab nzTitle="AI 分析">
           @if (!analysis) {
             <div class="empty-content">
               <p>暂无题解内容</p>
@@ -108,7 +98,6 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
             <section class="reGen">
               <button (click)="handleAnalysisRegen()" nz-tooltip nzTooltipTitle="重新生成基础分析"><span nz-icon nzType="reload" nzTheme="outline"></span></button>
             </section>
-
           }
         </nz-tab>
       }
@@ -192,32 +181,6 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
     gap: 8px;
   }
 
-  .submit-score {
-    background: #fafafa;
-    padding: 1em;
-    border-radius: var(--size-radius);
-    border: 1px solid #fafafa;
-    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    .score-status {
-      /*width: calc(100% - 100px);
-      height: 100%;
-      padding: 8px 0;
-      display: inline-block;*/
-      color: #595959;
-      white-space: pre-wrap;
-
-      strong {
-        color: #262626;
-        margin-right: 8px;
-      }
-    }
-  }
-
   /*::ng-deep .ant-tabs-content,::ng-deep .ant-tabs-tabpane{
     height: 100%;
   }*/
@@ -282,7 +245,6 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() onAnalysisAiGenRequest = (notify: boolean = false) => { };
   @Input() selectedTabIndex = signal(0);
 
-  submitScoreStatus = signal<SubmitScoreStatus>('not-submitted')
   //! 暂不考虑更新，要看自己刷新⚫
   ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! > new Date());
 
@@ -292,7 +254,6 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['assignData']) {
-      this.submitScoreStatus.set(this.assignData?.submit ? getSubmitScoreStatus(this.assignData.submit.score) : 'not-submitted');
       this.ddlGrant.set(!this.assignData?.ddl || this.assignData?.ddl! > new Date());
       // console.log('assignData changed:', changes['assignData'].currentValue);
     }

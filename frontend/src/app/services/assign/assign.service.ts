@@ -71,7 +71,7 @@ export class AssignService {
 
   submitRequest$(courseId: CourseId, assignId: AssignId, codeFile: CodeFileInfo) {
     // @todo 后端实现后尝试实现 大文件上传 代码
-    return this.api.post$(`/courses/${courseId}/assignments/${assignId}/submission`, { codeFile }).pipe(
+    return this.api.post$(`/courses/${courseId}/assignments/${assignId}/submission`, { codeFile }, { timeoutMs: 1 * 60 * 1000 }).pipe(
       catchError((e: HttpErrorResponse) => {
         this.notify.error(e.status === 400 ? "已经过了截止时间了呢" : '无法提交作业: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message))
         return of(undefined)

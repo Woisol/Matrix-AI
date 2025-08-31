@@ -51,7 +51,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
   `,
   styles: [`
     :host {
-      --size-action-bar: 40px;
+      --size-action-bar: 56px;
 
       width: 100%;
       height: 100%;
@@ -74,6 +74,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
     .action-bar{
       width: 100%;
       height: var(--size-action-bar);
+      padding: 8px 0;
       display: flex;
       gap: 4px;
       justify-content: flex-end;
