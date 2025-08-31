@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import HTTPException, Path, Form
 from tortoise import exceptions as torExceptions
 
+# from app.controller.ai import AIAnalysisGenerator
 from app.models.course import Course as CourseModel
 from app.models.assignment import Assignment as AssignmentModel, AssignmentCode, AssignmentSubmission
 from app.models.playground import Playground
@@ -198,6 +199,11 @@ class AssignmentController:
 
             # 创建后台任务异步删除之前的 AI 分析，不阻塞当前请求
             asyncio.create_task(cls.remove_previous_ai_gen(assignment))
+
+            #!  使用
+            from app.controller.ai import AIAnalysisGenerator
+
+            asyncio.create_task(AIAnalysisGenerator.genUserProfile())
 
             return submit
         except HTTPException as he:
