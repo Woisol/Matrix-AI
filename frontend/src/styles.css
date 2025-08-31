@@ -115,7 +115,7 @@ button:not(.ant-tabs-tab-btn, .nz-icon-btn) {
 
   &.secondary {
     color: var(--color-text);
-    border: solid 2px var(--color-border);
+    border: solid 1px var(--color-border);
     background: var(--color-bg);
   }
 
