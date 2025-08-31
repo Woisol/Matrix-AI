@@ -9,7 +9,7 @@ from tortoise import exceptions as torExceptions
 # from app.controller.ai import AIAnalysisGenerator
 from app.models.course import Course as CourseModel
 from app.models.assignment import Assignment as AssignmentModel, AssignmentCode, AssignmentSubmission
-from app.models.playground import Playground
+from app.models.sandbox_playground import SandboxPlayground as Playground
 from app.schemas.general import CourseId, AssignId
 from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, TestSampleResult, CodeFileInfo, JudgeResult, MdCodeContent
 
