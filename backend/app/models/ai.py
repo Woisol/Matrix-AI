@@ -344,12 +344,18 @@ class AIAnalysisGenerator:
 
             logging.info(f"Received learning suggestions generate request")
 
+            # 获取提交的代码，如果没有则使用空字符串
+            submitted_code = ""
+            if assign_data.submit and assign_data.submit.submitCode:
+                submitted_code = assign_data.submit.submitCode[0].content
+
+
             # 获取学习建议
             learning_suggestion_content = await AI.get_response(
                 prompt=AIPrompt.LEARNING_SUGGESTIONS(
                     assign_data.title,
                     assign_data.description,
-                    assign_data.assignOriginalCode[0].content
+                    submitted_code
                 )
             )
             learning_suggestion_contents = [
@@ -384,3 +390,10 @@ class AIAnalysisGenerator:
                 status_code=500,
                 detail=f"Internal server error: {str(e)}"
             )
+    async def genUserCodeStyle():
+        pass
+    async def genUserKnowledgeStatus():
+        pass
+
+    async def genUserProfile():
+        pass
