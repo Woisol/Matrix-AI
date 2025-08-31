@@ -10,12 +10,15 @@ from pydantic import BaseModel, Field
 
 from app.controller.assignment import AssignmentController
 from app.constants.prompt import AIPrompt
+from app.models.assignment import AssignmentSubmission
+from app.models.user import User
 from app.schemas.assignment import (
     AssignData, BasicAnalysis, CodeFileInfo, Complexity, MatrixAnalysisContent,
     MatrixAnalysisProps, Submit, TestSample, TestSampleCreate, TestSubmitRequest,
     SubmitRequest
 )
 from app.utils.ai import code_md_wrapper
+from app.constants.user import UserMatrixAI
 
 
 class AIMessage(BaseModel):
@@ -117,7 +120,6 @@ class AIQueue:
         while self.queue:
             item = self.queue.pop(0)
             raise NotImplementedError("AI任务处理逻辑未实现")
-
 
 class AIAnalysisGenerator:
     """AI分析生成器，提供各种类型的分析功能"""
@@ -390,10 +392,39 @@ class AIAnalysisGenerator:
                 status_code=500,
                 detail=f"Internal server error: {str(e)}"
             )
-    async def genUserCodeStyle():
-        pass
-    async def genUserKnowledgeStatus():
-        pass
+    @classmethod
+    async def genUserCodeStyle(cls, previous_analysis: str, submission_str: str):
+        return await AI.get_response(AIPrompt.CODE_STYLE(previous_analysis, submission_str))
 
-    async def genUserProfile():
-        pass
+    @classmethod
+    async def genUserKnowledgeStatus(cls, previous_analysis: str, submission_str: str):
+        return await AI.get_response(AIPrompt.KNOWLEDGE_STATUS(previous_analysis, submission_str))
+
+    @classmethod
+    async def genUserProfile(cls):
+        _user = await User.filter(username=UserMatrixAI.username).all()
+        if _user:
+            user = _user[0]
+
+        #! 失败的数据结构设计
+        submissions = await AssignmentSubmission.filter(student_id=UserMatrixAI.username).all()
+        if not submissions:
+            logging.error("No submissions found for user")
+            return
+        submission_str = ""
+        for submission in submissions:
+            # 获取关联的作业信息
+            await submission.fetch_related('assignment')
+            submission_str += f"""【{submission.assignment.title}】
+
+用户提交的代码：
+{json.loads(submission.submit_code)[0]['content']}
+
+---
+"""
+        code_style = await cls.genUserCodeStyle(user.code_style, submission_str)
+        knowledge_status = await cls.genUserKnowledgeStatus(user.knowledge_status, submission_str)
+
+        user.code_style = code_style
+        user.knowledge_status = knowledge_status
+        await user.save()

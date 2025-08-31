@@ -3,7 +3,7 @@ import json
 from fastapi import HTTPException
 
 from app.models.assignment import Assignment as AssignmentModel, Analysis
-from app.models.ai import AI, AIAnalysisGenerator
+from app.models.ai import AIAnalysisGenerator
 from app.schemas.assignment import BasicAnalysis, AiGenAnalysis
 
 import os
