@@ -67,7 +67,7 @@ class AIPrompt:
 """
 
     @staticmethod
-    def CODEANALYSIS(title: str, description: str, stu_content: str) -> str:
+    def CODEANALYSIS(title: str, description: str, stu_content: str, previous_code_style: str) -> str:
         """输入题目标题、描述和学生代码，让AI生成代码分析"""
 
 # 【B迷惑行为】（int main 直接 return 0）代码简洁，直接返回0，符合题目的要求。
@@ -77,12 +77,15 @@ class AIPrompt:
 
 {stu_content}
 
-请你仔细分析题干与学生代码，首先在开头给出学生代码的时间复杂度和空间复杂度分析，然后给出这种实现的优缺点（如果没有可以不提），以及编码风格和代码质量分析等，并指出知识掌握的不足之处，{AIPrompt.RULE_SPLIT}。注意你只需要给出代码分析内容并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
-"""
+学生过往代码风格的报告如下：
+{previous_code_style}
 
+请你仔细分析题干与学生代码，首先在开头简要给出学生代码的时间复杂度和空间复杂度分析，给出这种实现的优缺点（如果没有可以不提），以及代码风格和代码质量分析等，同时结合学生过往的代码风格报告，指出学生的改进之处。以上内容{AIPrompt.RULE_SPLIT}。注意你只需要给出分析内容并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
+"""
+# ，并指出知识掌握的不足之处，
 
     @staticmethod
-    def LEARNING_SUGGESTIONS(title: str, description: str, stu_content: str) -> str:
+    def LEARNING_SUGGESTIONS(title: str, description: str, stu_content: str, previous_knowledge_status: str) -> str:
         """输入题目标题、描述和初始代码，让AI生成学习建议"""
         return f"""{AIPrompt.BASE_ROLE}，你的任务是帮助学生提高编程能力。以下是作业的详细信息：
 题干：【{title}】{description}
@@ -90,7 +93,10 @@ class AIPrompt:
 
 {stu_content}
 
-请你仔细分析题干与学生代码，给出你建议学生可以拓展的学习方向，{AIPrompt.RULE_SPLIT}，以此帮助学生更好地理解和掌握相关知识点。注意你只需要给出学习建议内容并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
+学生过往的知识点掌握程度报告如下：
+{previous_knowledge_status}
+
+请你仔细分析题干与学生代码，结合学生过往知识点的掌握情况，给出你建议学生可以拓展的学习方向，{AIPrompt.RULE_SPLIT}，以此帮助学生更好地理解和掌握相关知识点。注意你只需要给出学习建议内容，各个建议之间{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
 """
 
     @staticmethod
@@ -102,7 +108,7 @@ class AIPrompt:
 学生当前的提交记录如下：
 {submission_str}
 
-请你根据以上信息，重新仔细分析学生的代码风格，输出一个分析报告
+请你根据以上信息，重新仔细分析学生的代码风格，输出一个简短的分析报告
 """
 
     @staticmethod
@@ -114,5 +120,5 @@ class AIPrompt:
 学生当前的提交记录如下：
 {submission_str}
 
-请你根据以上信息，重新仔细分析学生的知识掌握情况，输出一个分析报告
+请你根据以上信息，重新仔细分析学生的知识掌握情况，输出一个简短的分析报告
 """
