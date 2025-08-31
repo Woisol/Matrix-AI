@@ -136,6 +136,10 @@ button:not(.ant-tabs-tab-btn, .nz-icon-btn) {
 /* markdown patched 样式，直接使用 ::ng-deep markdown 由于未知原因无法生效 */
 .markdown-patched {
 
+  * {
+    user-select: text;
+  }
+
   /* @todo fix */
   &:first-child {
     margin-top: 0 !important;
