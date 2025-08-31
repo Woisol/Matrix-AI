@@ -8,7 +8,7 @@ class AIPrompt:
     def TITLE(content: str) -> str:
         """通用，输入文字自动概括生成标题"""
 
-        return f"""{AIPrompt.BASE_ROLE}现在请你阅读下面的文字，使用 2~6 个字概括作为其标题：
+        return f"""{AIPrompt.BASE_ROLE}，现在请你阅读下面的文字，使用 2~6 个字概括作为其标题：
 
 {content}
 
@@ -20,7 +20,7 @@ class AIPrompt:
     def TITLE_CODE(code: str) -> str:
         """输入代码，让AI根据解法生成标题"""
 
-        return f"""{AIPrompt.BASE_ROLE}现在请你分析下面的代码，使用 2~6 个字概括这个解法最根本的原理作为其标题：
+        return f"""{AIPrompt.BASE_ROLE}，现在请你分析下面的代码，使用 2~6 个字概括这个解法最根本的原理作为其标题：
 
 {code}
 
@@ -31,7 +31,7 @@ class AIPrompt:
     def COMPLEXITY(code: str) -> str:
         """输入代码，让AI分析时间复杂度和空间复杂度"""
 
-        return f"""{AIPrompt.BASE_ROLE}现在请你分析下面的代码，给出其时间复杂度和空间复杂度：
+        return f"""{AIPrompt.BASE_ROLE}，现在请你分析下面的代码，给出其时间复杂度和空间复杂度：
 
 {code}
 
@@ -43,7 +43,7 @@ class AIPrompt:
     def RESOLUTION(title: str, description: str, assignOriginalCode: str) -> str:
         """输入题目标题、描述和初始代码，让AI生成多个解法代码"""
 
-        return f"""{AIPrompt.BASE_ROLE}你的任务是帮助学生理解和分析编程作业。以下是作业的详细信息：
+        return f"""{AIPrompt.BASE_ROLE}，你的任务是帮助学生理解和分析编程作业。以下是作业的详细信息：
 题干：【{title}】{description}
 题目给出的初始代码如下：
 
@@ -57,7 +57,7 @@ class AIPrompt:
     def KNOWLEDGEANALYSIS(title: str, description: str, assignOriginalCode: str) -> str:
         """输入题目标题、描述和初始代码，让AI生成知识点分析"""
 
-        return f"""{AIPrompt.BASE_ROLE}你的任务是帮助学生理解和分析编程作业。以下是作业的详细信息：
+        return f"""{AIPrompt.BASE_ROLE}，你的任务是帮助学生理解和分析编程作业。以下是作业的详细信息：
 题干：【{title}】{description}
 题目给出的初始代码如下：
 
@@ -71,7 +71,7 @@ class AIPrompt:
         """输入题目标题、描述和学生代码，让AI生成代码分析"""
 
 # 【B迷惑行为】（int main 直接 return 0）代码简洁，直接返回0，符合题目的要求。
-        return f"""{AIPrompt.BASE_ROLE}你的任务是帮助学生理解和分析编程作业。以下是作业的详细信息：
+        return f"""{AIPrompt.BASE_ROLE}，你的任务是帮助学生理解和分析编程作业。以下是作业的详细信息：
 题干：【{title}】{description}
 学生提交的代码如下：
 
@@ -84,7 +84,7 @@ class AIPrompt:
     @staticmethod
     def LEARNING_SUGGESTIONS(title: str, description: str, stu_content: str) -> str:
         """输入题目标题、描述和初始代码，让AI生成学习建议"""
-        return f"""{AIPrompt.BASE_ROLE}你的任务是帮助学生提高编程能力。以下是作业的详细信息：
+        return f"""{AIPrompt.BASE_ROLE}，你的任务是帮助学生提高编程能力。以下是作业的详细信息：
 题干：【{title}】{description}
 学生提交的代码如下：
 
@@ -94,5 +94,25 @@ class AIPrompt:
 """
 
     @staticmethod
-    def USER_PROFILE(stu_codes:list):
-        pass
+    def CODE_STYLE(previous_str:str, submission_str:str):
+        return f"""{AIPrompt.BASE_ROLE}，现在你需要根据学生以往提交的代码，分析学生的代码风格
+
+{f"你过往曾经分析过学生的代码风格，可以提供一些参考：{previous_str}" if previous_str else ""}
+
+学生当前的提交记录如下：
+{submission_str}
+
+请你根据以上信息，重新仔细分析学生的代码风格，输出一个分析报告
+"""
+
+    @staticmethod
+    def KNOWLEDGE_STATUS(previous_str:str, submission_str:str):
+        return f"""{AIPrompt.BASE_ROLE}，现在你需要根据学生的作业内容，分析学生的知识掌握情况
+
+{f"你过往曾经分析过学生的知识掌握情况，可以提供一些参考：{previous_str}" if previous_str else ""}
+
+学生当前的提交记录如下：
+{submission_str}
+
+请你根据以上信息，重新仔细分析学生的知识掌握情况，输出一个分析报告
+"""
