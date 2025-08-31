@@ -24,7 +24,7 @@ class AIPrompt:
 
 {code}
 
-注意，你只需要给出标题，禁止给出其它任何解释。
+注意，你只需要给出标题，禁止给出其它多余部分例如“标题：”，禁止给出其它任何解释。
 """
 
     @staticmethod
@@ -35,7 +35,7 @@ class AIPrompt:
 
 {code}
 
-注意，你只需要给出时间复杂度和空间复杂度，只包含“O(xxx)”的内容，没有任何其它例如“时间复杂度”等文字。分两行输出，禁止给出其它任何解释。
+注意，你只需要给出时间复杂度和空间复杂度，只包含“O(xxx)”的内容，不要任何其它例如“时间复杂度”或“空间复杂度”等文字。分两行输出，禁止给出其它任何解释。
 """
 
 
@@ -63,7 +63,7 @@ class AIPrompt:
 
 {assignOriginalCode}
 
-请你仔细分析题干与初始代码，给出题目可能涉及的知识点，{AIPrompt.RULE_SPLIT}。注意你只需要给出知识点文段并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
+请你仔细分析题干与初始代码，给出题目可能涉及的知识点，不同知识点之间{AIPrompt.RULE_SPLIT}。注意你只需要给出知识点文段并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
 """
 
     @staticmethod
@@ -76,7 +76,7 @@ class AIPrompt:
 
 {stu_content}
 
-请你仔细分析题干与学生代码，给出代码的优缺点与代码质量分析，并指出知识掌握的不足之处，{AIPrompt.RULE_SPLIT}。注意你只需要给出代码分析内容并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
+请你仔细分析题干与学生代码，首先在开头给出学生代码的时间复杂度和空间复杂度分析，然后给出这种实现的优缺点（如果没有可以不提），以及编码风格和代码质量分析等，并指出知识掌握的不足之处，{AIPrompt.RULE_SPLIT}。注意你只需要给出代码分析内容并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
 """
 
 
@@ -91,3 +91,7 @@ class AIPrompt:
 
 请你仔细分析题干与学生代码，给出你建议学生可以拓展的学习方向，{AIPrompt.RULE_SPLIT}，以此帮助学生更好地理解和掌握相关知识点。注意你只需要给出学习建议内容并{AIPrompt.RULE_SPLIT}，禁止给出其它任何解释。
 """
+
+    @staticmethod
+    def USER_PROFILE(stu_codes:list):
+        pass
