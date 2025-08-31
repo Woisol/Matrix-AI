@@ -17,6 +17,21 @@ import { NzIconModule } from "ng-zorro-antd/icon";
       <p class="submit-time">
         {{ submitTime | date:'yyyy-MM-dd HH:mm:ss' }} Submitted
       </p>
+      @if(submitScoreStatus() === 'full-score'){
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+      }
+
     </div>
     <!-- <nz-progress nzType="dashboard" [nzWidth]="80" [nzPercent]="assignData!.submit?.score ?? 0" [nzShowInfo]="true" [nzStrokeColor]="{ '10%': '#ee7373ff', '100%': '#97e973ff' }" [nzFormat]="progressScoreFormat" /> -->
     <div class="submit-status">
@@ -45,6 +60,7 @@ import { NzIconModule } from "ng-zorro-antd/icon";
   }
   .submit-score {
     height: var(--size-con);
+    position: relative;
     background: #fafafa;
     padding: 1em;
     border-radius: var(--size-radius);
@@ -55,6 +71,10 @@ import { NzIconModule } from "ng-zorro-antd/icon";
     justify-content: center;
     gap: 8px;
     overflow: hidden;
+
+    .score-con{
+      position: relative;
+    }
 
     .score{
       text-align: center;
@@ -100,6 +120,178 @@ import { NzIconModule } from "ng-zorro-antd/icon";
     }
   }
 
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      opacity: 0;
+      z-index: 1;
+    }
+
+    .confetti:nth-child(odd) {
+      background: #ff6b6b;
+      border-radius: 50%;
+    }
+
+    .confetti:nth-child(even) {
+      background: #4ecdc4;
+    }
+
+    .confetti:nth-child(3n) {
+      background: #ffe66d;
+      border-radius: 50%;
+    }
+
+    .confetti:nth-child(4n) {
+      background: #95e1d3;
+    }
+
+    .confetti:nth-child(5n) {
+      background: #ffa726;
+      border-radius: 50%;
+    }
+
+    .confetti:nth-child(6n) {
+      background: #ab47bc;
+    }
+
+    @keyframes confettiJump {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg) scale(1);
+      }
+
+      20% {
+        opacity: 1;
+        transform: translate(var(--jump-x), var(--jump-y)) rotate(180deg) scale(1.2);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(var(--end-x), var(--end-y)) rotate(360deg) scale(0.3);
+      }
+    }
+
+    /* 从 h1 中心向外跳出的彩片位置和动画 */
+    .confetti:nth-child(1) {
+      top: 50%;
+      left: 10%;
+      --jump-x: -30px;
+      --jump-y: -40px;
+      --end-x: -50px;
+      --end-y: 60px;
+      animation: confettiJump 2s ease-out 0.5s forwards;
+    }
+
+    .confetti:nth-child(2) {
+      top: 30%;
+      left: 20%;
+      --jump-x: -20px;
+      --jump-y: -50px;
+      --end-x: -30px;
+      --end-y: 80px;
+      animation: confettiJump 2.2s ease-out 0.6s forwards;
+    }
+
+    .confetti:nth-child(3) {
+      top: 20%;
+      left: 50%;
+      --jump-x: 0px;
+      --jump-y: -60px;
+      --end-x: 0px;
+      --end-y: 100px;
+      animation: confettiJump 2.1s ease-out 0.7s forwards;
+    }
+
+    .confetti:nth-child(4) {
+      top: 30%;
+      left: 80%;
+      --jump-x: 20px;
+      --jump-y: -50px;
+      --end-x: 30px;
+      --end-y: 80px;
+      animation: confettiJump 2.3s ease-out 0.8s forwards;
+    }
+
+    .confetti:nth-child(5) {
+      top: 50%;
+      left: 90%;
+      --jump-x: 30px;
+      --jump-y: -40px;
+      --end-x: 50px;
+      --end-y: 60px;
+      animation: confettiJump 2s ease-out 0.9s forwards;
+    }
+
+    .confetti:nth-child(6) {
+      top: 70%;
+      left: 80%;
+      --jump-x: 25px;
+      --jump-y: 30px;
+      --end-x: 40px;
+      --end-y: 70px;
+      animation: confettiJump 2.4s ease-out 1s forwards;
+    }
+
+    .confetti:nth-child(7) {
+      top: 80%;
+      left: 50%;
+      --jump-x: 0px;
+      --jump-y: 40px;
+      --end-x: 0px;
+      --end-y: 90px;
+      animation: confettiJump 2.2s ease-out 1.1s forwards;
+    }
+
+    .confetti:nth-child(8) {
+      top: 70%;
+      left: 20%;
+      --jump-x: -25px;
+      --jump-y: 30px;
+      --end-x: -40px;
+      --end-y: 70px;
+      animation: confettiJump 2.1s ease-out 1.2s forwards;
+    }
+
+    .confetti:nth-child(9) {
+      top: 40%;
+      left: 15%;
+      --jump-x: -35px;
+      --jump-y: -20px;
+      --end-x: -60px;
+      --end-y: 40px;
+      animation: confettiJump 2.3s ease-out 0.55s forwards;
+    }
+
+    .confetti:nth-child(10) {
+      top: 40%;
+      left: 85%;
+      --jump-x: 35px;
+      --jump-y: -20px;
+      --end-x: 60px;
+      --end-y: 40px;
+      animation: confettiJump 2.4s ease-out 0.65s forwards;
+    }
+
+    .confetti:nth-child(11) {
+      top: 60%;
+      left: 15%;
+      --jump-x: -30px;
+      --jump-y: 20px;
+      --end-x: -50px;
+      --end-y: 50px;
+      animation: confettiJump 2.1s ease-out 0.75s forwards;
+    }
+
+    .confetti:nth-child(12) {
+      top: 60%;
+      left: 85%;
+      --jump-x: 30px;
+      --jump-y: 20px;
+      --end-x: 50px;
+      --end-y: 50px;
+      animation: confettiJump 2.2s ease-out 0.85s forwards;
+    }
 
   `
 })
