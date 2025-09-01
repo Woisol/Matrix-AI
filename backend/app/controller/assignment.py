@@ -218,20 +218,20 @@ class AssignmentController:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     @classmethod
-    async def remove_previous_ai_gen(cls, assignment: AssignmentModel):
-        """删除之前的 AI 生成分析"""
-        try:
-            _analysis = await assignment.analysis.all()
+    # async def remove_previous_ai_gen(cls, assignment: AssignmentModel):
+    #     """删除之前的 AI 生成分析"""
+    #     try:
+    #         _analysis = await assignment.analysis.all()
 
-            if _analysis:
-                analysis = _analysis[0]
-                analysis.code_analysis = None
-                analysis.learning_suggestions = None
-                await analysis.save()
-        except Exception as e:
-            # 静默处理错误，不影响主流程
-            logging.error(f"清除 {assignment.id} 的 AI 分析缓存时出错: {e}")
-            
+    #         if _analysis:
+    #             analysis = _analysis[0]
+    #             analysis.code_analysis = None
+    #             analysis.learning_suggestions = None
+    #             await analysis.save()
+    #     except Exception as e:
+    #         # 静默处理错误，不影响主流程
+    #         logging.error(f"清除 {assignment.id} 的 AI 分析缓存时出错: {e}")
+
     @classmethod
     async def remove_previous_ai_gen_by_id(cls, assignment_id: str):
         """通过 ID 删除之前的 AI 生成分析，避免事件循环绑定问题"""
