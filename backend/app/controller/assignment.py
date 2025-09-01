@@ -204,8 +204,9 @@ class AssignmentController:
             #! 使用新线程才真正异步否则能 return 但是依然阻塞其它网络请求
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                # 删除之前的 AI 分析
-                loop.run_in_executor(executor, lambda: asyncio.run(cls.remove_previous_ai_gen(assignment)))
+                # 删除之前的 AI 分析 - 传递 assignment.id 而不是 assignment 对象
+                assignment_id = assignment.id
+                loop.run_in_executor(executor, lambda: asyncio.run(cls.remove_previous_ai_gen_by_id(assignment_id)))
 
                 # 生成用户画像
                 from app.controller.ai import AIAnalysisGenerator
@@ -230,3 +231,20 @@ class AssignmentController:
         except Exception as e:
             # 静默处理错误，不影响主流程
             logging.error(f"清除 {assignment.id} 的 AI 分析缓存时出错: {e}")
+            
+    @classmethod
+    async def remove_previous_ai_gen_by_id(cls, assignment_id: str):
+        """通过 ID 删除之前的 AI 生成分析，避免事件循环绑定问题"""
+        try:
+            # 在新的事件循环中重新查询数据，避免绑定到不同事件循环的问题
+            assignment = await AssignmentModel.get(id=assignment_id)
+            _analysis = await assignment.analysis.all()
+
+            if _analysis:
+                analysis = _analysis[0]
+                analysis.code_analysis = None
+                analysis.learning_suggestions = None
+                await analysis.save()
+        except Exception as e:
+            # 静默处理错误，不影响主流程
+            logging.error(f"清除 {assignment_id} 的 AI 分析缓存时出错: {e}")
