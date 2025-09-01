@@ -96,7 +96,6 @@ import { AssignId, CourseId } from "../../../api/type/general";
             (dragenter)="onDragEnter($event)"
             (dragleave)="onDragLeave($event)">
       <form nz-form nzLayout="vertical" [formGroup]="validateAssignForm"
-
             style="position: relative;">
         <!-- @if (isDragOver()) { -->
           <div class="drag-overlay" [class.active]="isDragOver()">
@@ -112,20 +111,20 @@ import { AssignId, CourseId } from "../../../api/type/general";
         <nz-form-item>
           <nz-form-label>课程ID</nz-form-label>
           <nz-form-control nzErrorTip="请输入课程ID">
-            <input nz-input formControlName="courseId" placeholder="请输入课程ID" />
+            <input (paste)="stopProp($event)" nz-input formControlName="courseId" placeholder="请输入课程ID" />
           </nz-form-control>
         </nz-form-item>
         <nz-form-item>
           <nz-form-label>作业ID</nz-form-label>
           <nz-form-control nzErrorTip="请输入作业ID">
-            <input nz-input formControlName="assignId" placeholder="请输入作业ID" [disabled]="isUpdate()"/>
+            <input (paste)="stopProp($event)" nz-input formControlName="assignId" placeholder="请输入作业ID" [disabled]="isUpdate()"/>
           </nz-form-control>
         </nz-form-item>
 
         <nz-form-item>
           <nz-form-label nzRequired>作业标题</nz-form-label>
           <nz-form-control nzErrorTip="请输入作业标题">
-            <input nz-input formControlName="title" placeholder="请输入作业标题" />
+            <input (paste)="stopProp($event)" nz-input formControlName="title" placeholder="请输入作业标题" />
           </nz-form-control>
         </nz-form-item>
 
@@ -133,6 +132,7 @@ import { AssignId, CourseId } from "../../../api/type/general";
           <nz-form-label nzRequired>作业描述</nz-form-label>
           <nz-form-control nzErrorTip="请输入作业描述">
             <textarea
+              (paste)="stopProp($event)"
               nz-input
               formControlName="description"
               placeholder="请输入作业描述"
@@ -145,6 +145,7 @@ import { AssignId, CourseId } from "../../../api/type/general";
           <nz-form-label nzRequired>初始代码</nz-form-label>
           <nz-form-control nzErrorTip="请输入初始代码配置">
             <textarea
+              (paste)="stopProp($event)"
               nz-input
               formControlName="assignOriginalCode"
               placeholder='现在可以直接输入代码'
@@ -157,6 +158,7 @@ import { AssignId, CourseId } from "../../../api/type/general";
           <nz-form-label>测试样例-输入</nz-form-label>
           <nz-form-control nzHasFeedback nzExtra="标准输入列表，使用|分隔">
             <textarea
+              (paste)="stopProp($event)"
               nz-input
               formControlName="testSampleInput"
               placeholder='例如：1|2|3'
@@ -169,6 +171,7 @@ import { AssignId, CourseId } from "../../../api/type/general";
           <nz-form-label>测试样例-输出</nz-form-label>
           <nz-form-control nzHasFeedback nzExtra="标准输出列表，使用|分隔">
             <textarea
+              (paste)="stopProp($event)"
               nz-input
               formControlName="testSampleOutput"
               placeholder='例如：1|4|9'
@@ -343,6 +346,10 @@ export class ControlDialogComponent implements OnInit, OnChanges, OnDestroy {
       this.isUpdate.set(this.type === 'course' ? !!this.courseTrans : !!this.assignTrans);
       // this.cdr.detectChanges();
     }
+  }
+
+  stopProp(event: Event) {
+    event.stopPropagation();
   }
 
   /**
