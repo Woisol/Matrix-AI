@@ -197,13 +197,19 @@ class AssignmentController:
                 )
             await submitModel.save()
 
-            # 创建后台任务异步删除之前的 AI 分析，不阻塞当前请求
-            asyncio.create_task(cls.remove_previous_ai_gen(assignment))
+            #! 使用线程池执行后台任务，避免阻塞事件循环
+            import concurrent.futures
 
-            #!  使用
-            from app.controller.ai import AIAnalysisGenerator
+            # 将删除 AI 分析和生成用户画像任务都放到线程池中执行
+            #! 使用新线程才真正异步否则能 return 但是依然阻塞其它网络请求
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # 删除之前的 AI 分析
+                loop.run_in_executor(executor, lambda: asyncio.run(cls.remove_previous_ai_gen(assignment)))
 
-            asyncio.create_task(AIAnalysisGenerator.genUserProfile())
+                # 生成用户画像
+                from app.controller.ai import AIAnalysisGenerator
+                loop.run_in_executor(executor, lambda: asyncio.run(AIAnalysisGenerator.genUserProfile()))
 
             return submit
         except HTTPException as he:
