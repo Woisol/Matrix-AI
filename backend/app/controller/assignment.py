@@ -200,17 +200,18 @@ class AssignmentController:
             #! 使用线程池执行后台任务，避免阻塞事件循环
             import concurrent.futures
 
-            # 将删除 AI 分析和生成用户画像任务都放到线程池中执行
-            #! 使用新线程才真正异步否则能 return 但是依然阻塞其它网络请求
+            # 创建线程池并提交任务，但不等待完成
+            #! 上个实现用 with 会等待全部完成才返回没真正实现 异步
+            executor = concurrent.futures.ThreadPoolExecutor()
             loop = asyncio.get_event_loop()
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                # 删除之前的 AI 分析 - 传递 assignment.id 而不是 assignment 对象
-                assignment_id = assignment.id
-                loop.run_in_executor(executor, lambda: asyncio.run(cls.remove_previous_ai_gen_by_id(assignment_id)))
 
-                # 生成用户画像 - 创建独立的任务，避免事件循环绑定问题
-                from app.controller.ai import AIAnalysisGenerator
-                loop.run_in_executor(executor, lambda: asyncio.run(cls.gen_user_profile_safe()))
+            # 删除之前的 AI 分析 - 传递 assignment.id 而不是 assignment 对象
+            assignment_id = assignment.id
+            loop.run_in_executor(executor, lambda: asyncio.run(cls.remove_previous_ai_gen_by_id(assignment_id)))
+
+            # 生成用户画像 - 创建独立的任务，避免事件循环绑定问题
+            from app.controller.ai import AIAnalysisGenerator
+            loop.run_in_executor(executor, lambda: asyncio.run(cls.gen_user_profile_safe()))
 
             return submit
         except HTTPException as he:
