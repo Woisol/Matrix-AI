@@ -208,9 +208,9 @@ class AssignmentController:
                 assignment_id = assignment.id
                 loop.run_in_executor(executor, lambda: asyncio.run(cls.remove_previous_ai_gen_by_id(assignment_id)))
 
-                # 生成用户画像
+                # 生成用户画像 - 创建独立的任务，避免事件循环绑定问题
                 from app.controller.ai import AIAnalysisGenerator
-                loop.run_in_executor(executor, lambda: asyncio.run(AIAnalysisGenerator.genUserProfile()))
+                loop.run_in_executor(executor, lambda: asyncio.run(cls.gen_user_profile_safe()))
 
             return submit
         except HTTPException as he:
@@ -248,3 +248,13 @@ class AssignmentController:
         except Exception as e:
             # 静默处理错误，不影响主流程
             logging.error(f"清除 {assignment_id} 的 AI 分析缓存时出错: {e}")
+
+    @classmethod
+    async def gen_user_profile_safe(cls):
+        """线程安全的用户画像生成方法，避免事件循环绑定问题"""
+        try:
+            from app.controller.ai import AIAnalysisGenerator
+            await AIAnalysisGenerator.genUserProfile()
+        except Exception as e:
+            # 静默处理错误，不影响主流程
+            logging.error(f"生成用户画像时出错: {e}")
