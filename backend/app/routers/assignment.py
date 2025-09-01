@@ -26,6 +26,10 @@ async def set_assignment(
     #! 极其混乱，请求传输必须为 str，访问 .input 需要 json，但存储又需要 str
     _testSampleJSON: TestSampleCreate = TestSampleCreate.model_validate_json(assign.testSample)
 
+    if isinstance(assign.ddl, str) and assign.ddl.strip() == "":
+        assign.ddl = None
+
+
     return await AssignmentController.set_assignment(
         courseId=assign.courseId,
         assignId=assign.assignId,
