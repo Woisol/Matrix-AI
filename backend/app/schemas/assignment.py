@@ -80,7 +80,7 @@ class AssignCreateRequest(BaseModel):
     description: str = Field(..., description="作业描述")
     assignOriginalCode: str = Field(..., description="作业原始代码")
     testSample: str = Field(..., description="测试样例 JSON 字符串")
-    ddl: datetime | None = Field(None, description="作业截止时间")
+    ddl: datetime | str | None = Field(None, description="作业截止时间")
     assignId: AssignId | None = Field(None, description="作业ID，若为空则创建新作业")
     courseId: CourseId | None = Field(None, description="课程ID，前端多传")
 
