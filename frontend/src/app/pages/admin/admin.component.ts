@@ -42,7 +42,7 @@ import { AssignService } from '../../services/assign/assign.service';
 
                   <!-- 课程头部模板 -->
                   <ng-template #courseHeaderTpl>
-                    <div class="course-header" (click)="copyCourseId(course.courseId, $event)">
+                    <div class="course-header" (click)="copyCourseId($event, course.courseId)">
                       <span nz-icon nzType="book" nzTheme="outline" class="course-icon"></span>
                       <span class="course-name">{{ course.courseName }}</span>
                       <span class="course-id-hint">(点击复制课程ID)</span>
@@ -86,7 +86,7 @@ import { AssignService } from '../../services/assign/assign.service';
                   <div class="assignment-list">
                     @for(assignment of course.assignment; track assignment.assignId) {
                       <nz-list nzSize="small" class="nested-assignment-list">
-                        <nz-list-item class="assignment-item" (click)="copyAssignId(assignment.assignId)">
+                        <nz-list-item class="assignment-item" (click)="copyAssignId($event, assignment.assignId)">
                           <div class="assignment-header">
                             <span nz-icon nzType="code" nzTheme="outline" class="assignment-icon"></span>
                             <span class="assignment-name">{{ assignment.assignmentName }}</span>
@@ -387,24 +387,31 @@ export class AdminComponent {
   /**
    * 复制课程ID到剪贴板
    */
-  copyCourseId(courseId: string, event: Event) {
+  copyCourseId(event: Event, courseId: string) {
     event.stopPropagation();
-    navigator.clipboard.writeText(courseId).then(() => {
-      this.message.success(`课程ID已复制: ${courseId}`);
-    }).catch(() => {
-      this.message.error('复制失败，请手动复制');
-    });
+
+    try {
+      navigator.clipboard.writeText(courseId).then(() => {
+        this.message.success(`课程ID已复制: ${courseId}`);
+      });
+    } catch (e) {
+      this.message.error('复制失败，请手动复制：' + courseId);
+    }
   }
 
   /**
    * 复制作业ID到剪贴板
    */
-  copyAssignId(assignId: string) {
-    navigator.clipboard.writeText(assignId).then(() => {
-      this.message.success(`作业ID已复制: ${assignId}`);
-    }).catch(() => {
-      this.message.error('复制失败，请手动复制');
-    });
+  copyAssignId(event: Event, assignId: string) {
+    event.stopPropagation();
+
+    try {
+      navigator.clipboard.writeText(assignId).then(() => {
+        this.message.success(`作业ID已复制: ${assignId}`);
+      });
+    } catch (e) {
+      this.message.error('复制失败，请手动复制：' + assignId);
+    }
   }
 
   handleAddCourse() {
