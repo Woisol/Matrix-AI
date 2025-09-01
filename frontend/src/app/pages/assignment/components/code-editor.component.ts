@@ -221,6 +221,7 @@ export class CodeEditorComponent implements OnChanges {
   }
 
   onTestRequest() {
+    this.testPanelOutput.set('测试运行中……');
     this.assignService.testRequest$(this.codeFile, this.testPanelInput(), 'c_cpp').subscribe(output => {
       this.testPanelOutput.set(output);
     });
