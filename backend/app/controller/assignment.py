@@ -1,4 +1,4 @@
-import uuid, json
+import uuid, json, base64
 import asyncio, logging
 from datetime import datetime, timezone
 from typing import Optional

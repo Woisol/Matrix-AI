@@ -15,6 +15,7 @@ class AIController:
     @classmethod
     async def getBasic(cls, course_id: str, assign_id: str, re_gen: bool = False) -> BasicAnalysis:
         #@todo 可能需要重新生成功能 /basic/again ？
+        #Done
         assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis")
         analysis = assignment.analysis[0] if assignment.analysis else None
 
