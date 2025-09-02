@@ -34,6 +34,7 @@ async def set_course(
     # if isinstance(course.completed, str):
     #     course.completed = course.completed.lower() == 'true'
     #@todo @RunningKuma 似乎存在 type 和 status 无法更新的情况
+    # ignore it
     return await CourseController.set_course(courseId=course.courseId, courseName=course.courseName, type=course.type, status=course.status, completed=course.completed, assignmentIds=course.assignmentIds)
 
 @course_router.delete("/courses/{course_id}", response_model=bool)

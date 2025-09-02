@@ -14,3 +14,4 @@ class AiResponse(BaseModel):
     summary: str = Field(..., description="分析内容")
     content: List[AiContent] = Field(..., description="详细分析内容")
     learning_suggestion: List[AiContent] = Field(..., description="学习建议")
+
