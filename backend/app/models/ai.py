@@ -419,29 +419,66 @@ class AIAnalysisGenerator:
     @classmethod
     async def genUserProfile(cls):
         logging.info(f"Received user profile generate request")
-        _user = await User.filter(username=UserMatrixAI.username).all()
-        if _user:
-            user = _user[0]
 
-        #! 失败的数据结构设计
-        submissions = await AssignmentSubmission.filter(student_id=UserMatrixAI.username).all()
-        if not submissions:
-            logging.error("No submissions found for user")
-            return
-        submission_str = ""
-        for submission in submissions:
-            # 获取关联的作业信息
-            await submission.fetch_related('assignment')
-            submission_str += f"""【{submission.assignment.title}】
+        try:
+            # 完全重新初始化数据库连接，避免事件循环绑定问题
+            from tortoise import Tortoise
+            from app.database import TORTOISE_ORM
+
+            # 重新初始化
+            if not Tortoise._inited:
+                await Tortoise.init(config=TORTOISE_ORM)
+
+            # 重新导入模型以确保使用新的连接
+            #! 其实关键在于用户模块() 重新导入即可不用重新连接数据库
+            from app.models.user import User as UserModel
+            from app.models.assignment import AssignmentSubmission as SubmissionModel
+
+            _user = await UserModel.filter(username=UserMatrixAI.username).first()
+            if not _user:
+                logging.error("No user found")
+                return
+            user = _user
+
+            # 使用 prefetch_related 避免 N+1 查询
+            submissions = await SubmissionModel.filter(
+                student_id=UserMatrixAI.username
+            ).prefetch_related('assignment').all()
+
+            if not submissions:
+                logging.error("No submissions found for user")
+                return
+
+            submission_str = ""
+            for submission in submissions:
+                try:
+                    submit_code_data = json.loads(submission.submit_code)
+                    if submit_code_data and len(submit_code_data) > 0:
+                        content = submit_code_data[0].get('content', '')
+                        submission_str += f"""【{submission.assignment.title}】
 
 用户提交的代码：
-{json.loads(submission.submit_code)[0]['content']}
+{content}
 
 ---
 """
-        code_style = await cls.genUserCodeStyle(user.code_style, submission_str)
-        knowledge_status = await cls.genUserKnowledgeStatus(user.knowledge_status, submission_str)
+                except (json.JSONDecodeError, IndexError, AttributeError) as e:
+                    logging.warning(f"Failed to parse submission code: {e}")
+                    continue
 
-        user.code_style = code_style
-        user.knowledge_status = knowledge_status
-        await user.save()
+            if not submission_str.strip():
+                logging.warning("No valid submission content found")
+                return
+
+            code_style = await cls.genUserCodeStyle(user.code_style, submission_str)
+            knowledge_status = await cls.genUserKnowledgeStatus(user.knowledge_status, submission_str)
+
+            user.code_style = code_style
+            user.knowledge_status = knowledge_status
+            await user.save()
+
+            logging.info("User profile updated successfully")
+
+        except Exception as e:
+            logging.error(f"Error in genUserProfile: {e}")
+            # 不抛出异常，避免影响主流程
