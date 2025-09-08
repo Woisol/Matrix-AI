@@ -21,6 +21,7 @@ from app.utils.ai import code_md_wrapper
 from app.constants.user import UserMatrixAI
 
 
+
 class AIMessage(BaseModel):
     """AI消息模型，包含角色和内容"""
     role: str
@@ -98,6 +99,8 @@ class AI:
                     if 'choices' in json_data:
                         content = json_data['choices'][0]['delta'].get('content','')
                         if content:
+
+
                             ai_response += content
                 except json.JSONDecodeError:
                     continue
@@ -119,6 +122,7 @@ class AIQueue:
         """处理队列中的任务"""
         while self.queue:
             item = self.queue.pop(0)
+
             raise NotImplementedError("AI任务处理逻辑未实现")
 
 class AIAnalysisGenerator:
@@ -377,6 +381,7 @@ class AIAnalysisGenerator:
 
             # 生成标题
             learning_suggestion_titles = [
+                #queue here
                 await AI.get_response(AIPrompt.TITLE(content))
                 for content in learning_suggestion_contents
             ]
