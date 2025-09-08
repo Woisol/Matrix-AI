@@ -13,11 +13,13 @@ import { NzBadgeModule } from "ng-zorro-antd/badge";
 import { NzSpaceModule } from "ng-zorro-antd/space";
 import { DatePipe } from "@angular/common";
 import { AssignListComponent } from "../components/assign-list/assign-list.component";
+import { NotificationService } from "../../services/notification/notification.service";
 
 export interface CarouselItem {
-  isRouterLink?: boolean;
-  link: string;
+  // isRouterLink?: boolean;
+  link?: string;
   imagePath: string;
+  toast?: string;
 }
 
 @Component({
@@ -40,7 +42,7 @@ export interface CarouselItem {
             <div nz-carousel-content class="swiper-slide">
               <!-- <img nz-image nzSrc="{{content.imagePath}}" routerLink="{{content.link}}" nzDisablePreview loading="lazy" /> -->
               <!-- {{content}} -->
-              <img [src]="content.imagePath"  />
+              <img [src]="content.imagePath" [routerLink]="content.link" (click)="handleCarouselClick(content)" />
             </div>
           }
         </nz-carousel>
@@ -421,6 +423,8 @@ export interface CarouselItem {
 export class HomeComponent implements AfterViewInit {
   @ViewChild('carousel') carousel!: NzCarouselComponent;
 
+  notify = inject(NotificationService);
+
   ngAfterViewInit() {
     // 延迟初始化，确保 DOM 完全渲染
     setTimeout(() => {
@@ -437,6 +441,15 @@ export class HomeComponent implements AfterViewInit {
 
   goToNextSlide() {
     this.carousel.next();
+  }
+
+  /**
+   * 处理轮播图点击事件
+   */
+  handleCarouselClick(content: CarouselItem) {
+    if (content.toast)
+      this.notify.info(content.toast);
+
   }
   // constructor() {
   // swiper: Swiper | undefined;
@@ -460,12 +473,19 @@ export class HomeComponent implements AfterViewInit {
   // }
   protected readonly carouselItems: CarouselItem[] = [
     {
-      link: "",
-      imagePath: "banner/banner-report-2024.png",
+      link: "/course/private",
+      imagePath: "banner/banner-matrix-ai.png",
+      toast: "请进入任意作业界面查看"
     },
     {
-      link: "",
+      // link: "",
+      imagePath: "banner/banner-report-2024.png",
+      toast: "本 Demo 没有实现这个页面哦"
+    },
+    {
+      // link: "",
       imagePath: "banner/banner-recruit-2025.png",
+      toast: "本 Demo 没有实现这个页面哦"
     },
   ]
   protected readonly courseInfo = inject(CourseInfo)
