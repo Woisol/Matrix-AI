@@ -1,12 +1,11 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, Output, EventEmitter } from "@angular/core";
+import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { NzTabsModule } from "ng-zorro-antd/tabs";
-import { Analysis, AssignData, SubmitScoreStatus } from "../../../api/type/assigment";
+import { Analysis, AssignData } from "../../../api/type/assigment";
 import { MarkdownModule } from "ngx-markdown";
 import { DatePipe } from "@angular/common";
 import { NzProgressModule } from "ng-zorro-antd/progress";
-import { getSubmitScoreStatus } from "../../../api/util/assig";
-import { NzCollapseComponent, NzCollapseModule } from "ng-zorro-antd/collapse";
+import { NzCollapseModule } from "ng-zorro-antd/collapse";
 import { MatrixAnalyseComponent } from "./matrix-analyse.component";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";

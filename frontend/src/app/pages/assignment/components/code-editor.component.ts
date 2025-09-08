@@ -2,8 +2,7 @@ import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signa
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import * as monaco from 'monaco-editor';
-import { NzSplitterComponent, NzSplitterModule } from "ng-zorro-antd/splitter";
-import { NzSplitterPanelComponent } from "../../../../../node_modules/.pnpm/ng-zorro-antd@20.1.2_fc4ae3c25fffe825e77a0aa6abb687ba/node_modules/ng-zorro-antd/splitter/index";
+import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { NzFloatButtonModule } from 'ng-zorro-antd/float-button';
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzInputModule } from 'ng-zorro-antd/input';

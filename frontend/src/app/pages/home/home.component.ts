@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, CUSTOM_ELEMENTS_SCHEMA, signal, ViewChild, ElementRef, inject } from "@angular/core";
+import { AfterViewInit, Component, CUSTOM_ELEMENTS_SCHEMA, ViewChild, inject } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { NzImageModule } from "ng-zorro-antd/image";
 import { NzCarouselModule, NzCarouselComponent } from "ng-zorro-antd/carousel";
@@ -11,7 +11,6 @@ import { NzTableModule } from "ng-zorro-antd/table";
 import { NzTagModule } from "ng-zorro-antd/tag";
 import { NzBadgeModule } from "ng-zorro-antd/badge";
 import { NzSpaceModule } from "ng-zorro-antd/space";
-import { DatePipe } from "@angular/common";
 import { AssignListComponent } from "../components/assign-list/assign-list.component";
 import { NotificationService } from "../../services/notification/notification.service";
 
