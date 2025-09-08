@@ -1,7 +1,6 @@
 import { inject, Injectable } from "@angular/core";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { NotificationService } from "../notification/notification.service";
-import { AssignId, CourseId } from "../../api/type/general";
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {

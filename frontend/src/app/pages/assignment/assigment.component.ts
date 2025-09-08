@@ -1,7 +1,6 @@
-import { Component, inject, signal, WritableSignal, OnDestroy, OnInit, computed } from "@angular/core";
+import { Component, inject, signal, WritableSignal, OnDestroy } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
-import { testAssigData } from "../../api/test/assig";
 import { Analysis, AssignData, CodeFileInfo, Submit } from "../../api/type/assigment";
 import { CodeEditorComponent } from "./components/code-editor.component";
 import { AssignId, CourseId } from "../../api/type/general";

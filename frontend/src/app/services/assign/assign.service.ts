@@ -1,8 +1,7 @@
 import { inject, Injectable } from "@angular/core";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { AssignId, CourseId } from "../../api/type/general";
-import { AiGenAnalysis, Analysis, AssignData, BasicAnalysis, CodeContent, CodeFileInfo, CodeLanguage } from "../../api/type/assigment";
-import { testAnalysis, testAssigData } from "../../api/test/assig";
+import { AiGenAnalysis, AssignData, BasicAnalysis, CodeFileInfo, CodeLanguage } from "../../api/type/assigment";
 import { catchError, of } from "rxjs";
 import { NotificationService } from "../notification/notification.service";
 import { HttpErrorResponse } from "@angular/common/http";

@@ -1,8 +1,7 @@
-import { Component, inject, Input, OnInit } from "@angular/core";
-import { AllCourse, TodoCourse } from "../../api/type/course";
+import { Component, inject, OnInit } from "@angular/core";
+import { AllCourse } from "../../api/type/course";
 import { AssignListComponent } from "../components/assign-list/assign-list.component";
 import { CourseId } from "../../api/type/general";
-import { CourseInfo } from "../../services/course/course-store.service";
 import { ActivatedRoute } from "@angular/router";
 import { CourseApi } from "../../services/course/course-api.service";
 

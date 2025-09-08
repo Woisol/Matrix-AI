@@ -1,5 +1,4 @@
-import { AfterViewInit, Directive, ElementRef, Input } from '@angular/core';
-import { } from "swiper";
+import { AfterViewInit, Directive, ElementRef } from '@angular/core';
 import { register } from 'swiper/element';
 
 @Directive({

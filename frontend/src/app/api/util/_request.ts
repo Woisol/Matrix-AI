@@ -11,8 +11,6 @@
 // 9. 可选 raw 返回 Response
 // 10. 轻量不依赖 Angular HttpClient；若未来迁移，可把逻辑放到 service + interceptor
 
-import { HttpClient } from "@angular/common/http";
-
 // ================= 配置区 =================
 const DEFAULT_BASE_URL = '/api/v1';
 // 可通过全局变量或构建注入覆盖（自行按项目需要扩展）
