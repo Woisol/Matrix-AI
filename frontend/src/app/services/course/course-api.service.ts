@@ -1,7 +1,6 @@
 import { inject, Injectable } from "@angular/core";
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { testAllCourseList, testTodoCourseList } from "../../api/test/course";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { AllCourse, CourseTransProps, TodoCourse } from "../../api/type/course";
 import { HttpErrorResponse } from "@angular/common/http";
