@@ -20,8 +20,8 @@ class AIController:
         analysis = assignment.analysis[0] if assignment.analysis else None
 
         if re_gen:
-            resol = await AIAnalysisGenerator.genResolutions(course_id, assign_id)
-            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(course_id, assign_id)
+            resol = await AIAnalysisGenerator.genResolutions(assign_id)
+            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
             if analysis:
                 analysis.resolution = resol.model_dump_json()
                 analysis.knowledge_analysis = knowled.model_dump_json()
@@ -44,8 +44,8 @@ class AIController:
                 knowledgeAnalysis=analysis.knowledge_analysis
             )
         else:
-            resol = await AIAnalysisGenerator.genResolutions(course_id, assign_id)
-            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(course_id, assign_id)
+            resol = await AIAnalysisGenerator.genResolutions(assign_id)
+            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
             #@todo add to queue instead
             analysis = await Analysis.create(
                 assignment=assignment,
@@ -78,10 +78,12 @@ class AIController:
             )
         else:
             #@todo add to queue instead
-            codeAnal = await AIAnalysisGenerator.genCodeAnalysis(course_id, assign_id)
-            learnSug = await AIAnalysisGenerator.genLearningSuggestions(course_id, assign_id)
+            codeAnal = await AIAnalysisGenerator.genCodeAnalysis(assign_id)
+            learnSug = await AIAnalysisGenerator.genLearningSuggestions(assign_id)
             if analysis:
                 analysis.code_analysis = codeAnal.model_dump_json()
+
+                
                 analysis.learning_suggestions = learnSug.model_dump_json()
                 await analysis.save()
             else:
