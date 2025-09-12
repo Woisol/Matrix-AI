@@ -2,6 +2,7 @@
 import os, logging
 import requests
 import json
+from queue import Queue
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
@@ -67,7 +68,7 @@ class AI:
     )
 
     @classmethod
-    async def get_response(cls, prompt: str) -> str:
+    async def __get_response_from_request(cls, prompt: str) -> str:
         """获取AI响应"""
         response = cls.client.chat.completions.create(
             model=cls.AIConfig.MODEL,
@@ -80,13 +81,12 @@ class AI:
                 if response.choices[0].message.content else "")
 
     @classmethod
-    async def get_response_from_request(cls, prompt: str) -> str:
+    async def get_response(cls, prompt: str) -> str:
         """通过官方给的API请求获取AI响应"""
 
         request_data: AIRequest = AIRequest(
             message=cls.AIConfig.messages(prompt)
         )
-
         response = requests.post(AIRequest.url, json = request_data.model_dump(),stream=True)
         response.encoding = 'utf-8'
         ai_response = ''
@@ -99,8 +99,6 @@ class AI:
                     if 'choices' in json_data:
                         content = json_data['choices'][0]['delta'].get('content','')
                         if content:
-
-
                             ai_response += content
                 except json.JSONDecodeError:
                     continue
@@ -109,28 +107,34 @@ class AI:
 
 class AIQueue:
     """AI任务队列，用于管理和处理多个AI请求"""
+    num_tasks: int = 0
 
     def __init__(self) -> None:
         """初始化任务队列"""
-        self.queue: List[Any] = []
+        self.queue: Queue = Queue()
+        self.num_tasks = 0
 
     def add_to_queue(self, item: Any) -> None:
         """添加项目到队列"""
-        self.queue.append(item)
+        self.queue.put(item)
+        self.num_tasks += 1
+        self.process_queue()
 
     def process_queue(self) -> None:
         """处理队列中的任务"""
-        while self.queue:
-            item = self.queue.pop(0)
-
-            raise NotImplementedError("AI任务处理逻辑未实现")
+        while not self.queue.empty():
+            item: Any = self.queue.get()
+            # 处理任务
+            
+            self.queue.task_done()
+    
 
 class AIAnalysisGenerator:
     """AI分析生成器，提供各种类型的分析功能"""
 
     @classmethod
     async def genResolutions(
-        cls, course_id: str, assign_id: str
+        cls, assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成解题分析
@@ -208,7 +212,7 @@ class AIAnalysisGenerator:
 
     @classmethod
     async def genKnowledgeAnalysis(
-        cls, course_id: str, assign_id: str
+        cls,  assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成知识点分析
@@ -226,7 +230,7 @@ class AIAnalysisGenerator:
             logging.info(f"Received knowledge analysis generate request")
 
             # 获取知识点分析
-            knowledge_content = await AI.get_response(
+            knowledge_content = await AI.get_response_from_request(
                 prompt=AIPrompt.KNOWLEDGEANALYSIS(
                     assign_data.title,
                     assign_data.description,
@@ -239,7 +243,7 @@ class AIAnalysisGenerator:
 
             # 生成标题
             knowledge_titles = [
-                await AI.get_response(AIPrompt.TITLE(content))
+                await AI.get_response_from_request(AIPrompt.TITLE(content))
                 for content in knowledge_contents
             ]
             # 构建分析内容
@@ -268,7 +272,7 @@ class AIAnalysisGenerator:
 
     @classmethod
     async def genCodeAnalysis(
-        cls, course_id: str, assign_id: str
+        cls, assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成代码分析
@@ -296,7 +300,7 @@ class AIAnalysisGenerator:
             user = _user[0]
 
             # 获取代码分析
-            code_analysis_content = await AI.get_response(
+            code_analysis_content = await AI.get_response_from_request(
                 prompt=AIPrompt.CODEANALYSIS(
                     assign_data.title,
                     assign_data.description,
@@ -310,7 +314,7 @@ class AIAnalysisGenerator:
 
             # 生成标题
             code_analysis_titles = [
-                await AI.get_response(AIPrompt.TITLE(content))
+                await AI.get_response_from_request(AIPrompt.TITLE(content))
                 for content in code_analysis_contents
             ]
             # 构建分析内容
@@ -339,7 +343,7 @@ class AIAnalysisGenerator:
 
     @classmethod
     async def genLearningSuggestions(
-        cls, course_id: str, assign_id: str
+        cls, assign_id: str
     ) -> MatrixAnalysisProps:
         """
         生成学习建议
@@ -382,7 +386,7 @@ class AIAnalysisGenerator:
             # 生成标题
             learning_suggestion_titles = [
                 #queue here
-                await AI.get_response(AIPrompt.TITLE(content))
+                await AI.get_response_from_request(AIPrompt.TITLE(content))
                 for content in learning_suggestion_contents
             ]
             # 构建分析内容
