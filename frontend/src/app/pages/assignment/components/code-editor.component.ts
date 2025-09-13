@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import * as monaco from 'monaco-editor';
@@ -8,6 +8,7 @@ import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { AssignService } from '../../../services/assign/assign.service';
 import { CodeFileInfo } from '../../../api/type/assigment';
+import { NotificationService } from '../../../services/notification/notification.service';
 
 export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' | 'markdown' | 'python';
 
@@ -42,6 +43,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
           }
       </nz-splitter>
       <div class="action-bar">
+        <button class="secondary" (click)="hightlightLine(2)">高亮第二行</button>
         <button class="secondary" (click)="handleTestPanelToggle()">测试面板</button>
         <button class="secondary hidable" [class.hide]="!testPanelOpen()" (click)="onTestRequest()">运行</button>
         <button (click)="onSubmitRequest()">提交</button>
@@ -132,7 +134,10 @@ export class CodeEditorComponent implements OnChanges {
   @Output() codeChange = new EventEmitter<string>();
   @Output() editorReady = new EventEmitter<monaco.editor.IStandaloneCodeEditor>();
 
+  notify = inject(NotificationService)
   editor: monaco.editor.IStandaloneCodeEditor | undefined;
+  decorationCollect: monaco.editor.IEditorDecorationsCollection | undefined;
+
   // 缓存待设置的内容，用于编辑器初始化后设置
   private pendingContent: string | null = null;
 
@@ -156,7 +161,16 @@ export class CodeEditorComponent implements OnChanges {
       lineNumbers: this.lineNumbers,
       scrollBeyondLastLine: false,
       padding: { top: 8, bottom: 8 },
-      wordWrap: 'on'
+      wordWrap: 'on',
+      renderLineHighlight: 'line',
+      scrollbar: {
+        // alwaysConsumeMouseWheel
+      },
+
+      // rulers: [80, 120],
+      // roundedSelection: true, // default
+      // scrollPredominantAxis: true, // default
+      // 禁用内置的查找功能，避免与浏览器默认查找冲突
     };
   }
 
@@ -209,6 +223,9 @@ export class CodeEditorComponent implements OnChanges {
         monaco.languages.register({ id: l.id, extensions: l.extensions });
       }
     });
+
+    this.hightlightLine(2)
+
   }
 
   setTestPanelSize(size: (string | number)[]) {
@@ -224,6 +241,38 @@ export class CodeEditorComponent implements OnChanges {
     this.assignService.testRequest$(this.codeFile, this.testPanelInput(), 'c_cpp').subscribe(output => {
       this.testPanelOutput.set(output);
     });
+  }
+
+  hightlightLine(lineNumber: number) {
+    if (!this.editor) {
+      this.notify.error(`尝试高亮第 ${lineNumber} 行失败：在初始化前尝试高亮`);
+      return;
+    }
+    if (lineNumber <= 0 || lineNumber > this.editor.getModel()?.getLineCount()!) {
+      // this.notify.error(`尝试高亮第 ${lineNumber} 行失败：行号超出范围`);
+      return;
+    }
+
+    const decoration: monaco.editor.IModelDeltaDecoration[] = [
+      {
+        range: new monaco.Range(lineNumber, 1, lineNumber, 10000),
+        options: {
+          isWholeLine: true,
+        }
+      }
+    ]
+    this.decorationCollect = this.editor.createDecorationsCollection(decoration)
+
+    // this.editor.revealLineInCenter(lineNumber);
+
+  }
+
+  removeAllHighlights() {
+    if (!this.editor) {
+      return;
+    }
+    // this.editor.removeDecorations(this.decorationCollect?.getRanges() || []);
+    // this.editor.removeDecorations(this.decorationCollect?.getRange() || []);
   }
 
 }

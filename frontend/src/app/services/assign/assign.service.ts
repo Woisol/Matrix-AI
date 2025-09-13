@@ -5,6 +5,7 @@ import { AiGenAnalysis, AssignData, BasicAnalysis, CodeFileInfo, CodeLanguage } 
 import { catchError, of } from "rxjs";
 import { NotificationService } from "../notification/notification.service";
 import { HttpErrorResponse } from "@angular/common/http";
+import { testAssigData } from "../../api/test/assig";
 
 @Injectable({ providedIn: 'root' })
 export class AssignService {
@@ -17,7 +18,8 @@ export class AssignService {
       catchError((e: HttpErrorResponse) => {
         let msg = '无法获取作业数据: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message)
         this.notify.error(msg)
-        return of(undefined)
+        return of(testAssigData)
+        // return of(undefined)
       })
     );
   }
