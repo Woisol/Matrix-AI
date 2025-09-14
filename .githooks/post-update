@@ -1,0 +1,9 @@
+#!/bin/sh
+# pack and build frontend product when push
+
+if git log -1 --pretty=%B | grep -q '\[frontend\]'; then
+  echo "updating frontend"
+  cd frontend
+  pnpm run publish
+  exit 0
+fi
