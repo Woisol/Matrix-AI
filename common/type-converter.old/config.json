@@ -1,0 +1,60 @@
+{
+  "input": {
+    "typeDir": "../../frontend/src/app/api/type",
+    "files": [
+      "general.d.ts",
+      "assigment.d.ts", 
+      "course.d.ts"
+    ]
+  },
+  "output": {
+    "dir": "./out",
+    "filename": "types_generated.py"
+  },
+  "typeMapping": {
+    "string": "str",
+    "number": "float",
+    "boolean": "bool",
+    "Date": "datetime",
+    "Array": "List",
+    "object": "Dict"
+  },
+  "customTypes": {
+    "MdContent": {
+      "pythonType": "str",
+      "field": "Field(..., description='Markdown内容')"
+    },
+    "MdCodeContent": {
+      "pythonType": "str", 
+      "field": "Field(..., description='Markdown代码内容，注意包含```xxx```')"
+    },
+    "CodeContent": {
+      "pythonType": "str",
+      "field": "Field(..., description='代码内容')"
+    },
+    "JSONStr": {
+      "pythonType": "str",
+      "field": "Field(..., description='JSON字符串')"
+    },
+    "ID": {
+      "pythonType": "str",
+      "field": "Field(..., description='唯一标识符')"
+    }
+  },
+  "enumTypes": {
+    "CodeLanguage": {
+      "values": ["c_cpp"],
+      "baseType": "str"
+    },
+    "SubmitScoreStatus": {
+      "values": ["not_submitted", "not_passed", "passed", "full_score"],
+      "baseType": "str"
+    }
+  },
+  "imports": [
+    "from pydantic import BaseModel, Field",
+    "from enum import Enum", 
+    "from typing import Optional, List, Dict, Union, Annotated",
+    "from datetime import datetime"
+  ]
+}

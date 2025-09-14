@@ -1,0 +1,44 @@
+{
+  "name": "@matrix-ai/type-converter",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "TypeScript to Pydantic converter for AI-matrix project",
+  "main": "dist/converter.js",
+  "bin": {
+    "ts2py": "./dist/converter.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/converter.ts",
+    "convert": "npm run build && node dist/converter.js",
+    "watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "test": "npm run build && node dist/converter.js ./config.json",
+    "start": "node index.ts"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.8.2",
+    "ts-node": "^10.9.0",
+    "rimraf": "^5.0.0"
+  },
+  "dependencies": {
+    "typescript": "^5.8.2"
+  },
+  "keywords": [
+    "typescript",
+    "pydantic", 
+    "converter",
+    "code-generation",
+    "ast"
+  ],
+  "author": "AI-matrix Team",
+  "license": "MIT",
+  "packageManager": "pnpm@10.7.0",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
