@@ -60,7 +60,7 @@ class AI:
 
     # 从环境变量获取API密钥，提高安全性
     client = OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY", ""),
+        api_key=os.getenv("OPENAI_API_KEY", "Your-api-key"),
         base_url=os.getenv(
             "OPENAI_BASE_URL",
             "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -125,9 +125,9 @@ class AIQueue:
         while not self.queue.empty():
             item: Any = self.queue.get()
             # 处理任务
-            
+
             self.queue.task_done()
-    
+
 
 class AIAnalysisGenerator:
     """AI分析生成器，提供各种类型的分析功能"""
