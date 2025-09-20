@@ -107,13 +107,7 @@ class TestUserProfile(BaseModel):
     user = many_to_one("TestUser", "user_id", "profile")
 
 
-# Pytest 配置
-@pytest.fixture(scope="session")
-def event_loop():
-    """创建测试事件循环"""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# 由 pytest-asyncio 管理事件循环，避免不同 loop 冲突
 
 
 @pytest.fixture(scope="session")
@@ -187,12 +181,28 @@ async def clean_tables(setup_tables):
     """每个测试前清理表数据"""
     pool = get_connection_pool()
 
-    # 清理所有表数据
-    await pool.execute("TRUNCATE test_course_assignments RESTART IDENTITY CASCADE")
-    await pool.execute("TRUNCATE test_user_profiles RESTART IDENTITY CASCADE")
-    await pool.execute("TRUNCATE test_assignments RESTART IDENTITY CASCADE")
-    await pool.execute("TRUNCATE test_courses RESTART IDENTITY CASCADE")
-    await pool.execute("TRUNCATE test_users RESTART IDENTITY CASCADE")
+    # openGauss/PGXC 不支持 TRUNCATE ... RESTART IDENTITY，改用 DELETE + 手动重置序列
+    async def reset_identity(table: str, id_col: str = "id"):
+        # 获取序列名
+        seq_row = await pool.fetchrow("SELECT pg_get_serial_sequence($1, $2) AS seq", table, id_col)
+        if seq_row and seq_row.get("seq"):
+            seq = seq_row["seq"]
+            # 重置序列到 1
+            await pool.execute(f"ALTER SEQUENCE {seq} RESTART WITH 1")
+
+    # 删除数据（先子后父，避免外键约束）
+    await pool.execute("DELETE FROM test_course_assignments")
+    await pool.execute("DELETE FROM test_user_profiles")
+    await pool.execute("DELETE FROM test_assignments")
+    await pool.execute("DELETE FROM test_courses")
+    await pool.execute("DELETE FROM test_users")
+
+    # 重置可能存在的序列
+    await reset_identity("test_course_assignments")
+    await reset_identity("test_user_profiles")
+    await reset_identity("test_assignments")
+    # test_courses 主键为 VARCHAR 无序列
+    await reset_identity("test_users")
 
     yield
 
