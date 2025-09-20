@@ -60,7 +60,7 @@ class AI:
 
     # 从环境变量获取API密钥，提高安全性
     client = OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY", "sk-b8dc10dafd2445a3b62830eb625634bf"),
+        api_key=os.getenv("OPENAI_API_KEY", "Your-api-key"),
         base_url=os.getenv(
             "OPENAI_BASE_URL",
             "https://dashscope.aliyuncs.com/compatible-mode/v1"
