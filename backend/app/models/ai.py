@@ -87,7 +87,7 @@ class AI:
         request_data: AIRequest = AIRequest(
             message=cls.AIConfig.messages(prompt)
         )
-        response = requests.post(AIRequest.url, json = request_data.model_dump(),stream=True)
+        response = requests.post(request_data.url, json = request_data.model_dump(),stream=True)
         response.encoding = 'utf-8'
         ai_response = ''
         for line in response.iter_lines(decode_unicode=True):
@@ -125,9 +125,9 @@ class AIQueue:
         while not self.queue.empty():
             item: Any = self.queue.get()
             # 处理任务
-            
+
             self.queue.task_done()
-    
+
 
 class AIAnalysisGenerator:
     """AI分析生成器，提供各种类型的分析功能"""
@@ -203,6 +203,12 @@ class AIAnalysisGenerator:
             )
 
             return analysis
+            # @todo 新增错误响应，注意文档
+        except requests.ConnectTimeout as e:
+            raise HTTPException(
+                status_code=504,
+                detail="AI service timeout, please try again later."
+            )
 
         except Exception as e:
             raise HTTPException(
