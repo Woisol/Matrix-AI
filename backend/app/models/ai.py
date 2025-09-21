@@ -68,7 +68,7 @@ class AI:
     )
 
     @classmethod
-    async def __get_response_from_request(cls, prompt: str) -> str:
+    async def __get_response(cls, prompt: str) -> str:
         """获取AI响应"""
         response = cls.client.chat.completions.create(
             model=cls.AIConfig.MODEL,
@@ -236,7 +236,7 @@ class AIAnalysisGenerator:
             logging.info(f"Received knowledge analysis generate request")
 
             # 获取知识点分析
-            knowledge_content = await AI.get_response_from_request(
+            knowledge_content = await AI.get_response(
                 prompt=AIPrompt.KNOWLEDGEANALYSIS(
                     assign_data.title,
                     assign_data.description,
@@ -249,7 +249,7 @@ class AIAnalysisGenerator:
 
             # 生成标题
             knowledge_titles = [
-                await AI.get_response_from_request(AIPrompt.TITLE(content))
+                await AI.get_response(AIPrompt.TITLE(content))
                 for content in knowledge_contents
             ]
             # 构建分析内容
@@ -306,7 +306,7 @@ class AIAnalysisGenerator:
             user = _user[0]
 
             # 获取代码分析
-            code_analysis_content = await AI.get_response_from_request(
+            code_analysis_content = await AI.get_response(
                 prompt=AIPrompt.CODEANALYSIS(
                     assign_data.title,
                     assign_data.description,
@@ -320,7 +320,7 @@ class AIAnalysisGenerator:
 
             # 生成标题
             code_analysis_titles = [
-                await AI.get_response_from_request(AIPrompt.TITLE(content))
+                await AI.get_response(AIPrompt.TITLE(content))
                 for content in code_analysis_contents
             ]
             # 构建分析内容
@@ -392,7 +392,7 @@ class AIAnalysisGenerator:
             # 生成标题
             learning_suggestion_titles = [
                 #queue here
-                await AI.get_response_from_request(AIPrompt.TITLE(content))
+                await AI.get_response(AIPrompt.TITLE(content))
                 for content in learning_suggestion_contents
             ]
             # 构建分析内容
