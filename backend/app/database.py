@@ -6,10 +6,24 @@ from tortoise.contrib.fastapi import register_tortoise
 from fastapi import FastAPI
 import os, logging
 from app.constants.user import UserMatrixAI
+from app.utils.orm import NoUnlistenConnection
 
 # 数据库配置
 TORTOISE_ORM = {
-    "connections": {"default": "sqlite://db.sqlite3"},
+    "connections": {
+        "default": {
+            "engine": "tortoise.backends.asyncpg",
+            "credentials": {
+                "host": "192.168.134.205",
+                "port": 8888,
+                "user": "matrixai",
+                "password": "Matrix#13331314",
+                "database": "matrixai",
+                "connection_class": NoUnlistenConnection,
+            }
+        }
+    },
+    # "connections": {"default": "sqlite://db.sqlite3"},
     "apps": {
         "models": {
             "models": ["app.models.course", "app.models.assignment", "app.models.analysis", "app.models.user", "aerich.models"],
@@ -21,10 +35,7 @@ TORTOISE_ORM = {
 
 async def init_db():
     """初始化数据库连接"""
-    await Tortoise.init(
-        db_url="sqlite://db.sqlite3",
-        modules={"models": ["app.models.course", "app.models.assignment", "app.models.analysis", "app.models.user"]}
-    )
+    await Tortoise.init(config=TORTOISE_ORM)
     # 生成数据库表
     await Tortoise.generate_schemas()
 
