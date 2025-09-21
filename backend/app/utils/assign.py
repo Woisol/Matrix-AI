@@ -2,7 +2,7 @@ import json, ast
 from datetime import datetime
 from typing import Iterable
 from app.models.assignment import Assignment
-from app.schemas.course import AssignmentListItem
+from app.schemas.course import AssignmentListItem, AssignType
 from app.schemas.assignment import Submit, TestSample, TestSampleResult, MdCodeContent
 
 async def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[AssignmentListItem]:
@@ -17,13 +17,13 @@ async def AssignDBtoSchema(assignments: Iterable[Assignment]) -> list[Assignment
 
             score = submissions.score if submissions.score is not None else 0
 
-        result.append({
-            "assignId": assignment.id,
-            "assignmentName": assignment.title,  # title 映射为 assignmentName
-            "type": assignment.type,
-            "score": score,
-            "ddl": assignment.end_date,
-        })
+        result.append(AssignmentListItem(
+            assignId=assignment.id,
+            assignmentName=assignment.title,  # title 映射为 assignmentName
+            type=AssignType(assignment.type.value),  # 转换枚举类型
+            score=score,
+            ddl=assignment.end_date,
+        ))
 
     return result
 

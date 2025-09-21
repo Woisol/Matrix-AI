@@ -13,7 +13,8 @@ from app.models.playground import Playground
 from app.schemas.general import CourseId, AssignId
 from app.schemas.assignment import AssignData, Submit, TestSubmitRequest,SubmitRequest, TestSample, TestSampleCreate, TestSampleResult, CodeFileInfo, JudgeResult, MdCodeContent
 
-from app.utils.assign import listStrToList, testSampleToResultList
+from app.utils.assign import AssignDBtoSchema, listStrToList, testSampleToResultList
+from app.schemas.assignment import CodeFileInfo
 
 
 class AssignmentController:
@@ -33,11 +34,18 @@ class AssignmentController:
             submit = None
             if _submissions:
                 submissions = _submissions[0]
+                # 将字符串列表转换为 CodeFileInfo 列表
+                submit_code_strs = listStrToList(submissions.submit_code)
+                submit_code_files = [
+                    CodeFileInfo(fileName=f"file_{i}.cpp", content=code)
+                    for i, code in enumerate(submit_code_strs)
+                ]
+
                 submit = Submit(
                     score=submissions.score,
                     time=submissions.submitted_at,
                     testSample=testSampleToResultList(sample_input=listStrToList(codes.sample_input),sample_output=listStrToList(codes.sample_expect_output),real_output=listStrToList(submissions.sample_real_output),),
-                    submitCode=listStrToList(submissions.submit_code),
+                    submitCode=submit_code_files,
                 )
 
             return AssignData(

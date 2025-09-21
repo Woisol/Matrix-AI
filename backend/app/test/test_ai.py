@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import cast
 #import asyncio,sys,os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))) 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from app.models.ai import AI
 
 from app.constants import prompt as Prompt
@@ -29,7 +29,7 @@ class Dummy(unittest.TestCase):
 class TestAIConfig(unittest.TestCase):
     def test_messages_format(self):
         prompt = "hello"
-        msgs = AI.AICONFIG.MESSAGES(prompt)
+        msgs = AI.AIConfig.messages(prompt)
         self.assertIsInstance(msgs, list)
         self.assertGreaterEqual(len(msgs), 1)
         self.assertIn("role", msgs[0])
@@ -46,6 +46,7 @@ class TestAIAnalysisGenerator(unittest.IsolatedAsyncioTestCase):
             title="两数之和",
             description="给定数组与目标，返回两数下标",
             assignOriginalCode=[CodeFileInfo(fileName="main.cpp", content="int main(){}")],
+            ddl=None,
             submit=None,
         )
 
