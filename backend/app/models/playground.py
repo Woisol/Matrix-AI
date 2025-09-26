@@ -32,7 +32,7 @@ class Playground:
             "--caps.drop=all",           # 删除所有capabilities
             "--nonewprivs",              # 禁止获取新权限
             "--nogroups",                # 禁用supplementary groups
-            "--shell=none",              # 禁用shell访问
+            # "--shell=none",              # 禁用shell访问
             "--private-dev",             # 私有/dev目录
             "--private-tmp",             # 私有/tmp目录
             f"--private={tmpdir}",       # 限制只能访问工作目录
