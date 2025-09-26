@@ -89,7 +89,9 @@
   user-select: none;
 }
 
-.ant-message {
+.ant-message,
+.test-sample-con,
+.test-run-panel {
   * {
     user-select: text;
   }
