@@ -13,11 +13,64 @@ class Playground:
     # def __init__(self):
     #     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+    @staticmethod
+    def _get_firejail_args(tmpdir: str) -> list[str]:
+        """生成安全的 firejail 参数配置"""
+        return [
+            "firejail",
+            "--quiet",                    # 减少输出噪音
+            "--noprofile",               # 不使用默认配置文件
+            "--net=none",                # 禁用网络访问
+            "--noroot",                  # 禁止root权限
+            "--nosound",                 # 禁用音频设备
+            "--novideo",                 # 禁用视频设备
+            "--no3d",                    # 禁用3D加速
+            "--nodvd",                   # 禁用DVD设备
+            "--notv",                    # 禁用TV设备
+            "--nou2f",                   # 禁用U2F设备
+            "--seccomp",                 # 启用seccomp过滤
+            "--caps.drop=all",           # 删除所有capabilities
+            "--nonewprivs",              # 禁止获取新权限
+            "--nogroups",                # 禁用supplementary groups
+            "--shell=none",              # 禁用shell访问
+            "--private-dev",             # 私有/dev目录
+            "--private-tmp",             # 私有/tmp目录
+            f"--private={tmpdir}",       # 限制只能访问工作目录
+            "--private-etc=passwd,group,hostname,hosts,nsswitch.conf,resolv.conf", # 最小的/etc访问
+            "--timeout=00:00:10",        # 10秒超时限制
+            "--rlimit-cpu=5",            # CPU时间限制5秒
+            "--rlimit-as=268435456",     # 内存限制256MB
+            "--rlimit-fsize=10485760",   # 文件大小限制10MB
+        ]
 
     @staticmethod
     async def run_code(code: CodeContent, input: str, language: CodeLanguage) -> str:
         if language != CodeLanguage.C_CPP:
             return "Unsupported language: only c_cpp is available for now."
+
+        # 检查 firejail 是否可用（非Windows系统强制要求）
+        firejail_available = False
+        if os.name != "nt":  # 非Windows系统
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "firejail", "--version",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await asyncio.wait_for(proc.communicate(), timeout=5)
+                if proc.returncode == 0:
+                    firejail_available = True
+                else:
+                    return "Security Error: firejail is required for safe code execution on this system, but firejail command failed. Please ensure firejail is properly installed and configured."
+            except FileNotFoundError:
+                return "Security Error: firejail is required for safe code execution on this system, but firejail is not installed. Please install firejail using your system package manager (e.g., 'sudo apt install firejail' or 'sudo yum install firejail')."
+            except asyncio.TimeoutError:
+                return "Security Error: firejail version check timed out. Please check your firejail installation."
+            except Exception as e:
+                return f"Security Error: failed to check firejail availability: {e}. Please ensure firejail is properly installed."
+        else:
+            # Windows系统，使用现有逻辑（无沙箱）
+            firejail_available = False
 
         # 选择编译器：优先 g++，其次 gcc（加 -x c++）
         compiler_cmd = None
@@ -59,14 +112,28 @@ class Playground:
                     return "Compiler not found: please install g++/gcc and ensure it's in PATH."
 
                 # 编译
+                if firejail_available:
+                    # 使用 firejail 进行安全编译
+                    firejail_args = Playground._get_firejail_args(str(tmp))
+                    compile_cmd = firejail_args + compiler_cmd + [
+                        str(src_path.name),  # 相对路径，因为firejail限制了工作目录
+                        "-O2",
+                        "-std=c++17",
+                        "-o",
+                        f"main{exe_suffix}",
+                    ]
+                else:
+                    # Windows系统：直接编译（无沙箱）
+                    compile_cmd = compiler_cmd + [
+                        str(src_path),
+                        "-O2",
+                        "-std=c++17",
+                        "-o",
+                        str(exe_path),
+                    ]
+
                 compile_proc = await asyncio.create_subprocess_exec(
-                    *compiler_cmd,
-                    str(src_path),
-                    #@todo check
-                    "-O2",
-                    "-std=c++17",
-                    "-o",
-                    str(exe_path),
+                    *compile_cmd,
                     cwd=str(tmp),
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
@@ -81,11 +148,20 @@ class Playground:
                     return "Compile Timeout"
 
                 if compile_proc.returncode != 0:
-                    return "Compile Error:\n" + (c_stderr.decode("utf-8", errors="replace") or c_stdout.decode("utf-8", errors="replace"))
+                    compile_error = c_stderr.decode("utf-8", errors="replace") or c_stdout.decode("utf-8", errors="replace")
+                    return f"Compile Error:\n{compile_error}"
 
                 # 运行
+                if firejail_available:
+                    # 使用 firejail 进行安全执行
+                    firejail_args = Playground._get_firejail_args(str(tmp))
+                    run_cmd = firejail_args + [f"./main{exe_suffix}"]
+                else:
+                    # Windows系统：直接执行（无沙箱）
+                    run_cmd = [str(exe_path)]
+
                 run_proc = await asyncio.create_subprocess_exec(
-                    str(exe_path),
+                    *run_cmd,
                     cwd=str(tmp),
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
