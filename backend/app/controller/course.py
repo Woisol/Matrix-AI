@@ -1,4 +1,5 @@
 import uuid
+import logging
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Path, Body, Form
 from tortoise import exceptions as torExceptions
@@ -31,8 +32,10 @@ class CourseController:
 
             return course_list
         except torExceptions.DoesNotExist:
+            logging.warning("No courses found in database")
             raise HTTPException(status_code=404, detail="No courses found")
         except Exception as e:
+            logging.error(f"Error occurred while listing courses: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     @classmethod
     async def list_todo_courses(cls):
@@ -53,6 +56,7 @@ class CourseController:
 
             return course_list
         except Exception as e:
+            logging.error(f"Error occurred while listing todo courses: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @classmethod
@@ -70,8 +74,10 @@ class CourseController:
 
             return course_data
         except torExceptions.DoesNotExist:
+            logging.error(f"Course with id {course_id} not found")
             raise HTTPException(status_code=404, detail=f"Course with id {course_id} not found")
         except Exception as e:
+            logging.error(f"Error occurred while getting course {course_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
@@ -137,11 +143,16 @@ class CourseController:
             # )
 
             return True
-        except torExceptions.ValidationError:
-            raise HTTPException(status_code=400, detail=f"Invalid data provided")
+        except torExceptions.DoesNotExist:
+            logging.error(f"Course with id {courseId} not found during update")
+            raise HTTPException(status_code=404, detail=f"Course with id {courseId} not found")
+        except torExceptions.ValidationError as e:
+            logging.error(f"Validation error occurred while setting course: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Invalid data provided: {str(e)}")
         except HTTPException:
             raise
         except Exception as e:
+            logging.error(f"Error occurred while setting course: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @classmethod
@@ -152,6 +163,8 @@ class CourseController:
             await course.delete()
             return True
         except torExceptions.DoesNotExist:
+            logging.error(f"Course with id {course_id} not found during deletion")
             raise HTTPException(status_code=404, detail=f"Course with id {course_id} not found")
         except Exception as e:
+            logging.error(f"Error occurred while deleting course {course_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
