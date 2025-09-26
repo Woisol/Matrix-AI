@@ -40,11 +40,11 @@ jobs:
     - name: Build frontend project
       run: pnpm run publish
 
-    # - name: Deploy frontend to server
-    #   run: |
-    #     scp -r ./dist/matrix-ai-frontend/* ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.FRONTEND_DEST }}
-    #   env:
-    #     SSH_AUTH_SOCK: /tmp/ssh-agent.sock
+    - name: Deploy frontend to server
+      run: |
+        scp -r ./dist/matrix-ai-frontend/* ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.FRONTEND_DEST }}
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh-agent.sock
 
     - name: Clean up frontend build files
       run: rm -rf dist node_modules

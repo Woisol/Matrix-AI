@@ -8,8 +8,7 @@
     "publish": "pnpm run build && node scripts/clean-monaco.js",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "postinstall": "node scripts/fix-monaco-editor.js",
-    "postpublish": "./scripts/deploy.sh"
+    "postinstall": "node scripts/fix-monaco-editor.js"
   },
   "prettier": {
     "overrides": [
