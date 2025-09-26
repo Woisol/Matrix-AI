@@ -9,7 +9,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "postinstall": "node scripts/fix-monaco-editor.js",
-    "postpublish": ".\\scripts\\deploy.bat"
+    "postpublish": "./scripts/deploy.sh"
   },
   "prettier": {
     "overrides": [
