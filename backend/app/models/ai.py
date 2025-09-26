@@ -68,41 +68,55 @@ class AI:
     )
 
     @classmethod
-    async def __get_response(cls, prompt: str) -> str:
+    async def get_response(cls, prompt: str) -> str:
         """获取AI响应"""
-        response = cls.client.chat.completions.create(
-            model=cls.AIConfig.MODEL,
-            messages=cls.AIConfig.messages(prompt),
-            max_tokens=cls.AIConfig.MAX_TOKENS,
-            temperature=cls.AIConfig.TEMPERATURE,
-        )
+        import asyncio
+
+        def _create_completion():
+            return cls.client.chat.completions.create(
+                model=cls.AIConfig.MODEL,
+                messages=cls.AIConfig.messages(prompt),
+                max_tokens=cls.AIConfig.MAX_TOKENS,
+                temperature=cls.AIConfig.TEMPERATURE,
+            )
+
+        # 使用 asyncio.run_in_executor 让同步调用变成异步
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, _create_completion)
 
         return (response.choices[0].message.content
                 if response.choices[0].message.content else "")
 
     @classmethod
-    async def get_response(cls, prompt: str) -> str:
+    async def _get_response(cls, prompt: str) -> str:
         """通过官方给的API请求获取AI响应"""
+        import asyncio
 
-        request_data: AIRequest = AIRequest(
-            message=cls.AIConfig.messages(prompt)
-        )
-        response = requests.post(request_data.url, json = request_data.model_dump(),stream=True)
-        response.encoding = 'utf-8'
-        ai_response = ''
-        for line in response.iter_lines(decode_unicode=True):
-            # api返回格式的回答包在data中
-            # 差不多像data: {... ,"choices":[{"index":0,"delta":{"role":"assistant","content":"流式内容"},"finish_reason":null}]}
-            if line.startswith("data: "):
-                try:
-                    json_data = json.loads(line[5:])
-                    if 'choices' in json_data:
-                        content = json_data['choices'][0]['delta'].get('content','')
-                        if content:
-                            ai_response += content
-                except json.JSONDecodeError:
-                    continue
-        return ai_response
+        def _make_request():
+            """执行同步的requests调用"""
+            request_data: AIRequest = AIRequest(
+                message=cls.AIConfig.messages(prompt)
+            )
+            response = requests.post(request_data.url, json=request_data.model_dump(), stream=True)
+            response.encoding = 'utf-8'
+            ai_response = ''
+            for line in response.iter_lines(decode_unicode=True):
+                # api返回格式的回答包在data中
+                # 差不多像data: {... ,"choices":[{"index":0,"delta":{"role":"assistant","content":"流式内容"},"finish_reason":null}]}
+                if line.startswith("data: "):
+                    try:
+                        json_data = json.loads(line[5:])
+                        if 'choices' in json_data:
+                            content = json_data['choices'][0]['delta'].get('content','')
+                            if content:
+                                ai_response += content
+                    except json.JSONDecodeError:
+                        continue
+            return ai_response
+
+        # 使用 asyncio.run_in_executor 让同步调用变成异步
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _make_request)
 
 
 class AIQueue:

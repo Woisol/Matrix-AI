@@ -1,4 +1,3 @@
-from pydantic import BaseModel, Field
 from tortoise import fields
 from tortoise.models import Model
 
