@@ -63,7 +63,7 @@ class Playground:
                 else:
                     return "Security Error: firejail is required for safe code execution on this system, but firejail command failed. Please ensure firejail is properly installed and configured."
             except FileNotFoundError:
-                return "Security Error: firejail is required for safe code execution on this system, but firejail is not installed. Please install firejail using your system package manager (e.g., 'sudo apt install firejail' or 'sudo yum install firejail')."
+                return "Security Error: firejail is required for safe code execution on this system, but firejail is not installed. Please install firejail using your system package manager (e.g., 'sudo dnf install firejail')."
             except asyncio.TimeoutError:
                 return "Security Error: firejail version check timed out. Please check your firejail installation."
             except Exception as e:
