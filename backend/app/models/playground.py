@@ -119,6 +119,7 @@ class Playground:
                         str(src_path.name),  # 相对路径，因为firejail限制了工作目录
                         "-O2",
                         "-std=c++17",
+                        "-static",
                         "-o",
                         f"main{exe_suffix}",
                     ]
