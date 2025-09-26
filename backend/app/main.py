@@ -8,6 +8,12 @@ import os
 #~~ 这tm啥
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 应用时区修复补丁（必须在导入 Tortoise 相关模块之前）
+try:
+    from app.utils import timezone_patch
+except ImportError as e:
+    print(f"警告：无法加载时区修复补丁: {e}")
+
 # 检查 Python 版本是否大于 3.9
 if sys.version_info < (3, 9):
     print(f"错误: 此应用需要 Python 3.9 或更高版本，当前版本: {sys.version}")
