@@ -4,5 +4,6 @@ fastapi==0.117.1
 openai==1.109.1
 pydantic==2.11.9
 Requests==2.32.5
-tortoise==0.1.1
+tortoise-orm[asyncpg]==0.21.6
+aerich>=0.7.0
 uvicorn==0.37.0
