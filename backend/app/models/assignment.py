@@ -6,6 +6,7 @@ from tortoise.models import Model
 # 移除循环导入 - 使用字符串引用而非直接导入
 #! 倒是可以只导入一个否则似乎数据库结构创建错误
 from app.models.analysis import Analysis
+from app.utils.fields import NaiveDatetimeField
 
 #! 单独定义，据 C4：
 # 1. 职责分离
@@ -36,8 +37,8 @@ class Assignment(Model):
     description = fields.TextField(max_length=1000, description="作业描述")
     type = fields.CharEnumField(AssignTypeEnum, max_length=20, description="作业类型")
     # score = fields.FloatField(null=True, description="作业得分")
-    start_date = fields.DatetimeField(null=True,description="开始时间")
-    end_date = fields.DatetimeField(null=True, description="截止时间")  # ddl
+    start_date = NaiveDatetimeField(null=True,description="开始时间")
+    end_date = NaiveDatetimeField(null=True, description="截止时间")  # ddl
 
     # # 作业原始代码和答案
     # original_code = fields.CharField(max_length=10000, description="作业原始代码文件列表 JSON")
@@ -87,7 +88,7 @@ class AssignmentSubmission(Model):
     sample_real_output = fields.CharField(max_length=10000, description="样例真实输出列表")
     submit_code = fields.CharField(max_length=10000, description="提交代码文件列表")
 
-    submitted_at = fields.DatetimeField(auto_now=True, description="提交时间")
+    submitted_at = NaiveDatetimeField(auto_now=True, description="提交时间")
 
     class Meta:
         table = "assignment_submissions"

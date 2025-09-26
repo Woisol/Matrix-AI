@@ -17,5 +17,18 @@ class NoUnlistenConnection(asyncpg.Connection):
         """
 
         async def reset(self, *, timeout: float | None = None) -> None:  # type: ignore[override]
-                # 直接跳过 reset 流程以避免执行 UNLISTEN 等不被支持的语句
+                # 跳过 UNLISTEN 等不被支持的语句，但执行必要的会话重置
+                try:
+                    # 重置时区为 UTC，确保时区一致性
+                    await self.execute("SET timezone = 'UTC'")
+                    # 重置其他可能影响 datetime 处理的设置
+                    await self.execute("SET datestyle = 'ISO, MDY'")
+                    # 确保时区处理模式
+                    await self.execute("SET TimeZone = 'UTC'")
+                except Exception as e:
+                    # 如果重置失败，记录但不抛出异常，保持兼容性
+                    import logging
+                    logging.warning(f"Failed to reset connection settings: {e}")
                 return None
+        
+

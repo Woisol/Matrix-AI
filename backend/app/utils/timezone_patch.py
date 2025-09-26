@@ -13,15 +13,15 @@ def patched_to_db_value(self, value: Any, instance: Any) -> Optional[datetime]:
     """修复 DatetimeField 的时区问题"""
     # 调用原始方法
     result = _original_to_db_value(self, value, instance)
-    
+
     if result is None:
         return None
-    
+
     # 确保返回 naive datetime
     if hasattr(result, 'tzinfo') and result.tzinfo is not None:
         # 转换为 UTC 然后移除时区信息
         result = result.astimezone(timezone.utc).replace(tzinfo=None)
-    
+
     return result
 
 # 应用 monkey patch

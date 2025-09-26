@@ -20,6 +20,12 @@ TORTOISE_ORM = {
                 "password": "Matrix#13331314",
                 "database": "matrixai",
                 "connection_class": NoUnlistenConnection,
+                # 设置连接初始参数，确保时区一致性
+                "server_settings": {
+                    "timezone": "UTC",
+                    "datestyle": "ISO, MDY"
+                },
+
             }
         }
     },
