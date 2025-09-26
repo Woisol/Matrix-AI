@@ -1,0 +1,134 @@
+name: Deploy Matrix AI on LoongArch
+# run-name: ${{ github.workflow }} - ${{ github.ref }} - ${{ github.sha }}
+on:
+  push:
+    branches:
+    - main
+  workflow_dispatch: # 允许手动触发
+
+env:
+  SERVER_HOST: 192.168.134.251
+  SERVER_USER: matrix
+  FRONTEND_DEST: ~/www
+  BACKEND_DEST: ~/ai-matrix-backend
+
+jobs:
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    # - name: Setup Node.js
+    #   uses: actions/setup-node@v4
+    #   with:
+    #     node-version: '18'
+
+    # - name: Setup pnpm
+    #   uses: pnpm/action-setup@v4
+    #   with:
+    #     version: latest
+
+    - name: Install frontend dependencies
+      run: pnpm install
+
+    - name: Build frontend project
+      run: pnpm run publish
+
+    # - name: Deploy frontend to server
+    #   run: |
+    #     scp -r ./dist/matrix-ai-frontend/* ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.FRONTEND_DEST }}
+    #   env:
+    #     SSH_AUTH_SOCK: /tmp/ssh-agent.sock
+
+    - name: Clean up frontend build files
+      run: rm -rf dist node_modules
+
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    # - name: Setup Python
+    #   uses: actions/setup-python@v4
+    #   with:
+    #     python-version: '3.11'
+
+    - name: Copy backend files to server
+      run: |
+        # 创建远程目录（如果不存在）
+        ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.BACKEND_DEST }}"
+
+        # 复制后端文件到服务器
+        scp -r ./* ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.BACKEND_DEST }}/
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh-agent.sock
+
+    - name: Deploy and restart backend service
+      run: |
+        ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << 'EOF'
+          cd ${{ env.BACKEND_DEST }}
+
+          # 停止现有的后端进程（如果存在）
+          pkill -f "python.*run.py" || true
+
+          # 安装依赖
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+
+          # 启动后端服务（在后台运行）
+          nohup python3 run.py > backend.log 2>&1 &
+
+          # 等待几秒确保服务启动
+          sleep 5
+
+          # 检查服务是否正在运行
+          if pgrep -f "python.*run.py"; then
+            echo "Backend service started successfully"
+          else
+            echo "Failed to start backend service"
+            exit 1
+          fi
+        EOF
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh-agent.sock
+
+  health-check:
+    name: Health Check
+    runs-on: self-hosted
+    needs: [deploy-frontend, deploy-backend]
+
+    steps:
+    - name: Wait for services to be ready
+      run: sleep 10
+
+    - name: Check backend health
+      run: |
+        # 后端接口 8000
+        if curl -f http://${{ env.SERVER_HOST }}:8000/health || curl -f http://${{ env.SERVER_HOST }}:8000/; then
+          echo "Backend is healthy"
+        else
+          echo "Backend health check failed"
+          exit 1
+        fi
+
+    - name: Check frontend accessibility
+      run: |
+        # 检查前端是否可访问（假设通过nginx或apache提供服务）
+        if curl -f http://${{ env.SERVER_HOST }}/ || curl -f http://${{ env.SERVER_HOST }}/index.html; then
+          echo "Frontend is accessible"
+        else
+          echo "Frontend accessibility check failed"
+          exit 1
+        fi
