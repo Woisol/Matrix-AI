@@ -111,27 +111,13 @@ class Playground:
                 if compiler_cmd is None:
                     return "Compiler not found: please install g++/gcc and ensure it's in PATH."
 
-                # 编译
-                if firejail_available:
-                    # 使用 firejail 进行安全编译
-                    firejail_args = Playground._get_firejail_args(str(tmp))
-                    compile_cmd = firejail_args + compiler_cmd + [
-                        str(src_path.name),  # 相对路径，因为firejail限制了工作目录
-                        "-O2",
-                        "-std=c++17",
-                        "-static",
-                        "-o",
-                        f"main{exe_suffix}",
-                    ]
-                else:
-                    # Windows系统：直接编译（无沙箱）
-                    compile_cmd = compiler_cmd + [
-                        str(src_path),
-                        "-O2",
-                        "-std=c++17",
-                        "-o",
-                        str(exe_path),
-                    ]
+                compile_cmd = compiler_cmd + [
+                    str(src_path),
+                    "-O2",
+                    "-std=c++17",
+                    "-o",
+                    str(exe_path),
+                ]
 
                 compile_proc = await asyncio.create_subprocess_exec(
                     *compile_cmd,
