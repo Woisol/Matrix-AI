@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Query
 from app.controller.ai import AIController
-from app.schemas import ai as ai_schema
 
 
 ai_route = APIRouter(tags=["ai"])
@@ -19,3 +18,5 @@ async def generate_analysis(
     assign_id: str,
 ):
     return await AIController.getAiGen(course_id, assign_id)
+
+
