@@ -84,6 +84,7 @@ class AssignmentController:
                 assignment.codes[0].sample_expect_output = json.dumps(testSample.expectOutput, ensure_ascii=False)
                 await assignment.codes[0].save()
             else:
+                # invalid input for query argument $7: datetime.datetime(2025, 9, 26, 10, 53, 4... (can't subtract offset-naive and offset-aware datetimes)
                 assignment = await AssignmentModel.create(
                     id=uuid.uuid4().hex,
                     title=title,
