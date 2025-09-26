@@ -49,8 +49,10 @@ class AssignmentController:
                 submit=submit,
             )
         except torExceptions.DoesNotExist:
+            logging.error(f"Assignment with id {assign_id} not found or invalid")
             raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found or invalid")
         except Exception as e:
+            logging.error(f"Error occurred while getting assignment {assign_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
@@ -117,13 +119,17 @@ class AssignmentController:
             #     assignOriginalCode=listStrToList(assignOriginalCode),
             # )
         except torExceptions.DoesNotExist:
+            logging.error(f"Course with id {courseId} not found")
             raise HTTPException(status_code=404, detail=f"Course with id {courseId} not found")
         except json.JSONDecodeError as e:
+            logging.error(f"JSON decode error occurred while creating assignment: {str(e)}")
             raise HTTPException(status_code=400, detail=f"Invalid JSON data provided: {str(e)}")
         except torExceptions.ValidationError as e:
+            logging.error(f"Validation error occurred while creating assignment: {str(e)}")
             #! 缺了 str(e) 这个不知道搞了多久()
             raise HTTPException(status_code=400, detail=f"Invalid data provided: {str(e)}")
         except Exception as e:
+            logging.error(f"Error occurred while creating assignment: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @classmethod
@@ -133,8 +139,10 @@ class AssignmentController:
             await assignment.delete()
             return True
         except torExceptions.DoesNotExist:
+            logging.error(f"Assignment with id {assign_id} not found during deletion")
             raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found")
         except Exception as e:
+            logging.error(f"Error occurred while deleting assignment {assign_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @classmethod
@@ -148,6 +156,7 @@ class AssignmentController:
             )
             return output
         except Exception as e:
+            logging.error(f"Error occurred while testing code submission: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     @classmethod
     async def submit_code(cls, course_id: CourseId, assign_id: AssignId, submitRequest: SubmitRequest):
@@ -168,7 +177,7 @@ class AssignmentController:
             )
             submit = Submit(
                 score=judgeRes.score,
-                time=datetime.now(),
+                time=datetime.now(timezone.utc),
                 testSample=testSampleToResultList(sample_input=sample_input, sample_output=sample_output, real_output=judgeRes.testRealOutput),
                 submitCode=[submitRequest.codeFile],
             )
@@ -217,6 +226,7 @@ class AssignmentController:
         except HTTPException as he:
             raise he
         except Exception as e:
+            logging.error(f"Error occurred while submitting code for assignment {assign_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     @classmethod
     # async def remove_previous_ai_gen(cls, assignment: AssignmentModel):

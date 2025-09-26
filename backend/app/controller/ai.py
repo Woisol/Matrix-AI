@@ -1,6 +1,8 @@
 import json
+import logging
 
 from fastapi import HTTPException
+from tortoise import exceptions as torExceptions
 
 from app.models.assignment import Assignment as AssignmentModel, Analysis
 from app.models.ai import AIAnalysisGenerator
@@ -14,19 +16,40 @@ class AIController:
     """用于控制测试相关的AI服务的控制器.由于申请api时间有限，现使用通义千问的统一模型接口进行测试"""
     @classmethod
     async def getBasic(cls, course_id: str, assign_id: str, re_gen: bool = False) -> BasicAnalysis:
+        """获取基础分析（解题思路和知识点分析）"""
         #@todo 可能需要重新生成功能 /basic/again ？
         #Done
-        assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis")
-        analysis = assignment.analysis[0] if assignment.analysis else None
+        try:
+            assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis")
+            analysis = assignment.analysis[0] if assignment.analysis else None
 
-        if re_gen:
-            resol = await AIAnalysisGenerator.genResolutions(assign_id)
-            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
-            if analysis:
-                analysis.resolution = resol.model_dump_json()
-                analysis.knowledge_analysis = knowled.model_dump_json()
-                await analysis.save()
+            if re_gen:
+                resol = await AIAnalysisGenerator.genResolutions(assign_id)
+                knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
+                if analysis:
+                    analysis.resolution = resol.model_dump_json()
+                    analysis.knowledge_analysis = knowled.model_dump_json()
+                    await analysis.save()
+                else:
+                    #@todo add to queue instead
+                    analysis = await Analysis.create(
+                        assignment=assignment,
+                        resolution=resol.model_dump_json(),
+                        knowledge_analysis=knowled.model_dump_json()
+                    )
+                    await analysis.save()
+                return BasicAnalysis(
+                    resolution=resol,
+                    knowledgeAnalysis=knowled
+                )
+            elif analysis:
+                return BasicAnalysis(
+                    resolution=analysis.resolution,
+                    knowledgeAnalysis=analysis.knowledge_analysis
+                )
             else:
+                resol = await AIAnalysisGenerator.genResolutions(assign_id)
+                knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
                 #@todo add to queue instead
                 analysis = await Analysis.create(
                     assignment=assignment,
@@ -34,66 +57,79 @@ class AIController:
                     knowledge_analysis=knowled.model_dump_json()
                 )
                 await analysis.save()
-            return BasicAnalysis(
-                resolution=resol,
-                knowledgeAnalysis=knowled
-            )
-        elif analysis:
-            return BasicAnalysis(
-                resolution=analysis.resolution,
-                knowledgeAnalysis=analysis.knowledge_analysis
-            )
-        else:
-            resol = await AIAnalysisGenerator.genResolutions(assign_id)
-            knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
-            #@todo add to queue instead
-            analysis = await Analysis.create(
-                assignment=assignment,
-                resolution=resol.model_dump_json(),
-                knowledge_analysis=knowled.model_dump_json()
-            )
-            await analysis.save()
-            return BasicAnalysis(
-                resolution=resol,
-                knowledgeAnalysis=knowled
-            )
+                return BasicAnalysis(
+                    resolution=resol,
+                    knowledgeAnalysis=knowled
+                )
+        except torExceptions.DoesNotExist:
+            logging.error(f"Assignment with id {assign_id} not found")
+            raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found")
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON decode error in getBasic for assignment {assign_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail="Internal server error: JSON processing failed")
+        except Exception as e:
+            logging.error(f"Error occurred in getBasic for assignment {assign_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 
     @classmethod
     async def getAiGen(cls, course_id: str, assign_id: str, re_gen: bool = False) -> AiGenAnalysis:
-        assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis","submissions")
-        if assignment.end_date and assignment.end_date > datetime.now(timezone.utc):
-            raise HTTPException(status_code=400, detail="Deadline not meet yet")
+        """获取AI生成的代码分析和学习建议"""
+        try:
+            assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis","submissions")
 
-        submited = True if assignment.submissions and assignment.submissions[0] else False
-        if not submited:
-            raise HTTPException(status_code=403, detail="AI生成分析功能需要在提交作业后才能使用哦~")
+            # 检查截止时间
+            if assignment.end_date:
+                if assignment.end_date.tzinfo is None:
+                    end_date_utc = assignment.end_date.replace(tzinfo=timezone.utc)
+                else:
+                    end_date_utc = assignment.end_date.astimezone(timezone.utc)
 
-        analysis = assignment.analysis[0] if assignment.analysis else None
-        if analysis and analysis.code_analysis and analysis.learning_suggestions:
-            return AiGenAnalysis(
-                codeAnalysis=analysis.code_analysis,
-                learningSuggestions=analysis.learning_suggestions
-            )
-        else:
-            #@todo add to queue instead
-            codeAnal = await AIAnalysisGenerator.genCodeAnalysis(assign_id)
-            learnSug = await AIAnalysisGenerator.genLearningSuggestions(assign_id)
-            if analysis:
-                analysis.code_analysis = codeAnal.model_dump_json()
+                if end_date_utc > datetime.now(timezone.utc):
+                    logging.warning(f"Attempt to access AI analysis before deadline for assignment {assign_id}")
+                    raise HTTPException(status_code=400, detail="Deadline not meet yet")
 
-                
-                analysis.learning_suggestions = learnSug.model_dump_json()
-                await analysis.save()
-            else:
-                analysis = await Analysis.create(
-                    assignment=assignment,
-                    code_analysis=codeAnal.model_dump_json(),
-                    learning_suggestions=learnSug.model_dump_json()
+            # 检查是否已提交作业
+            submited = True if assignment.submissions and assignment.submissions[0] else False
+            if not submited:
+                logging.warning(f"Attempt to access AI analysis without submission for assignment {assign_id}")
+                raise HTTPException(status_code=403, detail="AI生成分析功能需要在提交作业后才能使用哦~")
+
+            analysis = assignment.analysis[0] if assignment.analysis else None
+            if analysis and analysis.code_analysis and analysis.learning_suggestions:
+                return AiGenAnalysis(
+                    codeAnalysis=analysis.code_analysis,
+                    learningSuggestions=analysis.learning_suggestions
                 )
-                await analysis.save()
-            return AiGenAnalysis(
-                codeAnalysis=codeAnal,
-                learningSuggestions=learnSug
-            )
+            else:
+                #@todo add to queue instead
+                codeAnal = await AIAnalysisGenerator.genCodeAnalysis(assign_id)
+                learnSug = await AIAnalysisGenerator.genLearningSuggestions(assign_id)
+                if analysis:
+                    analysis.code_analysis = codeAnal.model_dump_json()
+                    analysis.learning_suggestions = learnSug.model_dump_json()
+                    await analysis.save()
+                else:
+                    analysis = await Analysis.create(
+                        assignment=assignment,
+                        code_analysis=codeAnal.model_dump_json(),
+                        learning_suggestions=learnSug.model_dump_json()
+                    )
+                    await analysis.save()
+                return AiGenAnalysis(
+                    codeAnalysis=codeAnal,
+                    learningSuggestions=learnSug
+                )
+        except HTTPException:
+            # 重新抛出 HTTP 异常（业务逻辑异常）
+            raise
+        except torExceptions.DoesNotExist:
+            logging.error(f"Assignment with id {assign_id} not found")
+            raise HTTPException(status_code=404, detail=f"Assignment with id {assign_id} not found")
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON decode error in getAiGen for assignment {assign_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail="Internal server error: JSON processing failed")
+        except Exception as e:
+            logging.error(f"Error occurred in getAiGen for assignment {assign_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
