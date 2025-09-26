@@ -1,28 +1,29 @@
-# AI-Matrix智能编程练习平台 - 详细PPT文案
+# 龙码智评/Matrix AI 作品演示 - 详细PPT文案
 
-## 幻灯片1：封面页
+全局说明：
+- PPT 模板中的母版已经包含了常见布局，请你基于此安排内容，如果要修改布局也请在母版中修改
+- PPT 主题色系使用提供的 ppt 模板中的设计
+- 制作过程如果需要附上产品截图，请使用文本占位提醒我
 
-**主标题**：AI-Matrix智能编程练习平台
-**副标题**：基于AI与国产化技术的编程教育创新解决方案
+## 1：封面页
+
+**主标题**：龙码智评/Matrix AI
+**副标题**：基于 AI 与国产化技术的编程教育创新解决方案
 **核心展示点**：
 - 🎯 专为计算机教育设计的智能编程平台
 - 🤖 AI驱动的个性化学习分析系统
 - 🇨🇳 完全兼容龙芯平台的国产化技术栈
 
 **视觉元素建议**：
-- 平台首页Banner图（frontend/public/banner/banner-matrix-ai.png）
-- 项目Logo与主题色系
-- 团队标识与比赛信息
+- 团队标识与比赛信息(放个占位等我补充)
 
 **底部信息**：
-- 参赛团队：[你的团队名称]
-- 指导老师：[如有]
-- 参赛类别：[具体比赛类别]
-- 提交日期：[具体日期]
+- 参赛团队：MatrixAI
+- 指导老师：中山大学黎恩磊老师
 
 ---
 
-## 幻灯片2：项目概述与核心价值
+## 2：项目概述与核心价值
 
 ### 项目定位解析
 **教育痛点识别**：
@@ -41,38 +42,37 @@
 | **技术安全** | 国外技术依赖       | 全链路国产化验证   |
 | **教育公平** | 可能的技术作弊     | AI分析防滥用机制   |
 
----
-
-## 幻灯片3：核心特性展示
+## 3：核心特性展示
 
 ### 特性一：智能编程练习系统
-**技术实现**：
-- 多题型支持：选择题+编程题混合训练
-- 代码实时检测：语法检查+基础逻辑验证
-- 渐进式难度：从基础语法到复杂算法全覆盖
-
-**教学价值**：
-- 构建完整的学习路径，适应不同层次学生需求
-- 即时反馈机制，降低学习挫折感
+🎯 七大核心功能
+1. ​​AI驱动分析​​ - 智能代码分析与解题建议​
+2. 课程管理系统​​ - 课程作业管理
+3. ​​专业代码编辑器​​ - 基于Monaco Editor
+4. 实时评测反馈​​ - 即时测试与成绩反馈
+5. 现代化UI界面​​ - Angular + Ant Design响应式设计
+6. 国产化兼容​​ - 龙芯平台实机验证
+7. 安全沙箱环境​​ - firejail代码安全运行
 
 ### 特性二：AI驱动分析引擎
-**核心算法**：
-- 代码质量评估：可读性、效率、规范性多维分析
-- 解题模式识别：常见错误模式库匹配
-- 知识点关联：题目与知识图谱智能映射
+四大分析内容
+- 题目题解：提供作业题目的参考题解，包含解法代码和时间空间复杂度
+- 知识点分析：深度解析题目涉及的知识点，帮助学生穿透题目直达本质，更好理解题目，从而写出更快更好的代码。
+- 代码质量评估：针对学生代码的质量分析，包括变量命名风格、代码效率、时间空间复杂度等，并穿插对学生历史提交的评价，既指出学生代码长期以来存在的问题，也肯定学生代码质量的改进之处。
+- 知识点学习建议：结合当前题目与学生历史提交中展现的缺失知识点，给予学生明确的知识点学习方向建议，帮助学生拓展视野，助力学生自主提高代码能力。
 
 ### 特性三：课程管理生态
 ```
 课程创建 → 作业布置 → 学生管理 → 进度监控
-    ↓        ↓          ↓          ↓
-AI题库生成  自动评测    学习分析   教学质量评估
+             ↓          ↓           ↓
+          自动评测    学习分析  教学质量评估
 ```
 
 ### 特性四：专业化开发环境
 **Monaco Editor深度定制**：
-- 语法高亮：支持10+编程语言
+- 语法高亮：支持 C/C++ 编程语言
 - 智能补全：基于上下文的代码提示
-- 错误诊断：实时语法错误标记
+- 代码测试：随时运行代码，获取代码输出
 
 ### 特性五：国产化兼容认证
 **龙芯3A6000实机验证报告**：
@@ -82,15 +82,28 @@ AI题库生成  自动评测    学习分析   教学质量评估
 - ✅ AI分析功能完整
 - ✅ 代码沙箱安全运行
 
----
+## 4：技术架构深度解析
 
-## 幻灯片4：技术架构深度解析
-
-### 后端架构分层设计
+### 后端
+**后端架构分层设计**：
 ```
 表现层（FastAPI） → 业务逻辑层 → 数据访问层（Tortoise ORM）
        ↓                    ↓               ↓
-   RESTful API        评测引擎/AI服务      openGauss数据库
+   RESTful API       评测引擎/AI服务  openGauss数据库
+```
+
+**后端项目结构**：
+```
+backend/                 # 后端服务
+├── app/
+│   ├── controller/     # 业务控制层
+│   ├── models/         # 数据模型
+│   ├── routers/        # API 路由
+│   ├── schemas/        # 数据验证模式
+│   ├── utils/          # 工具函数
+│   └── constants/      # 常量配置
+├── docs/               # 文档
+└── tests/              # 简略的测试用例
 ```
 
 **关键技术选型理由**：
@@ -98,24 +111,26 @@ AI题库生成  自动评测    学习分析   教学质量评估
 2. **openGauss数据库**：华为开源企业级数据库，增强稳定性与安全性
 3. **Tortoise ORM**：原生异步支持，与FastAPI完美契合
 
-### 前端架构现代化实践
-**组件化设计理念**：
-```typescript
-// 核心组件架构
-AppComponent
-├── HeaderComponent（导航）
-├── CourseListComponent（课程列表）
-├── AssignmentComponent（作业页面）
-│   ├── DescriptionPanel（题目描述）
-│   ├── CodeEditorComponent（代码编辑器）
-│   └── AnalysisPanel（AI分析）
-└── AdminComponent（管理后台）
+### 前端
+**前端项目结构**
+```
+frontend/               # 前端应用
+├── src/
+│   ├── app/
+│   │   ├── pages/      # 页面组件
+│   │   ├── services/   # 业务服务
+│   │   ├── api/        # API 接口
+│   │   └── shared/     # 共享组件
+│   └── assets/         # 静态资源
+├── public/             # 公共资源
+└── scripts/            # 构建脚本
 ```
 
 **性能优化策略**：
-- 懒加载路由：按需加载模块，提升首屏速度
-- 虚拟滚动：大数据列表性能优化
-- Monaco编辑器按需加载：减少初始包体积
+- Angular DI 依赖注入：按需加载模块，提升首屏速度
+- Antd-Zorro list 组件虚拟滚动：大数据列表性能优化
+- Monaco 编辑器打包优化：减少初始包体积
+- 原生 CSS 动画：美观与性能兼顾之选
 
 ### 数据库设计的教学洞察
 **核心表关系设计**：
@@ -129,26 +144,21 @@ Course (课程) 1:N Assignment (作业) 1:N Submission (提交)
 **教育数据价值挖掘**：
 - 学习轨迹分析：通过提交历史构建学习画像
 - 知识点掌握度：基于题目-知识点关联分析
-- 教学效果评估：班级整体表现统计分析
 
 ---
 
-## 幻灯片5：国产化适配与部署方案
+## 5：国产化适配与部署方案
 
 ### 龙芯平台适配技术细节
 **编译适配挑战与解决方案**：
 ```bash
-# 前端构建优化 - 龙芯架构特殊处理
 pnpm run publish
-# 自动执行：Monaco编辑器语言包精简
-# 自动执行：龙芯架构二进制依赖验证
-# 自动执行：性能优化配置应用
 ```
 
 **后端依赖兼容性验证**：
-- Python 3.8+ 龙芯版本验证
-- openGauss数据库龙芯版本部署
-- 沙箱环境firejail安全配置
+- Python 3.11 龙芯版本验证
+- openGauss 数据库部署
+- 沙箱环境 firejail 安全配置
 
 ### 生产环境部署架构
 **网络拓扑设计**：
@@ -180,70 +190,44 @@ server {
 # .github/workflows/deploy-matrix-ai-on-loongarch.yml
 name: 龙芯平台自动化部署
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 代码检出
-        uses: actions/checkout@v3
-      - name: 前端构建
-        run: cd frontend && pnpm install && pnpm run publish
-      - name: 龙芯服务器部署
-        uses: appleboy/ssh-action@v0.1.3
-        with:
-          host: ${{ secrets.LOONGSON_HOST }}
-          script: |
-            cd /opt/matrix-ai
-            git pull origin main
-            systemctl restart matrix-ai
+  deploy-frontend:
+    ...
+  deploy-backend:
+    ...
+  health-check:
+    ...
 ```
 
----
-
-## 幻灯片6：平台功能详解 - 学习流程
+## 6：平台功能详解 - 学习流程
 
 ### 学生端用户体验旅程地图
 **第一阶段：学习入口（主页）**
-```
 用户行为：登录系统 → 查看待办作业 → 点击进入学习
 设计理念：减少操作路径，聚焦学习任务
 界面特色：Todo-List直接跳转，进度可视化展示
-```
 
 **第二阶段：课程学习（课程页）**
-```typescript
-// 页面路由架构
-const routes: Routes = [
-  { path: '', component: HomeComponent },
-  { path: 'courses', component: CourseListComponent },
-  { path: 'courses/:id', component: CourseDetailComponent },
-  { path: 'assignments/:id', component: AssignmentComponent }
-];
-```
+从顶栏的 “课程” tab 进入课程页面，此处展示所有课程，再次点击即可进入课程详细页，其中展示了课程下的所有作业
 
 **第三阶段：编程实践（作业页）**
-**左栏信息面板三标签设计**：
-1. **描述标签**：题目要求+输入输出示例+难度标识
-2. **提交标签**：历史提交时间轴+得分趋势图+测例详情
-3. **AI分析标签**：智能诊断报告+改进建议+知识推荐
 
-**右栏编码环境**：
-```typescript
-// Monaco编辑器配置
-const editorOptions = {
-  theme: 'vs-dark',
-  language: 'python',
-  minimap: { enabled: true },
-  scrollBeyondLastLine: false,
-  automaticLayout: true
-};
-```
+#### 左栏信息面板三标签设计
 
-### 测试面板交互设计
+1. **描述 tab**：题目要求+输入输出示例+其余信息
+2. **提交 tab**：得分+测例详情
+3. **AI分析 tab**：智能诊断报告+改进建议+知识推荐
+
+#### 测试面板交互设计
+
+**基于文本的简单代码自动补全**
+
+帮助学生更快将脑海中的代码从想象到实际。
+
 **实时反馈机制**：
 ```
 学生输入测试数据 → 点击运行 → 沙箱执行 → 实时结果返回
-     ↓           ↓         ↓           ↓
- 输入验证     状态提示   安全隔离   格式化输出
+     ↓                ↓          ↓           ↓
+ 输入验证          状态提示   安全隔离    运行输出
 ```
 
 **教学意义**：
@@ -251,90 +235,38 @@ const editorOptions = {
 - 培养调试习惯：输入输出验证思维训练
 - 即时成就感：代码运行成功的学习激励
 
----
+## 7：AI智能分析系统（创新亮点）
 
-## 幻灯片7：AI智能分析系统（创新亮点）
+<!-- @section-WIP 2025-09-27 01:20:41 -->
 
 ### AI分析的双层架构设计
 **第一层：题目级智能预处理**
-```python
-# AI题目分析流程
-async def analyze_assignment(assignment_id: int):
-    # 1. 多解法生成
-    solutions = await ai.generate_solutions(assignment.description)
-    # 2. 复杂度分析
-    complexity = await ai.analyze_complexity(solutions)
-    # 3. 知识点提取
-    knowledge_points = await ai.extract_knowledge(assignment)
-    return AnalysisResult(solutions, complexity, knowledge_points)
-```
 
 **分析维度深度挖掘**：
 - **算法多样性**：展示3-5种不同解题思路
 - **性能对比**：时间/空间复杂度可视化对比
-- **应用场景**：题目在实际开发中的应用案例
+- **知识点分析**：仔细挖掘题目所涉及的知识点
 
 **第二层：学生级个性化诊断**
-```python
-# 学生代码分析引擎
-class StudentCodeAnalyzer:
-    def analyze_quality(self, current_code, history_submissions):
-        # 代码质量多维评估
-        quality_score = self.evaluate_code_quality(current_code)
-        # 历史进步分析
-        improvement = self.analyze_improvement(history_submissions)
-        # 知识缺口识别
-        knowledge_gaps = self.identify_gaps(current_code, assignment)
-        return AnalysisReport(quality_score, improvement, knowledge_gaps)
-```
+
+**针对提交代码多维解析**：
+- **提交代码质量分析**：包括变量命名风格、代码效率、时间空间复杂度等
+- **知识点学习建议**：给予学生明确的知识点学习方向建议，帮助学生拓展视野，助力学生自主提高代码能力。
+- **学生历史画像分析**：在质量分析与学习建议的过程中，穿插对学生历史提交的评价，更有针对性地帮助学生提高代码能力。
+
 
 ### 教育公平性保障机制
-**AI分析开放条件验证逻辑**：
-```python
-# 检查是否可显示AI分析
-def can_show_ai_analysis(assignment, submission):
-    # 条件1：学生必须已提交
-    if not submission:
-        return False
+**AI分析开放条件**：
 
-    # 条件2：如果作业有截止时间，需已过截止时间
-    if assignment.deadline and datetime.now() < assignment.deadline:
-        return False
-
-    return True
-```
+学生必须在提交了作业且题目截止后才能查看 AI 分析，防止学生过度依赖 AI 功能缺少思考与锻炼。
 
 **防作弊设计理念**：
 - **时间控制**：避免考试期间AI辅助
 - **过程重视**：强调编程思维培养而非结果导向
 - **诚信教育**：通过技术手段促进学术诚信
 
-### AI分析报告内容模板
-**代码质量分析章节**：
-```
-📊 代码质量报告
-├── 可读性评分: ★★★★☆ (4.2/5)
-│   ├── 变量命名规范: 优秀
-│   ├── 代码结构清晰: 良好
-│   └── 注释完整性: 需改进
-├── 效率评估: ★★★☆☆ (3.5/5)
-│   ├── 时间复杂度: O(n) - 良好
-│   └── 空间复杂度: O(1) - 优秀
-└── 改进建议: 建议增加异常处理...
-```
 
-**学习路径推荐**：
-```
-🎯 个性化学习建议
-基于你的代码表现，推荐学习：
-1. 数据结构优化 - 数组与链表的选择
-2. 算法思维 - 分治法的应用场景
-3. 实战练习 - 相似难度题目推荐
-```
-
----
-
-## 幻灯片8：评测系统技术实现
+## 8：评测系统技术实现
 
 ### 安全沙箱架构设计
 **firejail沙箱配置策略**：
@@ -394,57 +326,7 @@ async def evaluate_submission(submission_id: int):
 }
 ```
 
----
-
-## 幻灯片9：管理后台功能
-
-### 课程管理功能矩阵
-**课程生命周期管理**：
-```
-课程创建 → 学生导入 → 作业布置 → 进度监控 → 成绩导出
-    ↓         ↓          ↓          ↓          ↓
-基础信息   批量导入   题库选择   学习分析   多格式导出
-设置      分组管理   时间设置   预警提示   统计分析
-```
-
-**作业配置精细化**：
-```typescript
-// 作业配置接口
-interface AssignmentConfig {
-  title: string;
-  description: string;
-  programmingLanguage: string;
-  testCases: TestCase[];
-  deadline?: Date;
-  allowLateSubmission: boolean;
-  aiAnalysisEnabled: boolean;
-}
-```
-
-### 数据统计分析能力
-**学习数据分析维度**：
-- **个体分析**：学生知识点掌握雷达图
-- **班级对比**：整体成绩分布统计
-- **题目分析**：各题目通过率与难度评估
-- **时间趋势**：学习进步曲线分析
-
-**教师洞察工具**：
-```python
-# 教学数据分析示例
-class TeachingAnalytics:
-    def get_class_performance(self, course_id):
-        # 班级整体表现
-        avg_score = self.calculate_average(course_id)
-        # 难点识别
-        difficult_assignments = self.identify_difficulties(course_id)
-        # 学习模式分析
-        learning_patterns = self.analyze_patterns(course_id)
-        return AnalyticsReport(avg_score, difficult_assignments, learning_patterns)
-```
-
----
-
-## 幻灯片10：项目创新点总结
+## 9：项目创新点总结
 
 ### 技术创新体系
 **AI+教育深度融合创新**：
@@ -477,7 +359,7 @@ AI-Matrix平台：代码提交 → 智能评测 → AI分析 → 个性化建议
 
 ---
 
-## 幻灯片11：应用前景与展望
+## 10：应用前景与展望
 
 ### 短期发展路线图（0-6个月）
 **功能迭代优先级**：
@@ -525,7 +407,7 @@ class AITeachingAssistant:
 
 ---
 
-## 幻灯片12：Q&A与致谢
+## 11：Q&A与致谢
 
 ### 演示环节设计
 **现场演示流程**：
@@ -570,10 +452,8 @@ class AITeachingAssistant:
 - 联系邮箱：[团队邮箱]
 - 开源仓库：[GitHub地址]
 
----
-
-**演示建议**：
+<!-- **演示建议**：
 1. **时间分配**：技术亮点（40%）、教育价值（30%）、创新性（20%）、总结展望（10%）
 2. **互动设计**：在AI分析环节设置提问，增加观众参与感
 3. **备份准备**：录制演示视频，防止现场网络问题
-4. **数据支撑**：准备实际运行数据截图，增强说服力
+4. **数据支撑**：准备实际运行数据截图，增强说服力 -->
