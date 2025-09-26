@@ -86,6 +86,7 @@ export class AssignmentComponent implements OnDestroy {
     this.subs.push(sub);
   }
 
+  // @todo az 所以现在不提交也能通过控制台看到预分析内容的()
   loadAnalysisBasic = (reGen: boolean = false) => {
     if (!this.courseId || !this.assignId) return;
     const sub = this.assignService.getAnalysisBasic$(this.courseId, this.assignId, reGen).subscribe(data => {
