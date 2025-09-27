@@ -151,7 +151,7 @@ AI 分析
 
 **分析维度深度挖掘**：
 - **算法多样性**：展示3-5种不同解题思路
-- **性能对比**：时间/空间复杂度可视化对比
+- **性能对比**：时间/空间复杂度分析对比
 - **知识点分析**：仔细挖掘题目所涉及的知识点
 
 **第二层：学生级个性化诊断**
@@ -265,15 +265,24 @@ graph LR
 ## 5.3：国产化适配与部署方案
 
 ### 龙芯平台适配技术细节
-**编译适配挑战与解决方案**：
+**前端打包适配挑战**：
+<!-- 2025-09-27 23:56:32 补充 -->
+前端 node 打包工具链在龙芯上支持不足：
+使用本地打包后移动打包文件到龙芯机器的方式解决
 ```bash
-pnpm run publish
+# frontend\package.json
+# 在使用 GitHub Action CI/CD 以后移除了本命令，但解决方案相同
+"postpublish": ".\\scripts\\deploy.bat"
+
+# deploy.bat
+scp -r ./dist/matrix-ai-frontend/* matrix@192.168.134.251:~/www
 ```
 
 **后端依赖兼容性验证**：
-- Python 3.11 龙芯版本验证
-- openGauss 数据库部署
-- 沙箱环境 firejail 安全配置
+- Python 3.11 龙芯版本功能验证
+- 所有 requirement 软件包版本本地运行验证
+- 沙箱环境 firejail 软件包存在性验证与安全配置
+- 使用龙芯移植 Codium（VS Code 社区版本）本地调试
 
 ### 生产环境部署架构
 **网络拓扑设计**：
@@ -281,11 +290,10 @@ pnpm run publish
 外部请求 → Nginx (443 https 端口) → 反向代理/api
                      ↓                 ↓
          前端网页与静态资源   FastAPI (8000端口)
-
 ```
 
 **高可用配置示例**：
-```nginx
+```conf
 server {
     listen       443 ssl;
     listen       [::]:443 ssl;
@@ -320,15 +328,36 @@ server {
 ### CI/CD自动化流水线
 **GitHub Action工作流**：
 ```yaml
-# .github/workflows/deploy-matrix-ai-on-loongarch.yml
-name: 龙芯平台自动化部署
+# 完整配置 .github/workflows/deploy-matrix-ai-on-loongarch.yml
+name: Deploy Matrix AI on LoongArch
+on:
+  push:
+    branches:
+    - main
+
+env:
+  SERVER_HOST: 192.168.134.251
+  SERVER_USER: matrix
+  FRONTEND_DEST: ~/www
+  BACKEND_DEST: ~/ai-matrix-backend
+
 jobs:
   deploy-frontend:
-    ...
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      ...
   deploy-backend:
-    ...
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      ...
   health-check:
-    ...
+    needs: [deploy-frontend, deploy-backend]
+    steps:
+      ...
 ```
 
 ## 6：项目创新点总结
@@ -412,13 +441,25 @@ AI-Matrix平台：代码提交 → 智能评测 → AI分析 → 个性化建议
 - 教师培训：线上培训课程开发
 - 社区建设：开源社区生态培育
 
-## 8: 团队介绍与实施保障
+## 8: 团队介绍与未来愿景
+
+### 团队成员贡献
+
+<!-- @todo 成员介绍？md 必须狠狠吹自己一波😡 -->
+
+woisol：项目开发主力，独立完成前端从 Figma 设计图到包含页面动效的 Angular 完整单页应用，独立制定项目的前后端接口，实际完成后端大部分功能开发与 bug 修复，实际完成 ppt 大部分文案与页面。
+
+bear：项目开发，实现部分后端功能，负责龙芯平台兼容性测试与修补，
+
+steam：
+
 ### 团队核心优势
 
 ​​**技术背景深厚​​**：
 * 中山大学计算机专业团队
 * Matrix在线测评系统深度使用与开发经验
 * 龙芯生态建设实践经验
+* 丰富的龙芯建设者学长资源
 
 **​​教育理解深刻​​**：
 * 高校编程教育用户兼开发者双重视角
@@ -426,19 +467,12 @@ AI-Matrix平台：代码提交 → 智能评测 → AI分析 → 个性化建议
 * 教育信息化建设实践经验
 * 实施保障机制
 
-**​​技术风险防控​​**：
-* 多加速卡支持接口预留（华为昇腾310备选）
-* 硬件兼容性白名单季度更新机制
-* 模型置信度兜底机制（规则引擎切换）
-
 **​​项目管理体系​​**：
 * 敏捷开发流程与迭代管理
 * 质量保障与测试体系
 * 持续集成与部署流水线
 
-**​​资金与资源保障​​**：
-* 政府专项补贴申请
-* 校企合作资金支持
-* 开源社区资源整合
 
-## 9: 总结与展望
+### 未来愿景
+
+复用现有愿景
