@@ -175,7 +175,7 @@ AI 分析
 
 ### 自动化评测流水线
 
-代码提交 -> g++ 代码编译链接 -> firejail 代码运行 -> 运行结果汇总与评分 -> 返回评测结果
+代码提交 -> g++ 代码编译链接 -> firejail 代码运行 -> 运行结果汇总与评分计算 -> 返回评测结果
 
 ### 安全沙箱架构设计
 **firejail沙箱配置策略**：
@@ -205,7 +205,7 @@ backend/                 # 后端服务
 │   ├── controller/     # 业务控制层
 │   ├── models/         # 数据模型
 │   ├── routers/        # API 路由
-│   ├── schemas/        # 数据验证模式
+│   ├── schemas/        # 数据模式定义
 │   ├── utils/          # 工具函数
 │   └── constants/      # 常量配置
 ├── docs/               # 文档
@@ -214,7 +214,7 @@ backend/                 # 后端服务
 
 **关键技术选型理由**：
 1. **FastAPI选择**：异步高性能，自动API文档生成，适合教育平台高并发场景
-2. **openGauss数据库**：华为开源企业级数据库，增强稳定性与安全性
+2. **openGauss数据库**：华为开源企业级数据库，增强稳定性与安全性，虽然存在部分 PostgreSQL 语法缺失，但是经过兼容可以正常使用。
 3. **Tortoise ORM**：原生异步支持，与FastAPI完美契合
 
 ### 前端架构设计
@@ -223,10 +223,9 @@ backend/                 # 后端服务
 frontend/               # 前端应用
 ├── src/
 │   ├── app/
+│   │   ├── api/        # API 接口
 │   │   ├── pages/      # 页面组件
 │   │   ├── services/   # 业务服务
-│   │   ├── api/        # API 接口
-│   │   └── shared/     # 共享组件
 │   └── assets/         # 静态资源
 ├── public/             # 公共资源
 └── scripts/            # 构建脚本
@@ -241,11 +240,22 @@ frontend/               # 前端应用
 ### 数据库设计的教学洞察
 <!-- @todo 完善或者直接不要 -->
 **核心表关系设计**：
-```sql
--- 教学实体关系模型
-Course (课程) 1:N Assignment (作业) 1:N Submission (提交)
-                   ↓                       ↓
-               TestCase (测例)        AnalysisResult (AI分析)
+```mermaid
+graph LR
+	A(user（用户模型）)
+	B(courses（课程表）)
+    C(assignments（作业表）)
+    D(courses_assignments（课程作业多对多关系表）)
+    E(assignment_codes（作业代码表）)
+    F(assignment_submissions（作业提交表）)
+    G(assignment_analysis（作业AI分析表）)
+
+    B <---> C
+
+    D ---> C
+    E ---> C
+    F ---> C
+    G ---> C
 ```
 
 **教育数据价值挖掘**：
@@ -268,23 +278,41 @@ pnpm run publish
 ### 生产环境部署架构
 **网络拓扑设计**：
 ```
-外部请求 → Nginx (80端口) → 反向代理/api → FastAPI (8000端口)
-                    ↓
-            静态资源(frontend/dist)
+外部请求 → Nginx (443 https 端口) → 反向代理/api
+                     ↓                 ↓
+         前端网页与静态资源   FastAPI (8000端口)
+
 ```
 
 **高可用配置示例**：
 ```nginx
-# nginx.conf 关键配置
 server {
-    listen 80;
+    listen       443 ssl;
+    listen       [::]:443 ssl;
+    server_name  localhost, matrixai;
+    ssl_certificate /home/matrix/ssl/server.crt;
+    ssl_certificate_key /home/matrix/ssl/server.key;
     location / {
-        root /path/to/frontend/dist;
-        try_files $uri $uri/ /index.html;
+        root   /home/matrix/www/browser/;
+        index  index.html;
+        try_files $uri /index.html;
     }
-    location /api {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/;
+    }
+
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   html;
+    }
+
+}
+server {
+    listen	    80;
+    listen	    [::]:80;
+    server_name http;
+    location /{
+        return 301 https://$host$request_uri;
     }
 }
 ```
