@@ -68,7 +68,7 @@ class AI:
     )
 
     @classmethod
-    async def get_response(cls, prompt: str) -> str:
+    async def _get_response(cls, prompt: str) -> str:
         """获取AI响应，使用第三方 api 用于开发使用，若要使用 比赛官方 api 请将本函数名与下方的 _get_response 互换"""
         import asyncio
 
@@ -88,7 +88,7 @@ class AI:
                 if response.choices[0].message.content else "")
 
     @classmethod
-    async def _get_response(cls, prompt: str) -> str:
+    async def get_response(cls, prompt: str) -> str:
         """通过比赛官方给的API请求获取AI响应"""
         import asyncio
 
