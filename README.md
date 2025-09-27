@@ -58,6 +58,8 @@ cd AI-matrix
 
 #### 2. 后端环境配置
 
+将 backend 下的 .env.example 复制一份改名为 .env，并填写其中 DB 相关环境变量
+
 ```bash
 # 使用 pip 安装
 cd backend
