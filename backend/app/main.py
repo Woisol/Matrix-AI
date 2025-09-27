@@ -22,12 +22,17 @@ if sys.version_info < (3, 9):
 
 # print(f"Python 版本检查通过: {sys.version}")
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.routers.course import course_router
 from app.routers.assignment import assign_router
 from app.routers.ai import ai_route
 from app.database import init_db, close_db, ensure_user_table
+
+load_dotenv()
+
+api_key=os.getenv("OPENAI_API_KEY", "Your-api-key")
 
 
 @asynccontextmanager
