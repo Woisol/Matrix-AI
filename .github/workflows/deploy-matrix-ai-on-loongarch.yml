@@ -87,6 +87,15 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install -r requirements.txt
 
+          # 设置环境变量
+          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          export OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+          export DB_HOST=${{ secrets.DB_HOST }}
+          export DB_PORT=8888
+          export DB_USER=matrixai
+          export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          export DB_NAME=matrixai
+
           # 启动后端服务（在后台运行）
           nohup python3 run.py > backend.log 2>&1 &
 
