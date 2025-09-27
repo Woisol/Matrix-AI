@@ -3,3 +3,5 @@
 !.vscode/tasks.example.json
 
 project/assets/database/*.old
+
+.env
