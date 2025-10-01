@@ -1,10 +1,10 @@
-# AI-Matrix 智能编程练习平台
+# Matrix-AI 智能编程练习平台
 
 ![Banner](frontend/public/banner/banner-matrix-ai.png)
 
 ## 📋 项目简介
 
-AI-Matrix 是一个 AI 原生的**在线编程练习平台**，专为计算机科学教育而设计。该平台集成了**课程管理**、**作业提交**、**代码评测**和 **AI 智能分析**等功能，为学生和教师提供完整的编程学习解决方案。
+Matrix-AI 是一个 AI 原生的**在线编程练习平台**，专为计算机科学教育而设计。该平台集成了**课程管理**、**作业提交**、**代码评测**和 **AI 智能分析**等功能，为学生和教师提供完整的编程学习解决方案。
 
 ### 🌟 核心特性
 
@@ -52,8 +52,8 @@ AI-Matrix 是一个 AI 原生的**在线编程练习平台**，专为计算机�
 #### 1. 克隆项目
 
 ```bash
-git clone https://github.com/Woisol/AI-matrix.git
-cd AI-matrix
+git clone https://github.com/Woisol/Matrix-AI.git
+cd Matrix-AI
 ```
 
 #### 2. 后端环境配置
@@ -228,7 +228,7 @@ nginx 配置可以参考 [nginx.conf](project/assets/nginx.conf)
 ### 项目结构
 
 ```text
-AI-matrix/
+Matrix-AI/
 ├── backend/                 # 后端服务
 │   ├── app/
 │   │   ├── controller/     # 业务控制层
