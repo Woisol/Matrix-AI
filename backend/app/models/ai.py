@@ -3,7 +3,7 @@ import os, logging
 import requests
 import json
 from queue import Queue
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional,AsyncGenerator
 
 from fastapi import HTTPException
 from openai import OpenAI
@@ -20,6 +20,7 @@ from app.schemas.assignment import (
 )
 from app.utils.ai import code_md_wrapper
 from app.constants.user import UserMatrixAI
+
 
 
 
@@ -46,7 +47,7 @@ class AI:
 
     class AIConfig:
         """AI配置类"""
-        MODEL = "deepseek-r1-distill-qwen-7b"
+        MODEL = "qwen3-max"
         MAX_TOKENS = 1000
         TEMPERATURE = 0.7
 
@@ -60,35 +61,48 @@ class AI:
 
     # 从环境变量获取API密钥，提高安全性
     client = OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY", "Your-api-key"),
+        api_key=os.getenv("OPENAI_API_KEY", "sk-b8dc10dafd2445a3b62830eb625634bf"),
         base_url=os.getenv(
             "OPENAI_BASE_URL",
             "https://dashscope.aliyuncs.com/compatible-mode/v1"
         )
     )
-
     @classmethod
     async def get_response(cls, prompt: str) -> str:
-        """获取AI响应，使用第三方 api 用于开发使用，若要使用 比赛官方 api 请将本函数名与下方的 _get_response 互换"""
-        import asyncio
+        """获取AI响应"""
+        response = cls.client.chat.completions.create(
+            model=cls.AIConfig.MODEL,
+            messages=cls.AIConfig.messages(prompt),
+            max_tokens=cls.AIConfig.MAX_TOKENS,
+            temperature=cls.AIConfig.TEMPERATURE,
+        )
 
-        def _create_completion():
-            return cls.client.chat.completions.create(
+        return (response.choices[0].message.content
+                if response.choices[0].message.content else "")
+    
+    @classmethod
+    async def get_response_stream(cls, prompt: str) -> AsyncGenerator[str, None]:
+        """获取AI流式响应（使用官方SDK的stream模式）"""
+        try:
+            stream = cls.client.chat.completions.create(
                 model=cls.AIConfig.MODEL,
                 messages=cls.AIConfig.messages(prompt),
                 max_tokens=cls.AIConfig.MAX_TOKENS,
                 temperature=cls.AIConfig.TEMPERATURE,
+                stream=True
             )
+            
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            logging.error(f"Stream error: {e}")
+            raise
+                
 
-        # 使用 asyncio.run_in_executor 让同步调用变成异步
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, _create_completion)
-
-        return (response.choices[0].message.content
-                if response.choices[0].message.content else "")
 
     @classmethod
-    async def _get_response(cls, prompt: str) -> str:
+    async def __get_response(cls, prompt: str) -> str:
         """通过比赛官方给的API请求获取AI响应"""
         import asyncio
 
@@ -506,3 +520,230 @@ class AIAnalysisGenerator:
         except Exception as e:
             logging.error(f"Error in genUserProfile: {e}")
             # 不抛出异常，避免影响主流程
+
+    @classmethod
+    async def genResolutionsStream(
+        cls, assign_id: str
+    ) -> AsyncGenerator[str, None]:
+        """
+        流式生成解题分析
+
+        Args:
+            assign_id: 作业ID
+
+        Yields:
+            SSE格式的数据流
+        """
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+            logging.info(f"Received resolution generate request (stream)")
+
+            # 1. 流式获取所有可能解法
+            yield f"event: section\ndata: {{\"type\": \"resolution\", \"status\": \"generating\"}}\n\n"
+            
+            full_content = ""
+            async for chunk in AI.get_response_stream(
+                prompt=AIPrompt.RESOLUTION(
+                    assign_data.title,
+                    assign_data.description,
+                    assign_data.assignOriginalCode[0].content
+                )
+            ):
+                full_content += chunk
+                yield f"data: {json.dumps({'chunk': chunk, 'type': 'resolution'})}\n\n"
+            
+            # 2. 分割解法
+            resol_contents = [c.strip() for c in full_content.split("---") if c.strip()]
+            
+            yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(resol_contents)}}}\n\n"
+
+            # 3. 为每个解法生成标题和复杂度
+            result_contents = []
+            for idx, code in enumerate(resol_contents):
+                yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(resol_contents)}}}\n\n"
+                
+                # 生成标题
+                title = await AI.get_response(AIPrompt.TITLE_CODE(code))
+                
+                # 生成复杂度
+                complexity_text = await AI.get_response(AIPrompt.COMPLEXITY(code))
+                lines = complexity_text.split("\n")
+                time_complexity = lines[0].split(":")[-1].strip() if lines else "O(n)"
+                space_complexity = lines[1].split(":")[-1].strip() if len(lines) > 1 else "O(1)"
+
+                result_contents.append({
+                    "title": title,
+                    "content": code_md_wrapper(code),
+                    "complexity": {
+                        "time": time_complexity,
+                        "space": space_complexity
+                    }
+                })
+            
+            # 4. 发送最终结果
+            yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': None, 'showInEditor': False})}\n\n"
+
+        except Exception as e:
+            error_msg = f"Internal server error: {str(e)}"
+            logging.error(error_msg)
+            yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
+
+    @classmethod
+    async def genKnowledgeAnalysisStream(
+        cls, assign_id: str
+    ) -> AsyncGenerator[str, None]:
+        """流式生成知识点分析"""
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+            logging.info(f"Received knowledge analysis generate request (stream)")
+
+            yield f"event: section\ndata: {{\"type\": \"knowledge\", \"status\": \"generating\"}}\n\n"
+            
+            full_content = ""
+            async for chunk in AI.get_response_stream(
+                prompt=AIPrompt.KNOWLEDGEANALYSIS(
+                    assign_data.title,
+                    assign_data.description,
+                    assign_data.assignOriginalCode[0].content
+                )
+            ):
+                full_content += chunk
+                yield f"data: {json.dumps({'chunk': chunk, 'type': 'knowledge'})}\n\n"
+            
+            knowledge_contents = [c.strip() for c in full_content.split("---") if c.strip()]
+            
+            yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(knowledge_contents)}}}\n\n"
+
+            result_contents = []
+            for idx, content_text in enumerate(knowledge_contents):
+                yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(knowledge_contents)}}}\n\n"
+                
+                title = await AI.get_response(AIPrompt.TITLE(content_text))
+                result_contents.append({
+                    "title": title,
+                    "content": content_text,
+                    "complexity": None
+                })
+            
+            yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': '', 'showInEditor': False})}\n\n"
+
+        except Exception as e:
+            error_msg = f"Internal server error: {str(e)}"
+            logging.error(error_msg)
+            yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
+
+    @classmethod
+    async def genCodeAnalysisStream(
+        cls, assign_id: str
+    ) -> AsyncGenerator[str, None]:
+        """流式生成代码分析"""
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+            
+            submitted_code = ""
+            if assign_data.submit and assign_data.submit.submitCode:
+                submitted_code = assign_data.submit.submitCode[0].content
+
+            logging.info(f"Received code analysis generate request (stream)")
+
+            _user = await User.filter(username=UserMatrixAI.username).all()
+            if not _user:
+                logging.error("No user")
+                yield f"event: error\ndata: {json.dumps({'error': 'User not found'})}\n\n"
+                return
+            user = _user[0]
+
+            yield f"event: section\ndata: {{\"type\": \"code_analysis\", \"status\": \"generating\"}}\n\n"
+            
+            full_content = ""
+            async for chunk in AI.get_response_stream(
+                prompt=AIPrompt.CODEANALYSIS(
+                    assign_data.title,
+                    assign_data.description,
+                    submitted_code,
+                    user.code_style
+                )
+            ):
+                full_content += chunk
+                yield f"data: {json.dumps({'chunk': chunk, 'type': 'code_analysis'})}\n\n"
+            
+            code_analysis_contents = [c.strip() for c in full_content.split("---") if c.strip()]
+            
+            yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(code_analysis_contents)}}}\n\n"
+
+            result_contents = []
+            for idx, content_text in enumerate(code_analysis_contents):
+                yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(code_analysis_contents)}}}\n\n"
+                
+                title = await AI.get_response(AIPrompt.TITLE(content_text))
+                result_contents.append({
+                    "title": title,
+                    "content": content_text,
+                    "complexity": None
+                })
+            
+            yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': '', 'showInEditor': False})}\n\n"
+
+        except Exception as e:
+            error_msg = f"Internal server error: {str(e)}"
+            logging.error(error_msg)
+            yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
+
+    @classmethod
+    async def genLearningSuggestionsStream(
+        cls, assign_id: str
+    ) -> AsyncGenerator[str, None]:
+        """流式生成学习建议"""
+        try:
+            assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
+
+            submitted_code = ""
+            if assign_data.submit and assign_data.submit.submitCode:
+                submitted_code = assign_data.submit.submitCode[0].content
+
+            logging.info(f"Received learning suggestions generate request (stream)")
+
+            _user = await User.filter(username=UserMatrixAI.username).all()
+            if not _user:
+                logging.error("No user")
+                yield f"event: error\ndata: {json.dumps({'error': 'User not found'})}\n\n"
+                return
+            user = _user[0]
+
+            yield f"event: section\ndata: {{\"type\": \"learning\", \"status\": \"generating\"}}\n\n"
+            
+            full_content = ""
+            async for chunk in AI.get_response_stream(
+                prompt=AIPrompt.LEARNING_SUGGESTIONS(
+                    assign_data.title,
+                    assign_data.description,
+                    submitted_code,
+                    user.knowledge_status
+                )
+            ):
+                full_content += chunk
+                yield f"data: {json.dumps({'chunk': chunk, 'type': 'learning'})}\n\n"
+            
+            learning_contents = [c.strip() for c in full_content.split("---") if c.strip()]
+            
+            yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(learning_contents)}}}\n\n"
+
+            result_contents = []
+            for idx, content_text in enumerate(learning_contents):
+                yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(learning_contents)}}}\n\n"
+                
+                title = await AI.get_response(AIPrompt.TITLE(content_text))
+                result_contents.append({
+                    "title": title,
+                    "content": content_text,
+                    "complexity": None
+                })
+            
+            yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': '', 'showInEditor': False})}\n\n"
+
+        except Exception as e:
+            error_msg = f"Internal server error: {str(e)}"
+            logging.error(error_msg)
+            yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
+
+

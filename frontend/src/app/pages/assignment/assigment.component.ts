@@ -18,6 +18,7 @@ import { NotificationService } from "../../services/notification/notification.se
     <nz-splitter>
       <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true">
         <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [handleAnalysisRegen]="handleAnalysisRegen" [onAnalysisAiGenRequest]="loadAnalysisAiGen" [selectedTabIndex]="selectedTabIndex" />
+
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
         <code-editor [codeFile]="codeFile()" [onSubmitRequest]="onSubmitRequest"/>
@@ -30,7 +31,7 @@ import { NotificationService } from "../../services/notification/notification.se
     width: 100%;
     height: calc(100vh - var(--size-top-bar) - 20px);
     display: flex;
-
+    position: relative;
     ::ng-deep .ant-splitter-panel{
       padding: 10px;
     }
@@ -55,6 +56,7 @@ export class AssignmentComponent implements OnDestroy {
   codeFile: WritableSignal<CodeFileInfo> = signal(this._emptyCodeFile);
 
   selectedTabIndex = signal(0);
+  useStreamingMode = signal(true);
 
   private subs: Subscription[] = [];
 
@@ -67,8 +69,9 @@ export class AssignmentComponent implements OnDestroy {
       if (this.assignData()?.ddl && this.assignData()?.ddl! > new Date()) {
         return;
       }
-      this.loadAnalysisBasic();
+      // this.loadAnalysisBasic();
       // this.loadAnalysisAiGen();
+      this.loadAnalysisBasicStream('resolution');
     });
     this.subs.push(sub);
   }
@@ -101,7 +104,9 @@ export class AssignmentComponent implements OnDestroy {
   }
 
   handleAnalysisRegen = () => {
-    this.loadAnalysisBasic(true);
+    // this.loadAnalysisBasic(true);
+    this.loadAnalysisBasicStream('resolution', true);
+    this.loadAnalysisBasicStream('knowledge', true);
     // if (this.analysis()?.aiGen)
     //   this.loadAnalysisAiGen(true);
     this.notify.info("已经请求重新分析，预计要 1~2 分钟，请耐心等待")
@@ -126,6 +131,48 @@ export class AssignmentComponent implements OnDestroy {
     this.notify.info("已经请求生成分析，预计要 1~2 分钟，请耐心等待")
   }
 
+    // ========== 流式与非流式智能切换方法 ==========
+
+  /**
+   * 智能加载基础分析（自动选择流式或非流式）
+   * @param analysisType 'resolution' | 'knowledge'
+   * @param reGen 是否重新生成
+   */
+  smartLoadBasicAnalysis = (
+    analysisType: 'resolution' | 'knowledge' = 'resolution',
+    reGen: boolean = false
+  ) => {
+    if (this.useStreamingMode()) {
+      this.loadAnalysisBasicStream(analysisType, reGen);
+    } else {
+      this.loadAnalysisBasic(reGen);
+    }
+  }
+
+  /**
+   * 智能加载AI生成分析（自动选择流式或非流式）
+   * @param analysisType 'code' | 'learning'
+   * @param notify 是否显示通知
+   */
+  smartLoadAiGenAnalysis = (
+    analysisType: 'code' | 'learning' = 'code',
+    notify: boolean = false
+  ) => {
+    if (this.useStreamingMode()) {
+      this.loadAnalysisAiGenStream(analysisType, notify);
+    } else {
+      this.loadAnalysisAiGen(notify);
+    }
+  }
+
+  /**
+   * 切换流式/非流式模式
+   */
+  toggleStreamingMode = () => {
+    this.useStreamingMode.update(v => !v);
+    this.notify.info(`已切换到${this.useStreamingMode() ? '流式' : '传统'}模式`);
+  }
+
   // ngOnInit(): void {
   //   var _codeFileChangeIndex: number = 0;
   //   var _codeFileChangeArr = [
@@ -144,6 +191,10 @@ export class AssignmentComponent implements OnDestroy {
   }
 
   //! 注意闭包！否则传入后 this 指向不正确！
+    onAiGenAnalysisRequest = (notify: boolean = false) => {
+    // 默认生成代码分析
+    this.smartLoadAiGenAnalysis('code', notify);
+  }
   onSubmitRequest = () => {
     // debugger
     if (this.assignData()?.ddl && this.assignData()?.ddl! < new Date()) {
@@ -171,4 +222,104 @@ export class AssignmentComponent implements OnDestroy {
       this.notify.success("提交成功！")
     });
   }
+  
+  /**
+ * 流式加载基础分析（解题分析或知识点分析）
+ * @param analysisType 'resolution' 解题分析 | 'knowledge' 知识点分析
+ * @param reGen 是否重新生成
+ */
+loadAnalysisBasicStream = (
+  analysisType: 'resolution' | 'knowledge' = 'resolution',
+  reGen: boolean = false
+) => {
+  if (!this.courseId || !this.assignId) return;
+  
+  // 显示加载状态
+  // this.notify.info(`正在流式生成${analysisType === 'resolution' ? '解题分析' : '知识点分析'}，您将实时看到内容...`);
+  
+  const sub = this.assignService.getAnalysisBasicStream$(
+    this.courseId, 
+    this.assignId, 
+    analysisType
+  ).subscribe({
+    next: (data) => {
+      // 实时更新数据
+      const prev = this.analysis();
+      const fieldName = analysisType === 'resolution' ? 'resolution' : 'knowledgeAnalysis';
+      
+      this.analysis.set({
+        basic: { 
+          ...(prev?.basic || {}),
+          [fieldName]: data
+        },
+        aiGen: prev?.aiGen
+      });
+    },
+    error: (err) => {
+      console.error('流式分析失败:', err);
+      this.notify.error(`生成失败: ${err.error || '网络错误'}`);
+    },
+    complete: () => {
+      console.log('流式分析完成');
+      // this.notify.success(`${analysisType === 'resolution' ? '解题分析' : '知识点分析'}生成完成！`);
+    }
+  });
+  
+  this.subs.push(sub);
 }
+
+/**
+ * 流式加载AI生成分析（代码分析或学习建议）
+ * @param analysisType 'code' 代码分析 | 'learning' 学习建议
+ * @param notify 是否显示通知
+ */
+loadAnalysisAiGenStream = (
+  analysisType: 'code' | 'learning' = 'code',
+  notify: boolean = false
+) => {
+  if (!this.courseId || !this.assignId) return;
+  
+  // 检查截止时间
+  if (this.assignData()?.ddl && this.assignData()?.ddl! > new Date()) {
+    if (notify)
+      this.notify.error("截止后才能查看提交分析哦", "生成禁止");
+    return;
+  }
+
+  // 显示加载状态
+  this.notify.info(`正在流式生成${analysisType === 'code' ? '代码分析' : '学习建议'}，您将实时看到内容...`);
+  
+  const sub = this.assignService.getAnalysisAiGenStream$(
+    this.courseId, 
+    this.assignId, 
+    analysisType,
+    notify
+  ).subscribe({
+    next: (data) => {
+      // 实时更新数据
+      const prev = this.analysis();
+      const fieldName = analysisType === 'code' ? 'codeAnalysis' : 'learningSuggestions';
+      
+      this.analysis.set({
+        basic: prev?.basic!,
+        aiGen: {
+          ...(prev?.aiGen || {}),
+          [fieldName]: data
+        }
+      });
+    },
+    error: (err) => {
+      console.error('流式AI分析失败:', err);
+      // 错误已在 service 中处理，这里只需记录
+    },
+    complete: () => {
+      console.log('流式AI分析完成');
+      this.notify.success(`${analysisType === 'code' ? '代码分析' : '学习建议'}生成完成！`);
+    }
+  });
+  
+  this.subs.push(sub);
+}
+
+}
+

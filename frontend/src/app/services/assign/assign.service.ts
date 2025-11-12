@@ -2,14 +2,17 @@ import { inject, Injectable } from "@angular/core";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { AssignId, CourseId } from "../../api/type/general";
 import { AiGenAnalysis, AssignData, BasicAnalysis, CodeFileInfo, CodeLanguage } from "../../api/type/assigment";
-import { catchError, of } from "rxjs";
+import { catchError,map, Observable, of } from "rxjs";
 import { NotificationService } from "../notification/notification.service";
 import { HttpErrorResponse } from "@angular/common/http";
+import { SSEService, SSEStreamResult } from "../see/see.service";
+import { MatrixAnalysisProps } from "../../pages/assignment/components/matrix-analyse.component";
 
 @Injectable({ providedIn: 'root' })
 export class AssignService {
   constructor(private api: ApiHttpService) { }
   notify = inject(NotificationService)
+    sse = inject(SSEService)
 
   // @todo 将错误返回值改回 []
   getAssignData$(courseId: CourseId, assigId: AssignId) {
@@ -77,4 +80,107 @@ export class AssignService {
       })
     );
   }
+ // ========== 流式分析方法 ==========
+
+  /**
+   * 流式获取基础分析（解题分析或知识点分析）
+   * @param courseId 课程ID
+   * @param assignId 作业ID
+   * @param analysisType 'resolution' | 'knowledge'
+   * @returns Observable<MatrixAnalysisProps> 实时更新的分析数据
+   */
+  getAnalysisBasicStream$(
+    courseId: CourseId, 
+    assignId: AssignId, 
+    analysisType: 'resolution' | 'knowledge' = 'resolution'
+  ): Observable<MatrixAnalysisProps> {
+    const url = `/api/courses/${courseId}/assignments/${assignId}/analysis/basic/stream?analysisType=${analysisType}`;
+    
+    return this.sse.createEventSource(url).pipe(
+      map((result: SSEStreamResult) => {
+        // 如果已完成，返回最终数据
+        if (result.complete) {
+          return result.complete as MatrixAnalysisProps;
+        }
+        
+        // 否则返回流式更新的内容
+        const fullContent = result.chunks.join('');
+        return {
+          content: [{
+            title: '生成中...',
+            content: fullContent,
+            complexity: undefined
+          }],
+          summary: result.progress ? 
+            `正在处理：${result.progress.current}/${result.progress.total}` : 
+            '正在生成...',
+          showInEditor: false
+        } as MatrixAnalysisProps;
+      }),
+      catchError((error) => {
+        this.notify.error(`流式获取${analysisType === 'resolution' ? '解题分析' : '知识点分析'}失败: ${error.error || '网络错误'}`);
+        return of({
+          content: [],
+          summary: '生成失败',
+          showInEditor: false
+        } as MatrixAnalysisProps);
+      })
+    );
+  }
+
+  /**
+   * 流式获取AI生成分析（代码分析或学习建议）
+   * @param courseId 课程ID
+   * @param assignId 作业ID
+   * @param analysisType 'code' | 'learning'
+   * @returns Observable<MatrixAnalysisProps> 实时更新的分析数据
+   */
+  getAnalysisAiGenStream$(
+    courseId: CourseId, 
+    assignId: AssignId, 
+    analysisType: 'code' | 'learning' = 'code',
+    notify: boolean = false
+  ): Observable<MatrixAnalysisProps> {
+    const url = `/api/courses/${courseId}/assignments/${assignId}/analysis/aiGen/stream?analysisType=${analysisType}`;
+    
+    return this.sse.createEventSource(url).pipe(
+      map((result: SSEStreamResult) => {
+        // 如果已完成，返回最终数据
+        if (result.complete) {
+          return result.complete as MatrixAnalysisProps;
+        }
+        
+        // 否则返回流式更新的内容
+        const fullContent = result.chunks.join('');
+        return {
+          content: [{
+            title: '生成中...',
+            content: fullContent,
+            complexity: undefined
+          }],
+          summary: result.progress ? 
+            `正在处理：${result.progress.current}/${result.progress.total}` : 
+            '正在生成...',
+          showInEditor: false
+        } as MatrixAnalysisProps;
+      }),
+      catchError((error) => {
+        if (notify) {
+          if (error.error?.includes('Deadline not meet')) {
+            this.notify.error("坏蛋😢，改了本地时间也不能提前查看提交分析哦", "生成禁止");
+          } else if (error.error?.includes('提交作业后')) {
+            this.notify.info('AI生成分析功能需要在提交后才能使用哦~');
+          } else {
+            this.notify.error(`流式获取${analysisType === 'code' ? '代码分析' : '学习建议'}失败: ${error.error || '网络错误'}`);
+          }
+        }
+        return of({
+          content: [],
+          summary: '生成失败',
+          showInEditor: false
+        } as MatrixAnalysisProps);
+      })
+    );
+  }
 }
+

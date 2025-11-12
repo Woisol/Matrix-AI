@@ -1,6 +1,7 @@
 import json
 import logging
 
+from typing import AsyncGenerator
 from fastapi import HTTPException
 from tortoise import exceptions as torExceptions
 
@@ -133,3 +134,54 @@ class AIController:
         except Exception as e:
             logging.error(f"Error occurred in getAiGen for assignment {assign_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+            
+    @classmethod
+    async def getBasicStream(cls, course_id: str, assign_id: str, analysis_type: str) -> AsyncGenerator[str, None]:
+        """
+        流式获取基础分析
+        
+        Args:
+            course_id: 课程ID
+            assign_id: 作业ID
+            analysis_type: 分析类型 (resolution 或 knowledge)
+        """
+        if analysis_type == "resolution":
+            async for chunk in AIAnalysisGenerator.genResolutionsStream(assign_id):
+                yield chunk
+        elif analysis_type == "knowledge":
+            async for chunk in AIAnalysisGenerator.genKnowledgeAnalysisStream(assign_id):
+                yield chunk
+        else:
+            yield f"event: error\ndata: {{\"error\": \"Invalid analysis type\"}}\n\n"
+
+    @classmethod
+    async def getAiGenStream(cls, course_id: str, assign_id: str, analysis_type: str) -> AsyncGenerator[str, None]:
+        """
+        流式获取AI生成分析
+        
+        Args:
+            course_id: 课程ID
+            assign_id: 作业ID
+            analysis_type: 分析类型 (code 或 learning)
+        """
+        # 检查是否已提交
+        assignment = await AssignmentModel.get(id=assign_id).prefetch_related("submissions")
+        
+        if assignment.end_date and assignment.end_date > datetime.now(timezone.utc):
+            yield f"event: error\ndata: {{\"error\": \"Deadline not meet yet\"}}\n\n"
+            return
+
+        submited = True if assignment.submissions and assignment.submissions[0] else False
+        if not submited:
+            yield f"event: error\ndata: {{\"error\": \"AI生成分析功能需要在提交作业后才能使用哦~\"}}\n\n"
+            return
+
+        if analysis_type == "code":
+            async for chunk in AIAnalysisGenerator.genCodeAnalysisStream(assign_id):
+                yield chunk
+        elif analysis_type == "learning":
+            async for chunk in AIAnalysisGenerator.genLearningSuggestionsStream(assign_id):
+                yield chunk
+        else:
+            yield f"event: error\ndata: {{\"error\": \"Invalid analysis type\"}}\n\n"
+
