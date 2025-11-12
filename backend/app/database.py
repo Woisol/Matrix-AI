@@ -14,10 +14,10 @@ TORTOISE_ORM = {
         "default": {
             "engine": "tortoise.backends.asyncpg",
             "credentials": {
-                "host": os.getenv("DB_HOST", "localhost"),
+                "host": os.getenv("DB_HOST", "192.168.134.205"),
                 "port": os.getenv("DB_PORT", 8888),
                 "user": os.getenv("DB_USER", "matrixai"),
-                "password": os.getenv("DB_PASSWORD"),
+                "password": os.getenv("DB_PASSWORD","Matrix#13331314"),
                 "database": os.getenv("DB_NAME", "matrixai"),
                 "connection_class": NoUnlistenConnection,
             }
