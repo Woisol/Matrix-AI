@@ -4,7 +4,7 @@
 from tortoise import Tortoise
 from tortoise.contrib.fastapi import register_tortoise
 from fastapi import FastAPI
-import os, logging
+import os, logging, sys
 from app.constants.user import UserMatrixAI
 from app.utils.orm import NoUnlistenConnection
 
@@ -35,9 +35,13 @@ TORTOISE_ORM = {
 
 async def init_db():
     """初始化数据库连接"""
-    await Tortoise.init(config=TORTOISE_ORM)
-    # 生成数据库表
-    await Tortoise.generate_schemas()
+    try:
+        await Tortoise.init(config=TORTOISE_ORM)
+        # 生成数据库表
+        await Tortoise.generate_schemas()
+    except Exception as e:
+        logging.error(f"数据库连接失败: {e}")
+        sys.exit(1)
 
 async def ensure_user_table():
     """初始化默认数据，避免重复创建"""
