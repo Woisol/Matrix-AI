@@ -47,7 +47,7 @@ class AI:
 
     class AIConfig:
         """AI配置类"""
-        MODEL = "qwen3-max"
+        MODEL = "deepseek-v3-1-250821"
         MAX_TOKENS = 1000
         TEMPERATURE = 0.7
 
@@ -79,7 +79,7 @@ class AI:
 
         return (response.choices[0].message.content
                 if response.choices[0].message.content else "")
-    
+
     @classmethod
     async def get_response_stream(cls, prompt: str) -> AsyncGenerator[str, None]:
         """获取AI流式响应（使用官方SDK的stream模式）"""
@@ -91,14 +91,14 @@ class AI:
                 temperature=cls.AIConfig.TEMPERATURE,
                 stream=True
             )
-            
+
             for chunk in stream:
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         except Exception as e:
             logging.error(f"Stream error: {e}")
             raise
-                
+
 
 
     @classmethod
@@ -540,7 +540,7 @@ class AIAnalysisGenerator:
 
             # 1. 流式获取所有可能解法
             yield f"event: section\ndata: {{\"type\": \"resolution\", \"status\": \"generating\"}}\n\n"
-            
+
             full_content = ""
             async for chunk in AI.get_response_stream(
                 prompt=AIPrompt.RESOLUTION(
@@ -551,20 +551,20 @@ class AIAnalysisGenerator:
             ):
                 full_content += chunk
                 yield f"data: {json.dumps({'chunk': chunk, 'type': 'resolution'})}\n\n"
-            
+
             # 2. 分割解法
             resol_contents = [c.strip() for c in full_content.split("---") if c.strip()]
-            
+
             yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(resol_contents)}}}\n\n"
 
             # 3. 为每个解法生成标题和复杂度
             result_contents = []
             for idx, code in enumerate(resol_contents):
                 yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(resol_contents)}}}\n\n"
-                
+
                 # 生成标题
                 title = await AI.get_response(AIPrompt.TITLE_CODE(code))
-                
+
                 # 生成复杂度
                 complexity_text = await AI.get_response(AIPrompt.COMPLEXITY(code))
                 lines = complexity_text.split("\n")
@@ -579,7 +579,7 @@ class AIAnalysisGenerator:
                         "space": space_complexity
                     }
                 })
-            
+
             # 4. 发送最终结果
             yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': None, 'showInEditor': False})}\n\n"
 
@@ -598,7 +598,7 @@ class AIAnalysisGenerator:
             logging.info(f"Received knowledge analysis generate request (stream)")
 
             yield f"event: section\ndata: {{\"type\": \"knowledge\", \"status\": \"generating\"}}\n\n"
-            
+
             full_content = ""
             async for chunk in AI.get_response_stream(
                 prompt=AIPrompt.KNOWLEDGEANALYSIS(
@@ -609,22 +609,22 @@ class AIAnalysisGenerator:
             ):
                 full_content += chunk
                 yield f"data: {json.dumps({'chunk': chunk, 'type': 'knowledge'})}\n\n"
-            
+
             knowledge_contents = [c.strip() for c in full_content.split("---") if c.strip()]
-            
+
             yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(knowledge_contents)}}}\n\n"
 
             result_contents = []
             for idx, content_text in enumerate(knowledge_contents):
                 yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(knowledge_contents)}}}\n\n"
-                
+
                 title = await AI.get_response(AIPrompt.TITLE(content_text))
                 result_contents.append({
                     "title": title,
                     "content": content_text,
                     "complexity": None
                 })
-            
+
             yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': '', 'showInEditor': False})}\n\n"
 
         except Exception as e:
@@ -639,7 +639,7 @@ class AIAnalysisGenerator:
         """流式生成代码分析"""
         try:
             assign_data: AssignData = await AssignmentController.get_assignment(assign_id)
-            
+
             submitted_code = ""
             if assign_data.submit and assign_data.submit.submitCode:
                 submitted_code = assign_data.submit.submitCode[0].content
@@ -654,7 +654,7 @@ class AIAnalysisGenerator:
             user = _user[0]
 
             yield f"event: section\ndata: {{\"type\": \"code_analysis\", \"status\": \"generating\"}}\n\n"
-            
+
             full_content = ""
             async for chunk in AI.get_response_stream(
                 prompt=AIPrompt.CODEANALYSIS(
@@ -666,22 +666,22 @@ class AIAnalysisGenerator:
             ):
                 full_content += chunk
                 yield f"data: {json.dumps({'chunk': chunk, 'type': 'code_analysis'})}\n\n"
-            
+
             code_analysis_contents = [c.strip() for c in full_content.split("---") if c.strip()]
-            
+
             yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(code_analysis_contents)}}}\n\n"
 
             result_contents = []
             for idx, content_text in enumerate(code_analysis_contents):
                 yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(code_analysis_contents)}}}\n\n"
-                
+
                 title = await AI.get_response(AIPrompt.TITLE(content_text))
                 result_contents.append({
                     "title": title,
                     "content": content_text,
                     "complexity": None
                 })
-            
+
             yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': '', 'showInEditor': False})}\n\n"
 
         except Exception as e:
@@ -711,7 +711,7 @@ class AIAnalysisGenerator:
             user = _user[0]
 
             yield f"event: section\ndata: {{\"type\": \"learning\", \"status\": \"generating\"}}\n\n"
-            
+
             full_content = ""
             async for chunk in AI.get_response_stream(
                 prompt=AIPrompt.LEARNING_SUGGESTIONS(
@@ -723,22 +723,22 @@ class AIAnalysisGenerator:
             ):
                 full_content += chunk
                 yield f"data: {json.dumps({'chunk': chunk, 'type': 'learning'})}\n\n"
-            
+
             learning_contents = [c.strip() for c in full_content.split("---") if c.strip()]
-            
+
             yield f"event: section\ndata: {{\"type\": \"processing\", \"total\": {len(learning_contents)}}}\n\n"
 
             result_contents = []
             for idx, content_text in enumerate(learning_contents):
                 yield f"event: progress\ndata: {{\"current\": {idx + 1}, \"total\": {len(learning_contents)}}}\n\n"
-                
+
                 title = await AI.get_response(AIPrompt.TITLE(content_text))
                 result_contents.append({
                     "title": title,
                     "content": content_text,
                     "complexity": None
                 })
-            
+
             yield f"event: complete\ndata: {json.dumps({'content': result_contents, 'summary': '', 'showInEditor': False})}\n\n"
 
         except Exception as e:
