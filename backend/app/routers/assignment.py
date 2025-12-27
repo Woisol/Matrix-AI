@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, Path, Form, Body
 from app.schemas.assignment import AssignData, AssignCreateRequest, Submit, SubmitRequest, TestSubmitRequest, TestSampleCreate
-from app.controller.assignment import AssignmentController
+from app.controller import assignment as AssignmentController
 
 
 assign_router = APIRouter(tags=["assignment"])

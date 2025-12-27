@@ -27,4 +27,4 @@ def patched_to_db_value(self, value: Any, instance: Any) -> Optional[datetime]:
 # 应用 monkey patch
 fields.DatetimeField.to_db_value = patched_to_db_value
 
-print("✓ 已应用 Tortoise ORM 时区修复补丁")
+print("[OK] 已应用 Tortoise ORM 时区修复补丁")

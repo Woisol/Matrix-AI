@@ -8,12 +8,12 @@ from tests.orm.conftest import AsyncORMTestCase
 class TestTableStructure(AsyncORMTestCase):
     """测试表结构验证"""
 
-    async def test_users_table_exists(self):
-        """验证 users 表存在"""
+    async def test_user_table_exists(self):
+        """验证 user 表存在"""
         result = await self.fetchval(
-            "SELECT 1 FROM pg_tables WHERE tablename = 'users' LIMIT 1"
+            "SELECT 1 FROM pg_tables WHERE tablename = 'user' LIMIT 1"
         )
-        self.assertIsNotNone(result, "users 表应该存在")
+        self.assertIsNotNone(result, "user 表应该存在")
 
     async def test_courses_table_exists(self):
         """验证 courses 表存在"""
@@ -87,12 +87,12 @@ class TestTableStructure(AsyncORMTestCase):
         self.assertIn('start_date', column_names)
         self.assertIn('end_date', column_names)
 
-    async def test_users_table_columns(self):
-        """验证 users 表的字段定义"""
+    async def test_user_table_columns(self):
+        """验证 user 表的字段定义"""
         columns = await self.fetchall("""
             SELECT column_name, data_type, is_nullable
             FROM information_schema.columns
-            WHERE table_name = 'users'
+            WHERE table_name = 'user'
             ORDER BY ordinal_position
         """)
         column_names = [c['column_name'] for c in columns]

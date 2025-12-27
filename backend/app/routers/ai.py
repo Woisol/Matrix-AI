@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from app.controller.ai import AIController
+from app.controller import ai as AIController
 from fastapi.responses import StreamingResponse
 
 
@@ -29,7 +29,7 @@ async def basic_analysis_stream(
 ):
     """流式生成基础分析（解题分析或知识点分析）"""
     return StreamingResponse(
-        AIController.getBasicStream(course_id, assign_id, analysisType),
+        AIController.get_basic_stream(course_id, assign_id, analysisType),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -46,7 +46,7 @@ async def generate_analysis_stream(
 ):
     """流式生成AI分析（代码分析或学习建议）"""
     return StreamingResponse(
-        AIController.getAiGenStream(course_id, assign_id, analysisType),
+        AIController.get_ai_gen_stream(course_id, assign_id, analysisType),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -54,5 +54,3 @@ async def generate_analysis_stream(
             "X-Accel-Buffering": "no"
         }
     )
-
-

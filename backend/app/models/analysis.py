@@ -1,19 +1,23 @@
-from tortoise import fields
-from tortoise.models import Model
+"""
+AI 分析模型
+"""
+from app.models.base import Model
 
-# 移除循环导入 - 使用字符串引用而非直接导入
-# from app.models.assignment import Assignment
+
 class Analysis(Model):
     """AI 分析模型"""
-    assignment = fields.ForeignKeyField("models.Assignment", related_name="analysis", description="所属作业")
-    resolution = fields.JSONField(null=True, description="题目解法")
-    knowledge_analysis = fields.JSONField(null=True, description="知识点分析")
-    code_analysis = fields.JSONField(null=True, description="提交代码分析")
-    learning_suggestions = fields.JSONField(null=True, description="学习建议")
+    table_name = "assignment_analysis"
+    columns = {
+        "id": int,
+        "assignment_id": str,
+        "resolution": str,  # JSON
+        "knowledge_analysis": str,  # JSON
+        "code_analysis": str,  # JSON
+        "learning_suggestions": str,  # JSON
+    }
 
-    class Meta:
-        table = "assignment_analysis"
-        table_description = "作业AI分析表"
+    class _meta:
+        pk = "id"
 
-    def __str__(self):
-        return f"Analysis for {self.assignment.id}"
+    def __repr__(self):
+        return f"<Analysis(id={self.id}, assignment_id='{self.assignment_id}')>"

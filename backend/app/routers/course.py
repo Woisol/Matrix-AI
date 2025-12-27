@@ -2,7 +2,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Query, Path, Body, Form
 from typing import Optional, List
 
-from app.controller.course import CourseController
+from app.controller import course as CourseController
 from app.schemas.course import Course as CourseSchema,CourseBase, TodoCourse, CourseCreateRequest, AssignmentListItem
 
 course_router = APIRouter(tags=["course"])
