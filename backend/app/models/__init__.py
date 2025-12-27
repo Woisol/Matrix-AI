@@ -9,6 +9,11 @@ from .analysis import Analysis
 from .views import (
     init_views,
 )
+from .procedures import (
+    init_procedures,
+    init_triggers,
+    init_all_advanced_sql,
+)
 
 __all__ = [
     # 核心
@@ -31,4 +36,8 @@ __all__ = [
     "Analysis",
     # 高级 SQL
     "init_views",
+    # 存储过程和触发器
+    "init_procedures",
+    "init_triggers",
+    "init_all_advanced_sql",
 ]

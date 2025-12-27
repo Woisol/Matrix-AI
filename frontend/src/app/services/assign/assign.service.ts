@@ -2,7 +2,7 @@ import { inject, Injectable } from "@angular/core";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { AssignId, CourseId } from "../../api/type/general";
 import { AiGenAnalysis, AssignData, AssignDataAdmin, BasicAnalysis, CodeFileInfo, CodeLanguage } from "../../api/type/assigment";
-import { catchError,map, Observable, of } from "rxjs";
+import { catchError, map, Observable, of } from "rxjs";
 import { NotificationService } from "../notification/notification.service";
 import { HttpErrorResponse } from "@angular/common/http";
 import { SSEService, SSEStreamResult } from "../see/see.service";
@@ -12,7 +12,7 @@ import { MatrixAnalysisProps } from "../../pages/assignment/components/matrix-an
 export class AssignService {
   constructor(private api: ApiHttpService) { }
   notify = inject(NotificationService)
-    sse = inject(SSEService)
+  sse = inject(SSEService)
 
   // @todo 将错误返回值改回 []
   getAssignData$(courseId: CourseId, assigId: AssignId) {
@@ -85,12 +85,13 @@ export class AssignService {
     // @todo 后端实现后尝试实现 大文件上传 代码
     return this.api.post$(`/courses/${courseId}/assignments/${assignId}/submission`, { codeFile }, { timeoutMs: 1 * 60 * 1000 }).pipe(
       catchError((e: HttpErrorResponse) => {
-        this.notify.error(e.status === 400 ? "已经过了截止时间了呢" : '无法提交作业: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message))
+        // @ts-ignore
+        this.notify.error(e.status === 400 ? e.body.detail /*"已经过了截止时间了呢"*/ : '无法提交作业: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message))
         return of(undefined)
       })
     );
   }
- // ========== 流式分析方法 ==========
+  // ========== 流式分析方法 ==========
 
   /**
    * 流式获取基础分析（解题分析或知识点分析）
@@ -100,19 +101,19 @@ export class AssignService {
    * @returns Observable<MatrixAnalysisProps> 实时更新的分析数据
    */
   getAnalysisBasicStream$(
-    courseId: CourseId, 
-    assignId: AssignId, 
+    courseId: CourseId,
+    assignId: AssignId,
     analysisType: 'resolution' | 'knowledge' = 'resolution'
   ): Observable<MatrixAnalysisProps> {
     const url = `/api/courses/${courseId}/assignments/${assignId}/analysis/basic/stream?analysisType=${analysisType}`;
-    
+
     return this.sse.createEventSource(url).pipe(
       map((result: SSEStreamResult) => {
         // 如果已完成，返回最终数据
         if (result.complete) {
           return result.complete as MatrixAnalysisProps;
         }
-        
+
         // 否则返回流式更新的内容
         const fullContent = result.chunks.join('');
         return {
@@ -121,8 +122,8 @@ export class AssignService {
             content: fullContent,
             complexity: undefined
           }],
-          summary: result.progress ? 
-            `正在处理：${result.progress.current}/${result.progress.total}` : 
+          summary: result.progress ?
+            `正在处理：${result.progress.current}/${result.progress.total}` :
             '正在生成...',
           showInEditor: false
         } as MatrixAnalysisProps;
@@ -146,20 +147,20 @@ export class AssignService {
    * @returns Observable<MatrixAnalysisProps> 实时更新的分析数据
    */
   getAnalysisAiGenStream$(
-    courseId: CourseId, 
-    assignId: AssignId, 
+    courseId: CourseId,
+    assignId: AssignId,
     analysisType: 'code' | 'learning' = 'code',
     notify: boolean = false
   ): Observable<MatrixAnalysisProps> {
     const url = `/api/courses/${courseId}/assignments/${assignId}/analysis/aiGen/stream?analysisType=${analysisType}`;
-    
+
     return this.sse.createEventSource(url).pipe(
       map((result: SSEStreamResult) => {
         // 如果已完成，返回最终数据
         if (result.complete) {
           return result.complete as MatrixAnalysisProps;
         }
-        
+
         // 否则返回流式更新的内容
         const fullContent = result.chunks.join('');
         return {
@@ -168,8 +169,8 @@ export class AssignService {
             content: fullContent,
             complexity: undefined
           }],
-          summary: result.progress ? 
-            `正在处理：${result.progress.current}/${result.progress.total}` : 
+          summary: result.progress ?
+            `正在处理：${result.progress.current}/${result.progress.total}` :
             '正在生成...',
           showInEditor: false
         } as MatrixAnalysisProps;

@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from app.models.base import get_pool, close_pool
 from app.models import (
     init_views,
+    init_procedures,
+    init_triggers,
     User,
 )
 from app.constants.user import UserMatrixAI
@@ -40,27 +42,27 @@ async def ensure_user_table():
 
 async def init_advanced_sql():
     """初始化高级 SQL 对象（视图、存储过程、触发器）"""
-    # 这些功能暂时禁用，避免初始化错误
-    # 如需启用，请取消以下注释
-    #
+    # 按依赖顺序初始化：视图 -> 存储过程 -> 触发器
+
     try:
         await init_views()
-        logging.info("SQL 视图初始化成功")
+        logging.info("✓ SQL 视图初始化成功")
     except Exception as e:
-        logging.warning(f"SQL 视图初始化跳过: {e}")
-    #
-    # try:
-    #     await init_procedures()
-    #     logging.info("存储过程初始化成功")
-    # except Exception as e:
-    #     logging.warning(f"存储过程初始化跳过: {e}")
-    #
-    # try:
-    #     await init_triggers()
-    #     logging.info("触发器初始化成功")
-    # except Exception as e:
-    #     logging.warning(f"触发器初始化跳过: {e}")
-    pass
+        logging.error(f"✗ SQL 视图初始化失败: {e}")
+        # 视图失败不应该阻止后续初始化
+
+    try:
+        await init_procedures()
+        logging.info("✓ 存储过程初始化成功")
+    except Exception as e:
+        logging.error(f"✗ 存储过程初始化失败: {e}")
+        # 存储过程失败应该被重视，但不阻止触发器初始化
+
+    try:
+        await init_triggers()
+        logging.info("✓ 触发器初始化成功")
+    except Exception as e:
+        logging.error(f"✗ 触发器初始化失败: {e}")
 
 
 async def close_db():
@@ -80,4 +82,4 @@ async def init_app():
 
     # @app.on_event("shutdown")
     # async def shutdown_event():
-    await close_db()
+    # await close_db()

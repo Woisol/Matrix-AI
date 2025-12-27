@@ -7,7 +7,7 @@ import logging
 from typing import AsyncGenerator
 from fastapi import HTTPException
 
-from app.models import Assignment as AssignmentModel, fetch_all, fetch_one, execute
+from app.models import Assignment as AssignmentModel, fetch_all, fetch_one
 from app.schemas.assignment import BasicAnalysis, AiGenAnalysis
 
 from datetime import datetime, timezone
@@ -32,29 +32,16 @@ class AIController:
             )
 
             if re_gen:
-                # resol = None
-                # knowled = None
                 resol = await AIAnalysisGenerator.genResolutions(assign_id)
                 knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
 
-                if analysis:
-                    await execute(
-                        """UPDATE assignment_analysis
-                           SET resolution=$1, knowledge_analysis=$2
-                           WHERE assignment_id=$3""",
-                        resol.model_dump_json() if resol else None,
-                        knowled.model_dump_json() if knowled else None,
-                        assign_id
-                    )
-                else:
-                    await execute(
-                        """INSERT INTO assignment_analysis
-                           (assignment_id, resolution, knowledge_analysis)
-                           VALUES ($1, $2, $3)""",
-                        assign_id,
-                        resol.model_dump_json() if resol else None,
-                        knowled.model_dump_json() if knowled else None
-                    )
+                # 使用存储过程进行 UPSERT
+                await fetch_one(
+                    "SELECT upsert_assignment_analysis($1, $2, $3, NULL, NULL)",
+                    assign_id,
+                    resol.model_dump_json() if resol else None,
+                    knowled.model_dump_json() if knowled else None
+                )
 
                 return BasicAnalysis(
                     resolution=resol,
@@ -70,10 +57,9 @@ class AIController:
                 resol = await AIAnalysisGenerator.genResolutions(assign_id)
                 knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
 
-                await execute(
-                    """INSERT INTO assignment_analysis
-                        (assignment_id, resolution, knowledge_analysis)
-                        VALUES ($1, $2, $3)""",
+                # 使用存储过程进行 UPSERT
+                await fetch_one(
+                    "SELECT upsert_assignment_analysis($1, $2, $3, NULL, NULL)",
                     assign_id,
                     resol.model_dump_json() if resol else None,
                     knowled.model_dump_json() if knowled else None
@@ -134,25 +120,16 @@ class AIController:
                     learningSuggestions=json.loads(analysis['learning_suggestions']) if analysis['learning_suggestions'] else None
                 )
             else:
-                # TODO: 调用 AI 生成分析
                 codeAnal = await AIAnalysisGenerator.genCodeAnalysis(assign_id)
                 learnSug = await AIAnalysisGenerator.genLearningSuggestions(assign_id)
 
-                if analysis:
-                    await execute(
-                        """UPDATE assignment_analysis
-                           SET code_analysis=$1, learning_suggestions=$2
-                           WHERE assignment_id=$3""",
-                        codeAnal.model_dump_json(), learnSug.model_dump_json(),
-                        assign_id
-                    )
-                else:
-                    await execute(
-                        """INSERT INTO assignment_analysis
-                           (assignment_id, code_analysis, learning_suggestions)
-                           VALUES ($1, $2, $3)""",
-                        assign_id, codeAnal.model_dump_json(), learnSug.model_dump_json(),
-                    )
+                # 使用存储过程进行 UPSERT
+                await fetch_one(
+                    "SELECT upsert_assignment_analysis($1, NULL, NULL, $2, $3)",
+                    assign_id,
+                    codeAnal.model_dump_json(),
+                    learnSug.model_dump_json()
+                )
 
                 return AiGenAnalysis(codeAnalysis=codeAnal, learningSuggestions=learnSug)
 

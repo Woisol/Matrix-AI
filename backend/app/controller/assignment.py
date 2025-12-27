@@ -14,9 +14,9 @@ from app.models import (
     Course as CourseModel,
     Assignment as AssignmentModel,
     AssignmentCode,
-    AssignmentSubmission,
     fetch_all,
     fetch_one,
+    execute,
 )
 from app.models.playground import Playground
 from app.schemas.general import CourseId, AssignId
@@ -196,10 +196,6 @@ class AssignmentController:
     async def submit_code(cls, course_id: CourseId, assign_id: AssignId, submitRequest: SubmitRequest):
         """提交代码"""
         try:
-            assignment = await AssignmentModel.get(id=assign_id)
-            if assignment.end_date and assignment.end_date < datetime.now():
-                raise HTTPException(status_code=400, detail="Deadline has passed")
-
             # 获取作业代码
             codes = await fetch_one(
                 "SELECT * FROM assignment_codes WHERE assignment_id = $1 LIMIT 1",
@@ -216,6 +212,9 @@ class AssignmentController:
                 testSample=TestSampleCreate(input=sample_input, expectOutput=sample_output),
             )
 
+            # 截止日期检查由触发器自动处理（check_submission_deadline）
+            # 分数范围由触发器自动限制（validate_submission_score）
+
             submit = Submit(
                 score=judgeRes.score,
                 time=datetime.now(timezone.utc),
@@ -227,40 +226,41 @@ class AssignmentController:
                 submitCode=[submitRequest.codeFile],
             )
 
-            # 检查是否已有提交
-            submissions = await fetch_all(
-                "SELECT * FROM assignment_submissions WHERE assignment_id = $1 ORDER BY submitted_at DESC LIMIT 1",
-                assign_id
+            # 使用存储过程进行提交（自动判断新增或更新）
+            await execute(
+                "CALL submit_assignment($1, $2, $3, $4, $5)",
+                assign_id,
+                "Matrix AI",
+                judgeRes.score,
+                json.dumps(judgeRes.testRealOutput, ensure_ascii=False),
+                json.dumps([submitRequest.codeFile.model_dump()], ensure_ascii=False)
             )
-
-            if submissions:
-                # 更新现有提交
-                await fetch_one(
-                    """UPDATE assignment_submissions
-                       SET score=$1, sample_real_output=$2, submit_code=$3
-                       WHERE id=$4""",
-                    judgeRes.score,
-                    json.dumps(judgeRes.testRealOutput, ensure_ascii=False),
-                    json.dumps([submitRequest.codeFile.model_dump()], ensure_ascii=False),
-                    submissions[0]['id']
-                )
-            else:
-                # 创建新提交
-                await AssignmentSubmission.create(
-                    id=uuid.uuid4().hex,
-                    assignment_id=assign_id,
-                    student_id="Matrix AI",
-                    score=judgeRes.score,
-                    sample_real_output=json.dumps(judgeRes.testRealOutput, ensure_ascii=False),
-                    submit_code=json.dumps([submitRequest.codeFile.model_dump()], ensure_ascii=False),
-                )
 
             return submit
         except HTTPException:
             raise
         except Exception as e:
-            logging.error(f"Error occurred while submitting code for assignment {assign_id}: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+            error_msg = str(e)
+
+            # 检查是否是截止日期触发器异常
+            if "Cannot submit after deadline" in error_msg or "超过截止日期" in error_msg:
+                logging.warning(f"Submission rejected for assignment {assign_id}: deadline passed")
+                raise HTTPException(
+                    status_code=400,
+                    detail="作业提交失败：已超过截止日期，无法提交作业"
+                )
+
+            # 检查是否是分数范围触发器异常
+            if "Score must be between 0 and 100" in error_msg or "分数必须在" in error_msg:
+                logging.warning(f"Invalid score for assignment {assign_id}: {error_msg}")
+                raise HTTPException(
+                    status_code=400,
+                    detail="作业提交失败：分数必须在 0-100 之间"
+                )
+
+            # 其他异常
+            logging.error(f"Error occurred while submitting code for assignment {assign_id}: {error_msg}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")
 
     @classmethod
     async def get_assignment_admin(cls, assign_id: str):
