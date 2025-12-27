@@ -92,6 +92,19 @@ class AssignData(BaseModel):
     ddl: datetime | None = Field(None, description="作业截止时间")
     submit: Submit | None = Field(None, description="作业提交记录")
 
+
+class AssignDataAdmin(BaseModel):
+    """作业详情管理后台模型，包含课程ID、测试样例"""
+    assignId: AssignId = Field(..., description="作业ID")
+    courseId: CourseId = Field(..., description="课程ID")
+    title: str = Field(..., description="作业标题")
+    description: str = Field(..., description="作业描述")
+    ddl: datetime | None = Field(None, description="作业截止时间")
+    testSampleInput: list[str] = Field(..., description="测试样例输入（JSON数组字符串）")
+    testSampleOutput: list[str] = Field(..., description="测试样例输出（JSON数组字符串）")
+    assignOriginalCode: list[CodeFileInfo] = Field(..., description="作业原始代码")
+
+
 #**----------------------------Matrix-Analysis-----------------------------------------------------
 
 class BasicAnalysis(BaseModel):

@@ -144,3 +144,30 @@ async def delete_course(course_id: str):
     except Exception as e:
         logging.error(f"Error occurred while deleting course {course_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+async def get_course_admin(course_id: str):
+    """获取课程详情（管理后台用，包含完整字段）"""
+    try:
+        course = await CourseModel.get(id=course_id)
+
+        # 获取课程的作业ID列表
+        rows = await fetch_all(
+            "SELECT assignment_id FROM courses_assignments WHERE courses_id = $1",
+            course_id
+        )
+        assignment_ids = ",".join(row['assignment_id'] for row in rows) if rows else ""
+
+        return {
+            "courseId": course.id,
+            "courseName": course.course_name,
+            "type": course.type,
+            "status": course.status,
+            "completed": course.completed,
+            "assignmentIds": assignment_ids,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error occurred while getting course admin {course_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

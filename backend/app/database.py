@@ -45,11 +45,11 @@ async def init_advanced_sql():
     # 这些功能暂时禁用，避免初始化错误
     # 如需启用，请取消以下注释
     #
-    # try:
-    #     await init_views()
-    #     logging.info("SQL 视图初始化成功")
-    # except Exception as e:
-    #     logging.warning(f"SQL 视图初始化跳过: {e}")
+    try:
+        await init_views()
+        logging.info("SQL 视图初始化成功")
+    except Exception as e:
+        logging.warning(f"SQL 视图初始化跳过: {e}")
     #
     # try:
     #     await init_procedures()
@@ -71,15 +71,15 @@ async def close_db():
     logging.info("数据库连接池已关闭")
 
 
-def init_app(app: FastAPI):
+async def init_app():
     """初始化 FastAPI 应用的数据库"""
 
-    @app.on_event("startup")
-    async def startup_event():
-        await init_db()
-        await init_advanced_sql()
-        await ensure_user_table()
+    # @app.on_event("startup")
+    # async def startup_event():
+    await init_db()
+    await init_advanced_sql()
+    await ensure_user_table()
 
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        await close_db()
+    # @app.on_event("shutdown")
+    # async def shutdown_event():
+    await close_db()

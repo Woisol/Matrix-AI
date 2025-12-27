@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS assignment_codes (
     original_code VARCHAR(10000),
     sample_input VARCHAR(10000),
     sample_expect_output VARCHAR(10000),
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id)
+    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE
 );
 
 -- assignment_submissions 表
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS assignment_submissions (
     sample_real_output VARCHAR(10000),
     submit_code VARCHAR(10000),
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id)
+    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE
 );
 
 -- assignment_analysis 表
@@ -56,12 +56,12 @@ CREATE TABLE IF NOT EXISTS assignment_analysis (
     knowledge_analysis JSONB,
     code_analysis JSONB,
     learning_suggestions JSONB,
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id)
+    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE
 );
 
 -- courses_assignments 多对多关联表
 CREATE TABLE IF NOT EXISTS courses_assignments (
-    courses_id VARCHAR(50) NOT NULL REFERENCES courses(id),
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id),
+    courses_id VARCHAR(50) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
     PRIMARY KEY (courses_id, assignment_id)
 );

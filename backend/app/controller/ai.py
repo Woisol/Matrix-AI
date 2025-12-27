@@ -32,7 +32,6 @@ class AIController:
             )
 
             if re_gen:
-                # TODO: 调用 AI 生成分析
                 # resol = None
                 # knowled = None
                 resol = await AIAnalysisGenerator.genResolutions(assign_id)
@@ -62,13 +61,24 @@ class AIController:
                     knowledgeAnalysis=knowled
                 )
             elif analysis:
+                # asyncpg.Record 需要用字典方式访问字段，不能用属性方式。
                 return BasicAnalysis(
-                    resolution=json.loads(analysis['resolution']) if analysis['resolution'] else None,
-                    knowledgeAnalysis=json.loads(analysis['knowledge_analysis']) if analysis['knowledge_analysis'] else None
+                    resolution=json.loads(analysis['resolution']),
+                    knowledgeAnalysis=json.loads(analysis['knowledge_analysis'])
                 )
             else:
-                # TODO: 调用 AI 生成分析
-                return BasicAnalysis(resolution=None, knowledgeAnalysis=None)
+                resol = await AIAnalysisGenerator.genResolutions(assign_id)
+                knowled = await AIAnalysisGenerator.genKnowledgeAnalysis(assign_id)
+
+                await execute(
+                    """INSERT INTO assignment_analysis
+                        (assignment_id, resolution, knowledge_analysis)
+                        VALUES ($1, $2, $3)""",
+                    assign_id,
+                    resol.model_dump_json() if resol else None,
+                    knowled.model_dump_json() if knowled else None
+                )
+                return BasicAnalysis(resolution=resol, knowledgeAnalysis=knowled)
 
         except HTTPException:
             raise

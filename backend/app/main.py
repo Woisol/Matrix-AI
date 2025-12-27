@@ -29,7 +29,7 @@ from contextlib import asynccontextmanager
 from app.routers.course import course_router
 from app.routers.assignment import assign_router
 from app.routers.ai import ai_route
-from app.database import init_db, close_db, ensure_user_table
+from app.database import init_app, init_db, close_db, ensure_user_table
 
 
 api_key=os.getenv("OPENAI_API_KEY", "Your-api-key")
@@ -39,12 +39,8 @@ api_key=os.getenv("OPENAI_API_KEY", "Your-api-key")
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时初始化数据库
-    await init_db()
-    # 初始化默认数据（避免重复创建）
-    await ensure_user_table()
+    await init_app()
     yield
-    # 关闭时清理数据库连接
-    await close_db()
 
 
 # 创建FastAPI应用实例

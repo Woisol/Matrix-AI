@@ -31,6 +31,16 @@ class TodoCourse(CourseBase):
     assignment: list[AssignmentListItem] = Field(..., description="课程作业列表")
 
 
+class CourseAdmin(BaseModel):
+    """课程管理后台详情模型，包含完整字段"""
+    courseId: CourseId = Field(..., description="课程ID")
+    courseName: str = Field(..., description="课程名称")
+    type: str = Field(..., description="课程类型: public, private")
+    status: str = Field(..., description="课程状态: open, close")
+    completed: bool = Field(..., description="是否完成")
+    assignmentIds: str = Field(description="关联的作业ID列表")
+
+
 class CourseCreateRequest(BaseModel):
     """创建课程请求模型"""
     courseId: CourseId | None = Field(..., description="课程ID")

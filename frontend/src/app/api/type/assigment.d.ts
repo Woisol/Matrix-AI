@@ -1,6 +1,6 @@
 // import { MatrixAnalysisProps } from "../../pages/course/components/matrix-analyse.component"
 import { MatrixAnalysisProps } from "../../pages/assignment/components/matrix-analyse.component"
-import { AssignId } from "./general"
+import { AssignId, CourseId } from "./general"
 
 export type MdContent = string
 //! MdCodeContent 需要手动加上 ```[语言类型]...```
@@ -49,6 +49,7 @@ export type AssignData = {
 }
 
 export type AssignTransProps = Omit<AssignData, 'assignOriginalCode' | 'submit'> & {
+  courseId?: CourseId
   assignOriginalCode: JSONStr
   testSample: string
   ddl: string
@@ -66,4 +67,15 @@ export type AiGenAnalysis = {
 export type Analysis = {
   basic: BasicAnalysis
   aiGen?: AiGenAnalysis
+}
+
+export type AssignDataAdmin = {
+  assignId: AssignId
+  courseId: CourseId
+  title: string
+  description: string
+  ddl?: Date
+  testSampleInput: string[]
+  testSampleOutput: string[]
+  assignOriginalCode: CodeFileInfo[]
 }

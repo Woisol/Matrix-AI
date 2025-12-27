@@ -8,9 +8,6 @@ from .assignment import Assignment, AssignmentCode, AssignmentSubmission, Assign
 from .analysis import Analysis
 from .views import (
     init_views,
-    CourseAssignmentStats,
-    AssignmentStats,
-    StudentSubmissionStats
 )
 from .procedures import (
     init_procedures,

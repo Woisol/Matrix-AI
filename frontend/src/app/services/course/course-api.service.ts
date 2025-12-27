@@ -2,7 +2,7 @@ import { inject, Injectable } from "@angular/core";
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiHttpService } from "../../api/util/api-http.service";
-import { AllCourse, CourseTransProps, TodoCourse } from "../../api/type/course";
+import { AllCourse, CourseTransProps, TodoCourse, CourseAdmin } from "../../api/type/course";
 import { HttpErrorResponse } from "@angular/common/http";
 import { NotificationService } from "../notification/notification.service";
 import { AssignTransProps } from "../../api/type/assigment";
@@ -99,6 +99,16 @@ export class CourseApi {
         let msg = `无法删除课程(${courseId})中的作业(${assignId}): ` + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message);
         this.notify.error(msg);
         return of(false)
+      })
+    );
+  }
+
+  getCourseByIdAdmin$(courseId: string) {
+    return this.api.get$<CourseAdmin>(`/admin/courses/${courseId}`).pipe(
+      catchError((e: HttpErrorResponse) => {
+        let msg = `无法获取课程管理信息(${courseId}): ` + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message);
+        this.notify.error(msg);
+        return of(undefined)
       })
     );
   }

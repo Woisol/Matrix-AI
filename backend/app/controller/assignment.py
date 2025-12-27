@@ -92,12 +92,28 @@ class AssignmentController:
     ) -> bool:
         """创建或更新作业"""
         try:
+            # 转换 ddl 字符串为 offset-naive datetime 对象（与数据库兼容）
+            ddl_datetime: Optional[datetime] = None
+            if ddl:
+                try:
+                    # 尝试解析 ISO 格式时间字符串
+                    if ddl.endswith('Z'):
+                        ddl_dt = datetime.fromisoformat(ddl.replace('Z', '+00:00'))
+                    else:
+                        ddl_dt = datetime.fromisoformat(ddl)
+                    # 转换为 offset-naive，与数据库现有数据兼容
+                    if ddl_dt.tzinfo is not None:
+                        ddl_dt = ddl_dt.replace(tzinfo=None)
+                    ddl_datetime = ddl_dt
+                except ValueError:
+                    ddl_datetime = None
+
             if assignId:
-                # 更新作业
+                # 获取现有作业并更新（使用 offset-naive datetime）
                 assignment = await AssignmentModel.get(id=assignId)
                 assignment.title = title
                 assignment.description = description
-                assignment.end_date = ddl if ddl else None
+                assignment.end_date = ddl_datetime
                 await assignment.save()
 
                 # 更新代码
@@ -123,7 +139,7 @@ class AssignmentController:
                     title=title,
                     description=description,
                     type="program",
-                    end_date=ddl if ddl else None,
+                    end_date=ddl_datetime,
                 )
 
                 # 创建代码
@@ -181,7 +197,7 @@ class AssignmentController:
         """提交代码"""
         try:
             assignment = await AssignmentModel.get(id=assign_id)
-            if assignment.end_date and assignment.end_date < datetime.now().isoformat():
+            if assignment.end_date and assignment.end_date < datetime.now():
                 raise HTTPException(status_code=400, detail="Deadline has passed")
 
             # 获取作业代码
@@ -246,6 +262,50 @@ class AssignmentController:
             logging.error(f"Error occurred while submitting code for assignment {assign_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+    @classmethod
+    async def get_assignment_admin(cls, assign_id: str):
+        """获取作业详情（管理后台用，包含课程ID和测试样例）"""
+        try:
+            from app.models.views import AssignmentDetail
+            from app.utils.assign import listStrToList
+            from app.schemas.assignment import AssignDataAdmin, CodeFileInfo
+
+            row = await AssignmentDetail.get_by_assignment(assign_id)
+            if not row:
+                raise HTTPException(status_code=404, detail=f"Assignment {assign_id} not found")
+
+            # 解析 JSON 字段
+            sample_input = listStrToList(row['sample_input']) if row['sample_input'] else []
+            sample_expect_output = listStrToList(row['sample_expect_output']) if row['sample_expect_output'] else []
+            raw_code = listStrToList(row['original_code']) if row['original_code'] else []
+
+            # 转换原始代码格式
+            assign_original_code: list[CodeFileInfo] = []
+            for f in raw_code:
+                if isinstance(f, dict):
+                    assign_original_code.append(CodeFileInfo(
+                        fileName=f.get('fileName', ''),
+                        content=f.get('content', '')
+                    ))
+                elif isinstance(f, str):
+                    assign_original_code.append(CodeFileInfo(fileName="main.cpp", content=f))
+
+            return AssignDataAdmin(
+                assignId=row['assignment_id'],
+                courseId=row['course_id'],
+                title=row['title'],
+                description=row['description'],
+                ddl=row['ddl'],
+                testSampleInput=sample_input,
+                testSampleOutput=sample_expect_output,
+                assignOriginalCode=assign_original_code,
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logging.error(f"Error occurred while getting assignment admin {assign_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 
 # 兼容函数式调用
 get_assignment = AssignmentController.get_assignment
@@ -253,3 +313,4 @@ set_assignment = AssignmentController.set_assignment
 delete_assignment = AssignmentController.delete_assignment
 test_submit = AssignmentController.test_submit
 submit_code = AssignmentController.submit_code
+get_assignment_admin = AssignmentController.get_assignment_admin

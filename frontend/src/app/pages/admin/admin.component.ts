@@ -425,22 +425,25 @@ export class AdminComponent {
    * 处理课程上传（编辑）
    */
   handleUploadCourse(courseId: CourseId) {
-    // 找到对应的课程数据
-    const course = this.courseInfo.allCourseList.find(c => c.courseId === courseId);
-    if (course) {
+    // 使用 Admin API 获取完整的课程信息（包含 type 和 status）
+    this.courseApi.getCourseByIdAdmin$(courseId).subscribe(data => {
+      if (!data) {
+        this.message.error('未找到对应的课程数据');
+        return;
+      }
       // 转换为 CourseTransProps 格式
       this.editingCourse = {
-        courseId: course.courseId,
-        courseName: course.courseName,
-        completed: course.completed,
-        assignmentIds: course.assignment?.map(a => a.assignId).join(',') || ''
+        courseId: data.courseId,
+        courseName: data.courseName,
+        type: data.type,
+        status: data.status,
+        completed: data.completed,
+        assignmentIds: data.assignmentIds
       } as CourseTransProps;
       this.dialogType.set('course');
       this.editingAssignment = null;
       this.showDialog = true;
-    } else {
-      this.message.error('未找到对应的课程数据');
-    }
+    });
   }
 
   /**
@@ -475,44 +478,27 @@ export class AdminComponent {
    * 处理作业上传（编辑）
    */
   handleUploadAssignment(assignId: AssignId) {
-    // 在所有课程中查找对应的作业
-    let _courseId = "";
-    let foundAssignment = null;
-    for (const course of this.courseInfo.allCourseList) {
-      const assignment = course.assignment?.find(a => a.assignId === assignId);
-      if (assignment) {
-        _courseId = course.courseId;
-        foundAssignment = assignment;
-        break;
+    // 使用 Admin API 获取完整的作业信息（包含课程ID、测试样例等）
+    this.assignApi.getAssignDataAdmin$(assignId).subscribe(data => {
+      if (!data) {
+        this.message.error('未找到对应的作业数据');
+        return;
       }
-    }
-
-
-    if (foundAssignment) {
-      let _descript = "";
-      this.assignApi.getAssignData$(_courseId, foundAssignment?.assignId).subscribe(data => {
-        if (!data) {
-          this.message.warning('未找到对应的作业数据，请更新本地数据');
-          return;
-        }
-        _descript = data.description;
-        // 转换为 AssignTransProps 格式
-        this.editingAssignment = {
-          assignId: foundAssignment.assignId,
-          title: foundAssignment.assignmentName,
-          description: _descript,
-          assignOriginalCode: data.assignOriginalCode[0].content ?? '',
-          testSampleInput: '',
-          testSampleOutput: '',
-          ddl: foundAssignment.ddl ? foundAssignment.ddl.toString() : ''
-        } as AssignTransProps & { testSampleInput: string, testSampleOutput: string };
-        this.dialogType.set('assignment');
-        this.editingCourse = null;
-        this.showDialog = true;
-      })
-    } else {
-      this.message.warning('未找到对应的作业数据');
-    }
+      // 转换为 AssignTransProps 格式
+      this.editingAssignment = {
+        assignId: data.assignId,
+        courseId: data.courseId,
+        title: data.title,
+        description: data.description,
+        assignOriginalCode: data.assignOriginalCode[0]?.content ?? '',
+        testSampleInput: data.testSampleInput?.join('|') ?? '',
+        testSampleOutput: data.testSampleOutput?.join('|') ?? '',
+        ddl: data.ddl ? new Date(data.ddl).toISOString() : ''
+      } as AssignTransProps & { courseId: string, testSampleInput: string, testSampleOutput: string };
+      this.dialogType.set('assignment');
+      this.editingCourse = null;
+      this.showDialog = true;
+    });
   }
 
   /**

@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, Path, Form, Body
-from app.schemas.assignment import AssignData, AssignCreateRequest, Submit, SubmitRequest, TestSubmitRequest, TestSampleCreate
+from app.schemas.assignment import AssignData, AssignDataAdmin, AssignCreateRequest, Submit, SubmitRequest, TestSubmitRequest, TestSampleCreate
 from app.controller import assignment as AssignmentController
 
 
@@ -59,4 +59,9 @@ async def submit_code(
     submitRequest: SubmitRequest = Body(...)
  ):
     return await AssignmentController.submit_code(course_id, assign_id, submitRequest=submitRequest)
+
+@assign_router.get("/admin/assignments/{assign_id}", response_model=AssignDataAdmin)
+async def get_assignment_admin(assign_id: str = Path(..., description="作业ID")):
+    """获取作业详情（管理后台用，包含课程ID和测试样例）"""
+    return await AssignmentController.get_assignment_admin(assign_id=assign_id)
 

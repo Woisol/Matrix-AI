@@ -19,5 +19,16 @@ export type AssignmentListItem = {
 }
 
 export type CourseTransProps = Omit<AllCourse, 'assignment'> & {
+  type?: 'public' | 'private'
+  status?: 'open' | 'close'
+  assignmentIds: string // 逗号分隔
+}
+
+export type CourseAdmin = {
+  courseId: CourseId
+  courseName: string
+  type: 'public' | 'private'
+  status: 'open' | 'close'
+  completed: boolean
   assignmentIds: string // 逗号分隔
 }

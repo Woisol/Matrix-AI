@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@angular/core";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { AssignId, CourseId } from "../../api/type/general";
-import { AiGenAnalysis, AssignData, BasicAnalysis, CodeFileInfo, CodeLanguage } from "../../api/type/assigment";
+import { AiGenAnalysis, AssignData, AssignDataAdmin, BasicAnalysis, CodeFileInfo, CodeLanguage } from "../../api/type/assigment";
 import { catchError,map, Observable, of } from "rxjs";
 import { NotificationService } from "../notification/notification.service";
 import { HttpErrorResponse } from "@angular/common/http";
@@ -19,6 +19,16 @@ export class AssignService {
     return this.api.get$<AssignData>(`/courses/${courseId}/assignments/${assigId}`).pipe(
       catchError((e: HttpErrorResponse) => {
         let msg = '无法获取作业数据: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message)
+        this.notify.error(msg)
+        return of(undefined)
+      })
+    );
+  }
+
+  getAssignDataAdmin$(assignId: AssignId) {
+    return this.api.get$<AssignDataAdmin>(`/admin/assignments/${assignId}`).pipe(
+      catchError((e: HttpErrorResponse) => {
+        let msg = '无法获取作业管理数据: ' + (e.status === 500 ? "服务器连接异常，请确认服务器状态。" : e.message)
         this.notify.error(msg)
         return of(undefined)
       })

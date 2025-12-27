@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Query, Path, Body, Form
 from typing import Optional, List
 
 from app.controller import course as CourseController
-from app.schemas.course import Course as CourseSchema,CourseBase, TodoCourse, CourseCreateRequest, AssignmentListItem
+from app.schemas.course import Course as CourseSchema,CourseBase, TodoCourse, CourseCreateRequest, AssignmentListItem, CourseAdmin
 
 course_router = APIRouter(tags=["course"])
 
@@ -42,3 +42,10 @@ async def delete_course(
     course_id: str = Path(..., description="课程ID")
 ):
     return await CourseController.delete_course(course_id=course_id)
+
+@course_router.get("/admin/courses/{course_id}", response_model=CourseAdmin)
+async def get_course_admin(
+    course_id: str = Path(..., description="课程ID")
+):
+    """获取课程详情（管理后台用，包含 type 和 status）"""
+    return await CourseController.get_course_admin(course_id=course_id)
