@@ -55,7 +55,7 @@ async def test_submit(submitRequest: TestSubmitRequest = Body(...)):
 async def submit_code(
     course_id: str = Path(..., description="课程ID"),
     assign_id: str = Path(..., description="作业ID"),
-    submitRequest: TestSubmitRequest = Body(...)
+    submitRequest: SubmitRequest = Body(...)
  ):
     return await AssignmentController.submit_code(course_id, assign_id, submitRequest=submitRequest)
 
