@@ -9,13 +9,6 @@ from .analysis import Analysis
 from .views import (
     init_views,
 )
-from .procedures import (
-    init_procedures,
-    AssignmentProcedures,
-    CourseProcedures,
-    MaintenanceProcedures
-)
-from .triggers import init_triggers, TriggerManager
 
 __all__ = [
     # 核心
@@ -38,13 +31,4 @@ __all__ = [
     "Analysis",
     # 高级 SQL
     "init_views",
-    "init_procedures",
-    "init_triggers",
-    "CourseAssignmentStats",
-    "AssignmentStats",
-    "StudentSubmissionStats",
-    "AssignmentProcedures",
-    "CourseProcedures",
-    "MaintenanceProcedures",
-    "TriggerManager",
 ]

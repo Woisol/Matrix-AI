@@ -8,8 +8,6 @@ from fastapi import FastAPI
 from app.models.base import get_pool, close_pool
 from app.models import (
     init_views,
-    init_procedures,
-    init_triggers,
     User,
 )
 from app.constants.user import UserMatrixAI
