@@ -17,7 +17,7 @@ SELECT
     COALESCE(AVG(s.score), 0) AS avg_score,
     COUNT(DISTINCT s.student_id) AS student_count
 FROM courses c
-LEFT JOIN courses_assignments ca ON c.id = ca.course_id
+LEFT JOIN courses_assignments ca ON c.id = ca.courses_id
 LEFT JOIN assignments a ON ca.assignment_id = a.id
 LEFT JOIN assignment_submissions s ON a.id = s.assignment_id
 GROUP BY c.id, c.course_name;
@@ -71,14 +71,14 @@ class CourseAssignmentStats:
     @staticmethod
     async def get_all():
         """获取所有课程统计"""
-        rows = await fetch_all("SELECT * FROM v_course_assignment_stats ORDER BY course_id")
+        rows = await fetch_all("SELECT * FROM v_course_assignment_stats ORDER BY courses_id")
         return rows
 
     @staticmethod
     async def get_by_course(course_id: str):
         """获取指定课程统计"""
         row = await fetch_one(
-            "SELECT * FROM v_course_assignment_stats WHERE course_id = $1",
+            "SELECT * FROM v_course_assignment_stats WHERE courses_id = $1",
             course_id
         )
         return row

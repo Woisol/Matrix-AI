@@ -328,7 +328,7 @@ class AIAnalysisGenerator:
 
                 logging.info(f"Received code analysis generate request")
 
-            _user = await User.filter(username=UserMatrixAI.username).all()
+            _user = await User.filter(username=UserMatrixAI.username)
             if not _user:
                 logging.error("No user")
             user = _user[0]
@@ -399,7 +399,7 @@ class AIAnalysisGenerator:
             if assign_data.submit and assign_data.submit.submitCode:
                 submitted_code = assign_data.submit.submitCode[0].content
 
-            _user = await User.filter(username=UserMatrixAI.username).all()
+            _user = await User.filter(username=UserMatrixAI.username)
             if not _user:
                 logging.error("No user")
             user = _user[0]

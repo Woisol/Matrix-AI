@@ -55,7 +55,8 @@ async def test_submit(submitRequest: TestSubmitRequest = Body(...)):
 async def submit_code(
     course_id: str = Path(..., description="课程ID"),
     assign_id: str = Path(..., description="作业ID"),
-    submitRequest: TestSubmitRequest = Body(...)
+    # 四个月前的 ab68968964364cbe5e30836c7d5e5eeabb2c098c 就改错成 TestSubmitRequest 了为什么一直能跑？
+    submitRequest: SubmitRequest = Body(...)
  ):
     return await AssignmentController.submit_code(course_id, assign_id, submitRequest=submitRequest)
 

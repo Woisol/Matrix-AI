@@ -70,7 +70,7 @@ export class AssignmentComponent implements OnDestroy {
         return;
       }
       this.loadAnalysisBasic();
-      this.loadAnalysisAiGen();
+      // this.loadAnalysisAiGen();
       // this.loadAnalysisBasicStream('resolution');
     });
     this.subs.push(sub);

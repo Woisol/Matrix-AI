@@ -125,15 +125,15 @@ class AIController:
                 )
             else:
                 # TODO: 调用 AI 生成分析
-                # codeAnal = await AIAnalysisGenerator.genCodeAnalysis(assign_id)
-                # learnSug = await AIAnalysisGenerator.genLearningSuggestions(assign_id)
+                codeAnal = await AIAnalysisGenerator.genCodeAnalysis(assign_id)
+                learnSug = await AIAnalysisGenerator.genLearningSuggestions(assign_id)
 
                 if analysis:
                     await execute(
                         """UPDATE assignment_analysis
                            SET code_analysis=$1, learning_suggestions=$2
                            WHERE assignment_id=$3""",
-                        None, None,  # codeAnal.model_dump_json(), learnSug.model_dump_json()
+                        codeAnal.model_dump_json(), learnSug.model_dump_json(),
                         assign_id
                     )
                 else:
@@ -141,10 +141,10 @@ class AIController:
                         """INSERT INTO assignment_analysis
                            (assignment_id, code_analysis, learning_suggestions)
                            VALUES ($1, $2, $3)""",
-                        assign_id, None, None  # codeAnal.model_dump_json(), learnSug.model_dump_json()
+                        assign_id, codeAnal.model_dump_json(), learnSug.model_dump_json(),
                     )
 
-                return AiGenAnalysis(codeAnalysis=None, learningSuggestions=None)
+                return AiGenAnalysis(codeAnalysis=codeAnal, learningSuggestions=learnSug)
 
         except HTTPException:
             raise

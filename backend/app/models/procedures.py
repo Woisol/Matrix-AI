@@ -31,7 +31,7 @@ END;
 $$;
 
 -- 更新课程完成状态的存储过程
-CREATE OR REPLACE PROCEDURE update_course_completion(IN p_course_id VARCHAR(50))
+CREATE OR REPLACE PROCEDURE update_course_completion(IN p_courses_id VARCHAR(50))
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -39,10 +39,10 @@ DECLARE
     v_completed_assignments INTEGER;
 BEGIN
     SELECT COUNT(*)::INTEGER INTO v_total_assignments
-    FROM courses_assignments WHERE course_id = p_course_id;
+    FROM courses_assignments WHERE courses_id = p_courses_id;
 
     IF v_total_assignments = 0 THEN
-        UPDATE courses SET completed = FALSE WHERE id = p_course_id;
+        UPDATE courses SET completed = FALSE WHERE id = p_courses_id;
         RETURN;
     END IF;
 
@@ -50,15 +50,15 @@ BEGIN
     SELECT COUNT(DISTINCT s.assignment_id)::INTEGER INTO v_completed_assignments
     FROM assignment_submissions s
     JOIN courses_assignments ca ON s.assignment_id = ca.assignment_id
-    WHERE ca.course_id = p_course_id
+    WHERE ca.courses_id = p_courses_id
     GROUP BY s.assignment_id
     HAVING AVG(s.score) >= 60;
 
     -- 如果所有作业都完成，则标记课程为完成
     IF v_completed_assignments >= v_total_assignments THEN
-        UPDATE courses SET completed = TRUE WHERE id = p_course_id;
+        UPDATE courses SET completed = TRUE WHERE id = p_courses_id;
     ELSE
-        UPDATE courses SET completed = FALSE WHERE id = p_course_id;
+        UPDATE courses SET completed = FALSE WHERE id = p_courses_id;
     END IF;
 END;
 $$;

@@ -137,7 +137,7 @@ class AssignmentController:
 
                 # 关联课程
                 await fetch_one(
-                    "INSERT INTO courses_assignments (course_id, assignment_id) VALUES ($1, $2)",
+                    "INSERT INTO courses_assignments (courses_id, assignment_id) VALUES ($1, $2)",
                     courseId, new_assign_id
                 )
 

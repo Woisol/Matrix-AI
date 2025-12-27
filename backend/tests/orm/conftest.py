@@ -6,7 +6,8 @@ import os
 import asyncpg
 from unittest import IsolatedAsyncioTestCase
 
-# 测试数据库配置 - 只使用 TEST_ 前缀的环境变量，不继承生产环境变量
+# 从 constants 文件导入 DDL
+from app.constants.create_table import CREATE_TABLES_SQL
 TEST_DB_CONFIG = {
     "host": os.getenv("TEST_DB_HOST", "192.168.134.205"),
     "port": int(os.getenv("TEST_DB_PORT", "8888")),
@@ -59,77 +60,6 @@ async def ensure_test_database():
         print(f"Warning: Could not create test database: {e}")
         raise
 
-
-# DDL 语句创建测试表
-CREATE_TABLES_SQL = """
--- user 表
-CREATE TABLE IF NOT EXISTS "user" (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    code_style TEXT,
-    knowledge_status TEXT
-);
-
--- courses 表
-CREATE TABLE IF NOT EXISTS courses (
-    id VARCHAR(50) PRIMARY KEY,
-    course_name VARCHAR(200) NOT NULL,
-    type VARCHAR(20) DEFAULT 'public',
-    status VARCHAR(20) DEFAULT 'open',
-    completed BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- assignments 表
-CREATE TABLE IF NOT EXISTS assignments (
-    id VARCHAR(50) PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    description VARCHAR(1000),
-    type VARCHAR(20),
-    start_date TIMESTAMP,
-    end_date TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- assignment_codes 表
-CREATE TABLE IF NOT EXISTS assignment_codes (
-    id VARCHAR(50) PRIMARY KEY,
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id),
-    original_code VARCHAR(10000),
-    sample_input VARCHAR(10000),
-    sample_expect_output VARCHAR(10000)
-);
-
--- assignment_submissions 表
-CREATE TABLE IF NOT EXISTS assignment_submissions (
-    id VARCHAR(50) PRIMARY KEY,
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id),
-    student_id VARCHAR(50) NOT NULL,
-    score FLOAT,
-    sample_real_output VARCHAR(10000),
-    submit_code VARCHAR(10000),
-    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- assignment_analysis 表
-CREATE TABLE IF NOT EXISTS assignment_analysis (
-    id SERIAL PRIMARY KEY,
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id),
-    resolution JSONB,
-    knowledge_analysis JSONB,
-    code_analysis JSONB,
-    learning_suggestions JSONB
-);
-
--- courses_assignments 多对多关联表
-CREATE TABLE IF NOT EXISTS courses_assignments (
-    course_id VARCHAR(50) NOT NULL REFERENCES courses(id),
-    assignment_id VARCHAR(50) NOT NULL REFERENCES assignments(id),
-    PRIMARY KEY (course_id, assignment_id)
-);
-"""
 
 # 清理测试数据的 SQL - 使用 DROP TABLE IF EXISTS + CREATE TABLE 模式
 CLEANUP_SQL = """

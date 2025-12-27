@@ -2,12 +2,15 @@
 轻量级原生 SQL ORM - 替代 Tortoise ORM
 """
 import asyncio
+import logging
 import os
 import json
 from datetime import datetime, date
 from typing import Any, Optional, List, Type, TypeVar, get_origin, get_args
 import asyncpg
 from fastapi import HTTPException
+
+from app.constants.create_table import CREATE_TABLES_SQL
 
 # 数据库配置
 DB_CONFIG = {
@@ -22,10 +25,64 @@ DB_CONFIG = {
 _pool: Optional[asyncpg.Pool] = None
 
 
+async def _ensure_database_exists():
+    """确保数据库存在，如果不存在则创建"""
+    db_name = DB_CONFIG["database"]
+    # 先尝试连接到目标数据库
+    try:
+        conn = await asyncpg.connect(
+            host=DB_CONFIG["host"],
+            port=DB_CONFIG["port"],
+            user=DB_CONFIG["user"],
+            password=DB_CONFIG["password"],
+            database=db_name,
+            timeout=5
+        )
+        await conn.close()
+        return  # 数据库已存在
+    except asyncpg.InvalidCatalogNameError:
+        # 数据库不存在，连接到 postgres 系统数据库并创建
+        logging.info(f"Database '{db_name}' not found, creating...")
+        conn = await asyncpg.connect(
+            host=DB_CONFIG["host"],
+            port=DB_CONFIG["port"],
+            user=DB_CONFIG["user"],
+            password=DB_CONFIG["password"],
+            database="postgres",
+            timeout=10
+        )
+        try:
+            await conn.execute(f'CREATE DATABASE "{db_name}"')
+            logging.info(f"Database '{db_name}' created successfully")
+        except asyncpg.DuplicateDatabaseError:
+            logging.warning(f"Database '{db_name}' already exists")
+        finally:
+            await conn.close()
+
+
+async def _ensure_tables_exist():
+    """确保所有表都已创建"""
+    # 直接连接，不使用 get_db() 避免递归调用 get_pool()
+    conn = await asyncpg.connect(
+        host=DB_CONFIG["host"],
+        port=DB_CONFIG["port"],
+        user=DB_CONFIG["user"],
+        password=DB_CONFIG["password"],
+        database=DB_CONFIG["database"],
+        timeout=10
+    )
+    try:
+        await conn.execute(CREATE_TABLES_SQL)
+    finally:
+        await conn.close()
+
 async def get_pool() -> asyncpg.Pool:
     """获取数据库连接池"""
     global _pool
     if _pool is None:
+        # 确保数据库存在
+        await _ensure_database_exists()
+        await _ensure_tables_exist()
         _pool = await asyncpg.create_pool(**DB_CONFIG, min_size=2, max_size=10)
     return _pool
 
@@ -283,6 +340,7 @@ class Model:
     @classmethod
     def _prepare_values(cls, values: dict) -> dict:
         """准备值用于 SQL"""
+        from datetime import date, timezone
         result = {}
         for key, value in values.items():
             if value is None:
@@ -290,7 +348,16 @@ class Model:
             elif isinstance(value, (dict, list)):
                 result[key] = json.dumps(value)
             elif isinstance(value, datetime):
-                result[key] = value.isoformat()
+                result[key] = value
+            elif isinstance(value, date):
+                result[key] = datetime.combine(value, datetime.min.time()).replace(tzinfo=timezone.utc)
+            elif isinstance(value, str):
+                # 尝试解析 ISO 格式的 datetime 字符串
+                try:
+                    parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    result[key] = parsed
+                except (ValueError, AttributeError):
+                    result[key] = value
             else:
                 result[key] = value
         return result
