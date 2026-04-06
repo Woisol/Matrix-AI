@@ -5,8 +5,8 @@ import {
 
 function getPatchSegment(segments: MatrixAnalysisRenderSegment[]) {
   const patchSegment = segments.find(
-    (segment): segment is Extract<MatrixAnalysisRenderSegment, { kind: 'editor-patch' }> =>
-      segment.kind === 'editor-patch',
+    (segment): segment is Extract<MatrixAnalysisRenderSegment, { type: 'editor-patch' }> =>
+      segment.type === 'editor-patch',
   );
 
   expect(patchSegment).toBeDefined();
@@ -21,7 +21,7 @@ describe('parseMatrixAnalysisSegments', () => {
 
     expect(segments).toEqual([
       {
-        kind: 'markdown',
+        type: 'markdown',
         markdown: content,
       },
     ]);
@@ -44,7 +44,7 @@ describe('parseMatrixAnalysisSegments', () => {
 
     expect(segments.length).toBe(3);
     expect(segments[0]).toEqual({
-      kind: 'markdown',
+      type: 'markdown',
       markdown: 'Apply this patch:\n\n',
     });
     expect(patchSegment.language).toBe('cpp');
@@ -63,7 +63,7 @@ describe('parseMatrixAnalysisSegments', () => {
       },
     });
     expect(segments[2]).toEqual({
-      kind: 'markdown',
+      type: 'markdown',
       markdown: '\n\nRun the code after applying it.',
     });
   });
@@ -81,8 +81,8 @@ describe('parseMatrixAnalysisSegments', () => {
 
     const segments = parseMatrixAnalysisSegments(content, true, 'Multi Patch');
     const patchSegments = segments.filter(
-      (segment): segment is Extract<MatrixAnalysisRenderSegment, { kind: 'editor-patch' }> =>
-        segment.kind === 'editor-patch',
+      (segment): segment is Extract<MatrixAnalysisRenderSegment, { type: 'editor-patch' }> =>
+        segment.type === 'editor-patch',
     );
 
     expect(patchSegments.length).toBe(2);
@@ -144,7 +144,7 @@ describe('parseMatrixAnalysisSegments', () => {
 
     expect(segments).toEqual([
       {
-        kind: 'markdown',
+        type: 'markdown',
         markdown: content,
       },
     ]);
@@ -167,7 +167,7 @@ describe('parseMatrixAnalysisSegments', () => {
 
     expect(segments).toEqual([
       {
-        kind: 'markdown',
+        type: 'markdown',
         markdown: content,
       },
     ]);
@@ -180,7 +180,7 @@ describe('parseMatrixAnalysisSegments', () => {
 
     expect(segments).toEqual([
       {
-        kind: 'markdown',
+        type: 'markdown',
         markdown: content,
       },
     ]);

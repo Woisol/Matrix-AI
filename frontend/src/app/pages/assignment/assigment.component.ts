@@ -9,7 +9,7 @@ import { Subscription } from "rxjs";
 import { ActivatedRoute } from "@angular/router";
 import { NotificationService } from "../../services/notification/notification.service";
 import * as monaco from "monaco-editor";
-import { MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
+import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
 
 @Component({
@@ -26,6 +26,7 @@ import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRa
           [handleAnalysisRegen]="handleAnalysisRegen"
           [onAnalysisAiGenRequest]="loadAnalysisAiGen"
           [selectedTabIndex]="selectedTabIndex"
+          (focusRequestRangeOnEditor)="focusRequestRangeOnEditor($event)"
           (applyAnalysisEdit)="handleAnalysisEditRequest($event)"
         />
 
@@ -209,6 +210,29 @@ export class AssignmentComponent implements OnDestroy {
     this.codeEditor = editor;
   }
 
+  /**
+   * 焦点定位到编辑器指定范围（如果有）
+   * @param range 要定位的范围
+   */
+  focusRequestRangeOnEditor(range: MatrixAnalysisEditorRange): void {
+    if (!this.codeEditor) {
+      this.notify.error("编辑器还没有准备好，无法定位", "操作失败");
+      return;
+    }
+    const _range = new monaco.Range(
+      range.startLineNumber,
+      range.startColumn,
+      range.endLineNumber,
+      range.endColumn,
+    );
+    this.codeEditor.setSelection(_range);
+    this.codeEditor.revealRangeInCenter(_range);
+    this.codeEditor.focus();
+  }
+
+  /**
+   * “应用到编辑器”核心方法
+   */
   handleAnalysisEditRequest = (request: MatrixAnalysisEditRequest) => {
     if (!this.codeEditor) {
       this.notify.error("编辑器还没有准备好，请稍后再试。", "应用失败");
@@ -276,6 +300,7 @@ export class AssignmentComponent implements OnDestroy {
     }));
     this.codeEditor.setSelection(selection);
     this.codeEditor.revealRangeInCenter(selection);
+    this.codeEditor.focus();
     this.notify.success(
       `已把「${request.tabTitle}」中的修改应用到编辑器，可使用 Ctrl+Z 撤回。`,
       "应用成功",

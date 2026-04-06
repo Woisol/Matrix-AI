@@ -6,7 +6,7 @@ import { MarkdownModule } from "ngx-markdown";
 import { NzProgressModule } from "ng-zorro-antd/progress";
 import { NzCollapseModule } from "ng-zorro-antd/collapse";
 import { MatrixAnalyseComponent } from "./matrix-analyse.component";
-import { MatrixAnalysisEditRequest } from "./matrix-analyse.utils";
+import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./matrix-analyse.utils";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { SubmitScoreComponent } from "./submit-score.component";
@@ -75,6 +75,7 @@ import { SubmitScoreComponent } from "./submit-score.component";
               <matrix-analyse
                 [analysis]="analysis.basic.resolution"
                 [allowWholeEditorReplace]="true"
+                (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
                 (applyToEditor)="applyAnalysisEdit.emit($event)"
               ></matrix-analyse>
             }
@@ -83,6 +84,7 @@ import { SubmitScoreComponent } from "./submit-score.component";
               <matrix-analyse
                 [analysis]="analysis.basic.knowledgeAnalysis"
                 [allowWholeEditorReplace]="true"
+                (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
                 (applyToEditor)="applyAnalysisEdit.emit($event)"
               ></matrix-analyse>
             }
@@ -97,6 +99,7 @@ import { SubmitScoreComponent } from "./submit-score.component";
                 <h4>AI 代码分析</h4>
                 <matrix-analyse
                   [analysis]="analysis.aiGen.codeAnalysis"
+                  (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
                   (applyToEditor)="applyAnalysisEdit.emit($event)"
                 ></matrix-analyse>
               }
@@ -104,6 +107,7 @@ import { SubmitScoreComponent } from "./submit-score.component";
                 <h4>知识点学习建议</h4>
                 <matrix-analyse
                   [analysis]="analysis.aiGen.learningSuggestions"
+                  (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
                   (applyToEditor)="applyAnalysisEdit.emit($event)"
                 ></matrix-analyse>
               }
@@ -257,6 +261,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() onAnalysisAiGenRequest = (notify: boolean = false) => { };
   @Input() selectedTabIndex = signal(0);
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
+  @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
 
   //! 暂不考虑更新，要看自己刷新⚫
   ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! > new Date());

@@ -4,13 +4,13 @@ import { NzTabsModule } from "ng-zorro-antd/tabs";
 import { MarkdownComponent } from "ngx-markdown";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzIconModule } from "ng-zorro-antd/icon";
+import { NzToolTipModule } from "ng-zorro-antd/tooltip";
 import {
   MatrixAnalysisEditRequest,
   MatrixAnalysisEditorRange,
   MatrixAnalysisRenderSegment,
   parseMatrixAnalysisSegments,
 } from "./matrix-analyse.utils";
-import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 
 export interface MatrixAnalysisProps {
   content: {
@@ -24,7 +24,7 @@ export interface MatrixAnalysisProps {
 
 @Component({
   selector: "matrix-analyse",
-  imports: [NzTabsModule, MarkdownComponent, NzButtonModule, NzIconModule, NzTooltipDirective],
+  imports: [NzTabsModule, MarkdownComponent, NzButtonModule, NzIconModule, NzToolTipModule],
   template: `
     <nz-tabs>
       @for (tab of analysis?.content; track $index) {
@@ -37,7 +37,7 @@ export interface MatrixAnalysisProps {
               }
             </div>
 
-            @if (!tab.content?.trim()) {
+            @if (!tab.content.trim()) {
               <markdown class="markdown-patched" [data]="'这里没有内容呢'"></markdown>
             } @else {
               @for (segment of getTabSegments(tab.title, tab.content); track $index) {
@@ -48,13 +48,20 @@ export interface MatrixAnalysisProps {
                 } @else {
                   <section class="editor-patch-card">
                     <div class="editor-patch-toolbar">
-                      <span class="editor-patch-range">
+                      <span
+                        class="editor-patch-range"
+                        tabindex="0"
+                        role="button"
+                        nz-tooltip
+                        [nzTooltipTitle]="segment.request.target === 'range' ? '在编辑器中定位范围' : ''"
+                        (click)="focusRequestRange(segment.request)"
+                      >
                         {{ segment.language }} · {{ describeRequestTarget(segment.request) }}
                       </span>
                       <button
-                        nzType="default"
-                        nzSize="small"
-                        nz-tooltip="应用到编辑器"
+                        class="apply-action"
+                        nz-tooltip
+                        [nzTooltipTitle]="'应用到编辑器'"
                         (click)="applyToEditor.emit(segment.request)"
                       >
                         <span nz-icon nzType="check" nzTheme="outline"></span>
@@ -92,6 +99,7 @@ export interface MatrixAnalysisProps {
 
         span {
           text-align: center;
+
           &:not(:last-child) {
             margin-right: 8px;
           }
@@ -122,6 +130,7 @@ export interface MatrixAnalysisProps {
       font-size: 12px;
       color: #595959;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      cursor: pointer;
     }
 
     .editor-patch-preview {
@@ -136,12 +145,17 @@ export interface MatrixAnalysisProps {
       border-left: 2px solid var(--color-primary);
       border-radius: var(--size-radius-sm);
     }
+
+    .apply-action {
+      padding: 4px 8px;
+    }
   `]
 })
 export class MatrixAnalyseComponent {
   @Input() analysis: MatrixAnalysisProps | undefined = undefined;
-  @Input() allowWholeEditorReplace = true;
+  @Input() allowWholeEditorReplace = false;
   @Output() applyToEditor = new EventEmitter<MatrixAnalysisEditRequest>();
+  @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
 
   getTabSegments(title: string, content: MdCodeContent): MatrixAnalysisRenderSegment[] {
     return parseMatrixAnalysisSegments(
@@ -154,8 +168,14 @@ export class MatrixAnalyseComponent {
 
   describeRequestTarget(request: MatrixAnalysisEditRequest): string {
     return request.target === 'full-editor'
-      ? '全文替换'
+      ? '全篇替换'
       : this.formatRange(request.range);
+  }
+
+  focusRequestRange(request: MatrixAnalysisEditRequest): void {
+    if (request.target === 'range') {
+      this.focusRequestRangeOnEditor.emit({ ...request.range });
+    }
   }
 
   formatRange(range: MatrixAnalysisEditorRange): string {
