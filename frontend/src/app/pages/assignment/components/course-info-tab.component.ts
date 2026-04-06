@@ -1,19 +1,19 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, } from "@angular/core";
+import { Component, EventEmitter, Input, OnInit, OnChanges, Output, SimpleChanges, signal, } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { NzTabsModule } from "ng-zorro-antd/tabs";
 import { Analysis, AssignData } from "../../../api/type/assigment";
 import { MarkdownModule } from "ngx-markdown";
-import { DatePipe } from "@angular/common";
 import { NzProgressModule } from "ng-zorro-antd/progress";
 import { NzCollapseModule } from "ng-zorro-antd/collapse";
 import { MatrixAnalyseComponent } from "./matrix-analyse.component";
+import { MatrixAnalysisEditRequest } from "./matrix-analyse.utils";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { SubmitScoreComponent } from "./submit-score.component";
 
 @Component({
   selector: "course-info-tab",
-  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, DatePipe, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, SubmitScoreComponent],
+  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, SubmitScoreComponent],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -72,11 +72,19 @@ import { SubmitScoreComponent } from "./submit-score.component";
           } @else {
             @if(analysis.basic.resolution) {
               <h4>参考题解</h4>
-              <matrix-analyse [analysis]="analysis.basic.resolution"></matrix-analyse>
+              <matrix-analyse
+                [analysis]="analysis.basic.resolution"
+                [allowWholeEditorReplace]="true"
+                (applyToEditor)="applyAnalysisEdit.emit($event)"
+              ></matrix-analyse>
             }
             @if(analysis.basic.knowledgeAnalysis) {
               <h4>知识点分析</h4>
-              <matrix-analyse [analysis]="analysis.basic.knowledgeAnalysis"></matrix-analyse>
+              <matrix-analyse
+                [analysis]="analysis.basic.knowledgeAnalysis"
+                [allowWholeEditorReplace]="true"
+                (applyToEditor)="applyAnalysisEdit.emit($event)"
+              ></matrix-analyse>
             }
             @if(!analysis.aiGen){
               <section class="aiGen">
@@ -87,11 +95,17 @@ import { SubmitScoreComponent } from "./submit-score.component";
             @else{
               @if(analysis.aiGen.codeAnalysis) {
                 <h4>AI 代码分析</h4>
-                <matrix-analyse [analysis]="analysis.aiGen.codeAnalysis"></matrix-analyse>
+                <matrix-analyse
+                  [analysis]="analysis.aiGen.codeAnalysis"
+                  (applyToEditor)="applyAnalysisEdit.emit($event)"
+                ></matrix-analyse>
               }
               @if(analysis.aiGen.learningSuggestions) {
                 <h4>知识点学习建议</h4>
-                <matrix-analyse [analysis]="analysis.aiGen.learningSuggestions"></matrix-analyse>
+                <matrix-analyse
+                  [analysis]="analysis.aiGen.learningSuggestions"
+                  (applyToEditor)="applyAnalysisEdit.emit($event)"
+                ></matrix-analyse>
               }
             }
             <section class="reGen">
@@ -128,7 +142,6 @@ import { SubmitScoreComponent } from "./submit-score.component";
     padding-right:8px;
     flex:1 1 auto;
     min-width:0;
-  }
   }
 
   /* 内容区域样式 */
@@ -243,6 +256,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() handleAnalysisRegen = () => { };
   @Input() onAnalysisAiGenRequest = (notify: boolean = false) => { };
   @Input() selectedTabIndex = signal(0);
+  @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
 
   //! 暂不考虑更新，要看自己刷新⚫
   ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! > new Date());

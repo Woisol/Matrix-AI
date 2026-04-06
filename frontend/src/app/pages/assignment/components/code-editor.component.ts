@@ -39,7 +39,7 @@ export type EditorLanguage = 'javascript' | 'typescript' | 'c' | 'cpp' | 'json' 
               </div>
             </div>
           </nz-splitter-panel>
-          }
+        }
       </nz-splitter>
       <div class="action-bar">
         <button class="secondary" (click)="handleTestPanelToggle()">测试面板</button>
@@ -145,6 +145,7 @@ export class CodeEditorComponent implements OnChanges {
   editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = this.buildOptions();
 
   constructor(private assignService: AssignService) { }
+
   private buildOptions(): monaco.editor.IStandaloneEditorConstructionOptions {
     return {
       theme: this.theme,
@@ -160,6 +161,19 @@ export class CodeEditorComponent implements OnChanges {
     };
   }
 
+  private syncEditorContent(newContent: string) {
+    if (!this.editor) {
+      this.pendingContent = newContent;
+      return;
+    }
+
+    if (this.editor.getValue() === newContent) {
+      return;
+    }
+
+    this.editor.setValue(newContent);
+  }
+
   ngOnChanges(changes: SimpleChanges) {
     if (changes['language'] || changes['readOnly'] || changes['theme'] || changes['fontSize'] || changes['minimap'] || changes['lineNumbers']) {
       // 仅当相关输入变化时重建配置对象
@@ -168,24 +182,27 @@ export class CodeEditorComponent implements OnChanges {
 
     if (changes['codeFile']) {
       const newContent = changes['codeFile'].currentValue?.content || '';
-      // 外部 codeFile 变化时更新内容
-      if (this.editor) {
-        this.editor.setValue(newContent);
-      } else {
-        // 编辑器还未初始化，缓存内容待后续设置
-        this.pendingContent = newContent;
-      }
-      //! 这个所谓的 [(ngModel)] 完全没有双向绑定()
-      // this.editorContent = changes['codeFile'].currentValue.content || '';
-    }
+      this.syncEditorContent(newContent);
 
-    // if (changes['editorContent']) {
-    //   console.debug(changes['editorContent'].currentValue);
-    // }
+      //   // 外部 codeFile 变化时更新内容
+      //   if (this.editor) {
+      //     this.editor.setValue(newContent);
+      //   } else {
+      //     // 编辑器还未初始化，缓存内容待后续设置
+      //     this.pendingContent = newContent;
+      //   }
+      //   //! 这个所谓的 [(ngModel)] 完全没有双向绑定()
+      //   // this.editorContent = changes['codeFile'].currentValue.content || '';
+      // }
+
+      // // if (changes['editorContent']) {
+      // //   console.debug(changes['editorContent'].currentValue);
+      // // }
+    }
   }
 
   onEditorInit(editor: monaco.editor.IStandaloneCodeEditor) {
-    console.log('Editor initialized');
+    // console.log('Editor initialized');
     this.editor = editor;
 
     // 如果有待设置的内容，立即设置
@@ -225,5 +242,4 @@ export class CodeEditorComponent implements OnChanges {
       this.testPanelOutput.set(output);
     });
   }
-
 }

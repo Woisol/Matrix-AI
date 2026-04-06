@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from tortoise import exceptions as torExceptions
 
 from app.models.assignment import Assignment as AssignmentModel, Analysis
-from app.models.ai import AIAnalysisGenerator
+from app.models.ai import AIAnalysisGenerator, Complexity, MatrixAnalysisContent, MatrixAnalysisProps
 from app.schemas.assignment import BasicAnalysis, AiGenAnalysis
 
 import os
@@ -20,6 +20,51 @@ class AIController:
         """获取基础分析（解题思路和知识点分析）"""
         #@todo 可能需要重新生成功能 /basic/again ？
         #Done
+        # Mock
+
+        return BasicAnalysis(
+            resolution=MatrixAnalysisProps(
+                content=[
+                    MatrixAnalysisContent(
+                        title="参考代码",
+                        content=(
+                            "这是一份可以直接整篇替换到编辑器中的参考实现：\n\n"
+                            "```Cpp\n"
+                            "#include <iostream>\n"
+                            "using namespace std;\n\n"
+                            "int main() {\n"
+                            "    cout << \"Hello, Matrix AI!\" << endl;\n"
+                            "    return 0;\n"
+                            "}\n"
+                            "```\n"
+                            "下面的代码应当只替换第二行"
+                            "```Cpp:2C1-3C1\n"
+                            "using namespace std-not;\n"
+                            "```\n"
+                        ),
+                        complexity=Complexity(time="O(n)", space="O(1)")
+                    ),
+                ],
+                summary="基础分析里的普通 fenced code block 现在也可以整篇应用到编辑器，并支持 Ctrl+Z 撤回。",
+                showInEditor=True
+            ),
+            knowledgeAnalysis=MatrixAnalysisProps(
+                content=[
+                    MatrixAnalysisContent(
+                        title="知识点提示",
+                        content=(
+                            "1. `main` 是 C++ 程序入口。\n"
+                            "2. 使用 `cout` 时要包含 `<iostream>`。\n"
+                            "3. 点击“应用到编辑器”后，如果想恢复原状，可以直接使用 `Ctrl+Z`。\n"
+                        ),
+                        complexity=Complexity(time="O(1)", space="O(1)")
+                    ),
+                ],
+                summary="这份 mock 用来验证基础分析与普通代码块整篇替换的联调流程。",
+                showInEditor=False
+            )
+        )
+
         try:
             assignment = await AssignmentModel.get(id=assign_id).prefetch_related("analysis")
             analysis = assignment.analysis[0] if assignment.analysis else None
@@ -134,12 +179,12 @@ class AIController:
         except Exception as e:
             logging.error(f"Error occurred in getAiGen for assignment {assign_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-            
+
     @classmethod
     async def getBasicStream(cls, course_id: str, assign_id: str, analysis_type: str) -> AsyncGenerator[str, None]:
         """
         流式获取基础分析
-        
+
         Args:
             course_id: 课程ID
             assign_id: 作业ID
@@ -158,7 +203,7 @@ class AIController:
     async def getAiGenStream(cls, course_id: str, assign_id: str, analysis_type: str) -> AsyncGenerator[str, None]:
         """
         流式获取AI生成分析
-        
+
         Args:
             course_id: 课程ID
             assign_id: 作业ID
@@ -166,7 +211,7 @@ class AIController:
         """
         # 检查是否已提交
         assignment = await AssignmentModel.get(id=assign_id).prefetch_related("submissions")
-        
+
         if assignment.end_date and assignment.end_date > datetime.now(timezone.utc):
             yield f"event: error\ndata: {{\"error\": \"Deadline not meet yet\"}}\n\n"
             return

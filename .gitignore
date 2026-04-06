@@ -2,6 +2,8 @@
 !.vscode/launch.example.json
 !.vscode/tasks.example.json
 
+.worktrees/
+
 project/assets/database/*.old
 
 .env

@@ -8,6 +8,9 @@ import { AssignService } from "../../services/assign/assign.service";
 import { Subscription } from "rxjs";
 import { ActivatedRoute } from "@angular/router";
 import { NotificationService } from "../../services/notification/notification.service";
+import * as monaco from "monaco-editor";
+import { MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
+import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
 
 @Component({
   selector: "app-assignment",
@@ -17,11 +20,22 @@ import { NotificationService } from "../../services/notification/notification.se
   <div class="assignment-con">
     <nz-splitter>
       <nz-splitter-panel nzMin="100px" nzDefaultSize="30%" [nzCollapsible]="true">
-        <course-info-tab [assignData]="assignData()" [analysis]="analysis()" [handleAnalysisRegen]="handleAnalysisRegen" [onAnalysisAiGenRequest]="loadAnalysisAiGen" [selectedTabIndex]="selectedTabIndex" />
+        <course-info-tab
+          [assignData]="assignData()"
+          [analysis]="analysis()"
+          [handleAnalysisRegen]="handleAnalysisRegen"
+          [onAnalysisAiGenRequest]="loadAnalysisAiGen"
+          [selectedTabIndex]="selectedTabIndex"
+          (applyAnalysisEdit)="handleAnalysisEditRequest($event)"
+        />
 
       </nz-splitter-panel>
       <nz-splitter-panel nzMin="200px" nzDefaultSize="70%" [nzCollapsible]="true">
-        <code-editor [codeFile]="codeFile()" [onSubmitRequest]="onSubmitRequest"/>
+        <code-editor
+          [codeFile]="codeFile()"
+          [onSubmitRequest]="onSubmitRequest"
+          (editorReady)="handleEditorReady($event)"
+        />
       </nz-splitter-panel>
     </nz-splitter>
   </div>
@@ -59,6 +73,7 @@ export class AssignmentComponent implements OnDestroy {
   useStreamingMode = signal(true);
 
   private subs: Subscription[] = [];
+  private codeEditor: monaco.editor.IStandaloneCodeEditor | undefined;
 
   constructor() {
     // 监听路由参数变化后再加载数据，避免构造期 ID 为空
@@ -188,6 +203,83 @@ export class AssignmentComponent implements OnDestroy {
 
   ngOnDestroy() {
     this.subs.forEach(s => s.unsubscribe());
+  }
+
+  handleEditorReady(editor: monaco.editor.IStandaloneCodeEditor) {
+    this.codeEditor = editor;
+  }
+
+  handleAnalysisEditRequest = (request: MatrixAnalysisEditRequest) => {
+    if (!this.codeEditor) {
+      this.notify.error("编辑器还没有准备好，请稍后再试。", "应用失败");
+      return;
+    }
+
+    const model = this.codeEditor.getModel();
+    if (!model) {
+      this.notify.error("当前没有可编辑的代码模型。", "应用失败");
+      return;
+    }
+
+    const editTargetRange = request.target === 'full-editor'
+      ? getFullEditorRange(model)
+      : (() => {
+        const validationResult = validateMatrixAnalysisRange(model, request.range);
+        if (!validationResult.ok) {
+          this.notify.error(validationResult.reason, "应用失败");
+          return null;
+        }
+
+        return validationResult.range;
+      })();
+
+    if (!editTargetRange) {
+      return;
+    }
+
+    const selectionRange = buildEditedSelectionRange(editTargetRange, request.text);
+    const editRange = new monaco.Range(
+      editTargetRange.startLineNumber,
+      editTargetRange.startColumn,
+      editTargetRange.endLineNumber,
+      editTargetRange.endColumn,
+    );
+    const selection = new monaco.Selection(
+      selectionRange.startLineNumber,
+      selectionRange.startColumn,
+      selectionRange.endLineNumber,
+      selectionRange.endColumn,
+    );
+
+    this.codeEditor.pushUndoStop();
+    const applied = this.codeEditor.executeEdits(
+      'matrix-analysis',
+      [
+        {
+          range: editRange,
+          text: request.text,
+          forceMoveMarkers: true,
+        },
+      ],
+      [selection],
+    );
+    this.codeEditor.pushUndoStop();
+
+    if (!applied) {
+      this.notify.error("未能把修改应用到编辑器。", "应用失败");
+      return;
+    }
+
+    this.codeFile.update((codeFile) => ({
+      ...codeFile,
+      content: model.getValue(),
+    }));
+    this.codeEditor.setSelection(selection);
+    this.codeEditor.revealRangeInCenter(selection);
+    this.notify.success(
+      `已把「${request.tabTitle}」中的修改应用到编辑器，可使用 Ctrl+Z 撤回。`,
+      "应用成功",
+    );
   }
 
   //! 注意闭包！否则传入后 this 指向不正确！
