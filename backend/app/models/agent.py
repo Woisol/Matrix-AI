@@ -59,4 +59,9 @@ class AIAgent:
                         messages.append({"role": "user", "content": content})
 
         # ？这里又不用 await
+        """关于用不用 await
+            对于 async 的函数，直接调用返回的协程 coroutine 对象，如果不 await 就不会执行函数体内的代码，而是直接返回这个 coroutine 对象。
+            而这里的 get_response_stream 是一个 async generator function，尽管 async 但调用直接得到 async generator 对象，后续提供给 EventSourceResponse 迭代，不要 await
+        """
         return AI.get_response_stream(messages)
+
