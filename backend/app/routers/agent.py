@@ -3,9 +3,9 @@ from fastapi import APIRouter
 
 from app.controller.agent import AIAgentController
 from app.schemas.agent import AIAgentEvent
-# https://fastapi.tiangolo.com/zh/tutorial/server-sent-events/ 但实际不存在
-# from fastapi.sse import EventSourceResponse
-from sse_starlette.sse import EventSourceResponse
+# https://fastapi.tiangolo.com/zh/tutorial/server-sent-events/ 但需要 1.135.0
+from fastapi.sse import EventSourceResponse
+# from sse_starlette.sse import EventSourceResponse
 
 
 agent_route = APIRouter(tags=["agent"])
@@ -39,7 +39,11 @@ async def delete_conversation(
     return await AIAgentController.delete_conversation(conversation_id, assign_id, user_id)
 
 # https://fastapi.tiangolo.com/zh/tutorial/server-sent-events/#what-are-server-sent-events
-@agent_route.post("/courses/{course_id}/assignments/{assign_id}/agent/events", response_class=EventSourceResponse)
+@agent_route.post(
+    "/courses/{course_id}/assignments/{assign_id}/agent/events",
+    response_class=EventSourceResponse,
+    response_model=None,
+)
 async def append_agent_event(
     course_id: str,
     assign_id: str,
