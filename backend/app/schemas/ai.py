@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from enum import Enum
 from typing import Optional, Annotated, List
-from datetime import datetime
 
 from  app.schemas.general import AssignId
 

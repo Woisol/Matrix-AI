@@ -29,6 +29,7 @@ from contextlib import asynccontextmanager
 from app.routers.course import course_router
 from app.routers.assignment import assign_router
 from app.routers.ai import ai_route
+from app.routers.agent import agent_route
 from app.database import init_db, close_db, ensure_user_table
 
 
@@ -56,7 +57,7 @@ app = FastAPI(
 )
 
 # 注册路由
-for router in [course_router, assign_router,ai_route]:
+for router in [course_router, assign_router,ai_route, agent_route ]:
     app.include_router(router)
 
 

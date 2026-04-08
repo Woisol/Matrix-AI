@@ -71,7 +71,7 @@ export class AssignmentComponent implements OnDestroy {
   codeFile: WritableSignal<CodeFileInfo> = signal(this._emptyCodeFile);
 
   selectedTabIndex = signal(0);
-  useStreamingMode = signal(true);
+  useStreamingMode = signal(false);
 
   private subs: Subscription[] = [];
   private codeEditor: monaco.editor.IStandaloneCodeEditor | undefined;
@@ -148,6 +148,7 @@ export class AssignmentComponent implements OnDestroy {
   }
 
   // ========== 流式与非流式智能切换方法 ==========
+  // 2026-04-08 大段无用代码，同时此部分不考虑用流式，考虑精简删除
 
   /**
    * 智能加载基础分析（自动选择流式或非流式）
@@ -183,6 +184,7 @@ export class AssignmentComponent implements OnDestroy {
 
   /**
    * 切换流式/非流式模式
+   * 2026-04-08 完全没用到的函数……
    */
   toggleStreamingMode = () => {
     this.useStreamingMode.update(v => !v);
