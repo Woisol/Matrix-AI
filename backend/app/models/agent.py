@@ -1,13 +1,10 @@
 from collections.abc import AsyncIterable
-from fastapi import HTTPException
-from regex import T
 from tortoise import fields
-import tortoise
-import tortoise.exceptions
 from tortoise.models import Model
 
-from backend.app.schemas.agent import AIAgentEvent, AIAgentEventType
-from .ai import AI
+from app.models.ai import AI
+from app.schemas.agent import AIAgentEvent, AIAgentEventType
+
 class AIAgentConservation(Model):
     """AI Agent 对话记录模型"""
     id = fields.CharField(max_length=50, pk=True, description="对话记录ID，")
@@ -30,24 +27,36 @@ class AIAgent:
     @classmethod
     async def append_event(cls, conversation: AIAgentConservation, event: AIAgentEvent) -> None:
         """接收前端新 event 请求，转发到实际模型并持久化存储"""
-        conversation.events.append(event)
+        # JSONField 里只存可序列化字典，避免后续读取时对象/字典混用。
+        conversation.events.append(event.model_dump())
         try:
             await conversation.save()
             # await conversation.save().throw(tortoise.exceptions.IncompleteInstanceError,None,(){})
         except Exception as e:
             raise Exception("保存事件失败：" + str(e))
         return
+
     @classmethod
     async def request_ai_from_event_stream(cls, events: list[AIAgentEvent]) -> AsyncIterable[str]:
         """接收前端新 event 请求，转发到实际模型并持久化存储"""
         messages = []
         for event in events:
-            match event.type:
-                case AIAgentEventType.USER_MESSAGE | AIAgentEventType.TOOL_CALL | AIAgentEventType.TOOL_RESULT:
-                    messages.append({"role": "user", "content": event.payload.get("content", "")})
-                    # input.
-                case AIAgentEventType.THINK | AIAgentEventType.ASSISTANT_FINAL:
-                    messages.append({"role": "assistant", "content": event.payload.get("content", "")})
+            payload = event.get("payload", {}) if isinstance(event, dict) else {}
+            content = payload.get("content", "")
 
-        response = AI.get_response_stream(messages)
-        return response
+            match event.type:
+                case AIAgentEventType.USER_MESSAGE | AIAgentEventType.TOOL_CALL:
+                    messages.append({"role": "user", "content": content})
+                case AIAgentEventType.THINK | AIAgentEventType.ASSISTANT_FINAL:
+                    messages.append({"role": "assistant", "content": content})
+                case AIAgentEventType.TOOL_RESULT:
+                    # OpenAI tool 角色通常要求 tool_call_id；缺失时降级为 user 内容避免请求报错。
+                    # 怪不得 5.4 一直说要有个 callId 原来是官方 SDK 的 tool 角色要求
+                    tool_call_id = payload.get("callId")
+                    if tool_call_id:
+                        messages.append({"role": "tool", "content": content, "tool_call_id": tool_call_id})
+                    else:
+                        messages.append({"role": "user", "content": content})
+
+        # ？这里又不用 await
+        return AI.get_response_stream(messages)

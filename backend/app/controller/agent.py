@@ -1,14 +1,12 @@
 from collections.abc import AsyncIterable
-from re import A
 
 from fastapi import HTTPException
-import fastapi
 import tortoise
 import tortoise.fields
-from backend.app.controller.ai import torExceptions
-from backend.app.models.agent import AIAgent, AIAgentConservation
-from backend.app.models.assignment import Assignment
-from backend.app.schemas.agent import AIAgentEvent
+from app.controller.ai import torExceptions
+from app.models.agent import AIAgent, AIAgentConservation
+from app.models.assignment import Assignment
+from app.schemas.agent import AIAgentEvent
 
 
 class AIAgentController:
@@ -56,7 +54,7 @@ class AIAgentController:
 
         try:
             await AIAgent.append_event(conversation, event)
-            return AIAgent.request_ai_from_event_stream(conversation.events)
+            return await AIAgent.request_ai_from_event_stream(conversation.events)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"新增事件失败: {str(e)}")
 

@@ -1,9 +1,10 @@
 
 import os, logging
+from openai.types.chat import ChatCompletionMessageParam
 import requests
 import json
 from queue import Queue
-from typing import Any, Dict, List, Optional,AsyncGenerator
+from typing import Any, Dict, Iterable, List, Optional,AsyncGenerator
 
 from fastapi import HTTPException
 from openai import OpenAI
@@ -81,12 +82,13 @@ class AI:
                 if response.choices[0].message.content else "")
 
     @classmethod
-    async def get_response_stream(cls, prompt: str) -> AsyncGenerator[str, None]:
+    async def get_response_stream(cls, messages: Iterable[ChatCompletionMessageParam] | str) -> AsyncGenerator[str, None]:
+    # async def get_response_stream(cls, ) -> AsyncGenerator[str, None]:
         """获取AI流式响应（使用官方SDK的stream模式）"""
         try:
             stream = cls.client.chat.completions.create(
                 model=cls.AIConfig.MODEL,
-                messages=cls.AIConfig.messages(prompt),
+                messages=cls.AIConfig.messages(messages) if isinstance(messages, str) else messages,
                 max_tokens=cls.AIConfig.MAX_TOKENS,
                 temperature=cls.AIConfig.TEMPERATURE,
                 stream=True
