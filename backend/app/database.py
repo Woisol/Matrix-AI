@@ -26,7 +26,7 @@ TORTOISE_ORM = {
     # "connections": {"default": "sqlite://db.sqlite3"},
     "apps": {
         "models": {
-            "models": ["app.models.course", "app.models.assignment", "app.models.analysis", "app.models.user", "aerich.models"],
+            "models": ["app.models.course", "app.models.assignment", "app.models.analysis", "app.models.user", "app.models.agent", "aerich.models"],
             "default_connection": "default",
         },
     },

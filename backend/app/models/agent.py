@@ -25,43 +25,71 @@ class AIAgentConservation(Model):
 class AIAgent:
     """AI Agent 实现，主要负责转发模型数据以及持久化"""
     @classmethod
-    async def append_event(cls, conversation: AIAgentConservation, event: AIAgentEvent) -> None:
-        """接收前端新 event 请求，转发到实际模型并持久化存储"""
+    async def append_events(
+        cls,
+        conversation: AIAgentConservation,
+        expected_event_count: int,
+        events: list[AIAgentEvent],
+    ) -> None:
+        """将一批事件顺序追加到会话中，并校验前端预期事件数。"""
+        current_events = list(conversation.events or [])
+        if len(current_events) != expected_event_count:
+            raise ValueError(f"expected_event_count mismatch: expected {expected_event_count}, got {len(current_events)}")
+
         # JSONField 里只存可序列化字典，避免后续读取时对象/字典混用。
-        conversation.events.append(event.model_dump())
+        current_events.extend(event.model_dump() for event in events)
+        conversation.events = current_events
         try:
             await conversation.save()
-            # await conversation.save().throw(tortoise.exceptions.IncompleteInstanceError,None,(){})
         except Exception as e:
             raise Exception("保存事件失败：" + str(e))
         return
 
     @classmethod
-    async def request_ai_from_event_stream(cls, events: list[AIAgentEvent]) -> AsyncIterable[str]:
+    def _normalize_event(cls, event: AIAgentEvent | dict) -> tuple[str, dict]:
+        if isinstance(event, dict):
+            return str(event.get("type", "")), event.get("payload", {}) or {}
+        return event.type.value, event.payload or {}
+
+    @classmethod
+    def _tool_call_to_message_content(cls, payload: dict) -> str:
+        tool_name = str(payload.get("toolName", "")).strip()
+        inputs = payload.get("input", [])
+        if not isinstance(inputs, list):
+            inputs = [str(inputs)]
+        joined_inputs = ", ".join(str(item) for item in inputs)
+        if tool_name and joined_inputs:
+            return f"{tool_name}({joined_inputs})"
+        if tool_name:
+            return f"{tool_name}()"
+        return joined_inputs
+
+    @classmethod
+    async def request_ai_from_event_stream(cls, events: list[AIAgentEvent] | list[dict]) -> AsyncIterable[str]:
         """接收前端新 event 请求，转发到实际模型并持久化存储"""
         messages = []
         for event in events:
-            payload = event.get("payload", {}) if isinstance(event, dict) else {}
-            content = payload.get("content", "")
+            event_type, payload = cls._normalize_event(event)
+            content = str(payload.get("content", ""))
 
-            match event.type:
-                case AIAgentEventType.USER_MESSAGE | AIAgentEventType.TOOL_CALL:
+            match event_type:
+                case AIAgentEventType.USER_MESSAGE.value:
                     messages.append({"role": "user", "content": content})
-                case AIAgentEventType.THINK | AIAgentEventType.ASSISTANT_FINAL:
+                case AIAgentEventType.THINK.value | AIAgentEventType.ASSISTANT_FINAL.value:
                     messages.append({"role": "assistant", "content": content})
-                case AIAgentEventType.TOOL_RESULT:
+                case AIAgentEventType.TOOL_CALL.value:
+                    messages.append({"role": "user", "content": cls._tool_call_to_message_content(payload)})
+                case AIAgentEventType.TOOL_RESULT.value:
                     # OpenAI tool 角色通常要求 tool_call_id；缺失时降级为 user 内容避免请求报错。
                     # 怪不得 5.4 一直说要有个 callId 原来是官方 SDK 的 tool 角色要求
                     tool_call_id = payload.get("callId")
+                    output = str(payload.get("output", ""))
                     if tool_call_id:
-                        messages.append({"role": "tool", "content": content, "tool_call_id": tool_call_id})
+                        messages.append({"role": "tool", "content": output, "tool_call_id": tool_call_id})
                     else:
-                        messages.append({"role": "user", "content": content})
+                        messages.append({"role": "user", "content": output})
+                case AIAgentEventType.TURN_END.value:
+                    continue
 
-        # ？这里又不用 await
-        """关于用不用 await
-            对于 async 的函数，直接调用返回的协程 coroutine 对象，如果不 await 就不会执行函数体内的代码，而是直接返回这个 coroutine 对象。
-            而这里的 get_response_stream 是一个 async generator function，尽管 async 但调用直接得到 async generator 对象，后续提供给 EventSourceResponse 迭代，不要 await
-        """
         return AI.get_response_stream(messages)
 
