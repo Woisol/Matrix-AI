@@ -1,12 +1,13 @@
-import { AssignId } from "./general"
-
 export type ConversationId = string
 
-export type MatrixAgentConversation = {
-  conversationUuid: ConversationId
+export type MatrixAgentConversationSummary = {
+  conversationId: ConversationId
   title: string
   createdAt: string
   updatedAt: string
+}
+
+export type MatrixAgentConversation = MatrixAgentConversationSummary & {
   events: MatrixAgentEvent[]
 }
 
@@ -73,3 +74,13 @@ export type MatrixAgentEvent =
   | MatrixAgentEventToolResult
   | MatrixAgentEventAssistantFinal
   | MatrixAgentEventTurnEnd
+
+export type MatrixAgentAppendEventsRequest = {
+  conversationId: ConversationId
+  expectedEventCount: number
+  events: MatrixAgentEvent[]
+}
+
+export type MatrixAgentOperationResponse = {
+  message: string
+}

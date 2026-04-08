@@ -11,6 +11,8 @@ import { NotificationService } from "../../services/notification/notification.se
 import * as monaco from "monaco-editor";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
+import { MatrixAgentConversation, MatrixAgentConversationSummary } from "../../api/type/agent";
+import { AgentService } from "../../services/assign/agent.service";
 
 @Component({
   selector: "app-assignment",
@@ -61,6 +63,7 @@ export class AssignmentComponent implements OnDestroy {
 
   private route: ActivatedRoute = inject(ActivatedRoute);
   private assignService = inject(AssignService);
+  private agentService = inject(AgentService)
 
   courseId: CourseId | undefined;
   assignId: AssignId | undefined;
@@ -73,6 +76,11 @@ export class AssignmentComponent implements OnDestroy {
   selectedTabIndex = signal(0);
   useStreamingMode = signal(false);
 
+  // ** agent 相关
+  currentConversationInfo = signal<MatrixAgentConversation | null>(null);
+  conversationsHistory = signal<MatrixAgentConversationSummary[]>([]);
+
+
   private subs: Subscription[] = [];
   private codeEditor: monaco.editor.IStandaloneCodeEditor | undefined;
 
@@ -82,11 +90,12 @@ export class AssignmentComponent implements OnDestroy {
       this.courseId = params.get('courseId') as CourseId;
       this.assignId = params.get('assignId') as AssignId;
       this.loadAssign();
+      this.loadAgentConversationsHistory();
       if (this.assignData()?.ddl && this.assignData()?.ddl! > new Date()) {
         return;
       }
-      this.loadAnalysisBasic();
-      this.loadAnalysisAiGen();
+      // this.loadAnalysisBasic();
+      // this.loadAnalysisAiGen();
       // this.loadAnalysisBasicStream('resolution');
     });
     this.subs.push(sub);
@@ -147,8 +156,18 @@ export class AssignmentComponent implements OnDestroy {
     this.notify.info("已经请求生成分析，预计要 1~2 分钟，请耐心等待")
   }
 
+  loadAgentConversationsHistory() {
+    if (!this.courseId || !this.assignId) return;
+    const sub = this.agentService.getAgentConversationsHistory$(this.courseId, this.assignId).subscribe(conversations => {
+      if (!conversations) return;
+      this.conversationsHistory.set(conversations);
+    });
+    this.subs.push(sub);
+  }
+
+
   // ========== 流式与非流式智能切换方法 ==========
-  // 2026-04-08 大段无用代码，同时此部分不考虑用流式，考虑精简删除
+  // 2026-04-08 大段无用代码 + 乱排序，同时此部分不考虑用流式，考虑精简删除
 
   /**
    * 智能加载基础分析（自动选择流式或非流式）

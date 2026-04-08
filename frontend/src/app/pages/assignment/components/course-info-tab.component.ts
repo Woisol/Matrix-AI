@@ -117,6 +117,15 @@ import { SubmitScoreComponent } from "./submit-score.component";
             </section>
           }
         </nz-tab>
+        <nz-tab nzTitle="Agent" class="agent-tab">
+          <section class="history-panel">
+            <select>
+              <nz-icon nzType="history" nzTheme="outline"></nz-icon>
+              <h5>历史对话</h5>
+              @for (item of items; track $index) {}
+            </select>
+          </section>
+        </nz-tab>
       }
     </nz-tabs>
   `,
