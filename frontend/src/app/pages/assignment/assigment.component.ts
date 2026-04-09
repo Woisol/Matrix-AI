@@ -27,6 +27,11 @@ import { AgentService } from "../../services/assign/agent.service";
           [analysis]="analysis()"
           [handleAnalysisRegen]="handleAnalysisRegen"
           [onAnalysisAiGenRequest]="loadAnalysisAiGen"
+          [conversationHistory]="conversationsHistory()"
+          [currentConversation]="currentConversationInfo()"
+          (loadConversationInfo)="loadAgentConversationInfo($event)"
+          (refreshConversationHistory)="loadAgentConversationsHistory()"
+
           [selectedTabIndex]="selectedTabIndex"
           (focusRequestRangeOnEditor)="focusRequestRangeOnEditor($event)"
           (applyAnalysisEdit)="handleAnalysisEditRequest($event)"
@@ -94,7 +99,7 @@ export class AssignmentComponent implements OnDestroy {
       if (this.assignData()?.ddl && this.assignData()?.ddl! > new Date()) {
         return;
       }
-      // this.loadAnalysisBasic();
+      this.loadAnalysisBasic();
       // this.loadAnalysisAiGen();
       // this.loadAnalysisBasicStream('resolution');
     });
@@ -161,6 +166,15 @@ export class AssignmentComponent implements OnDestroy {
     const sub = this.agentService.getAgentConversationsHistory$(this.courseId, this.assignId).subscribe(conversations => {
       if (!conversations) return;
       this.conversationsHistory.set(conversations);
+    });
+    this.subs.push(sub);
+  }
+
+  loadAgentConversationInfo(conversationId: string) {
+    if (!this.courseId || !this.assignId) return;
+    const sub = this.agentService.getConversation$(this.courseId, this.assignId, conversationId).subscribe(conversation => {
+      if (!conversation) return;
+      this.currentConversationInfo.set(conversation);
     });
     this.subs.push(sub);
   }

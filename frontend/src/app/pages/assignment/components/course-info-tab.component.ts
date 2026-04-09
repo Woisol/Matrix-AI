@@ -10,10 +10,13 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./matrix-a
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { SubmitScoreComponent } from "./submit-score.component";
+import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary } from "../../../api/type/agent";
+import { DatePipe } from "@angular/common";
+import { AssignId, CourseId } from "../../../api/type/general";
 
 @Component({
   selector: "course-info-tab",
-  imports: [NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, SubmitScoreComponent],
+  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, SubmitScoreComponent],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -63,7 +66,7 @@ import { SubmitScoreComponent } from "./submit-score.component";
         }
       </nz-tab>
 
-      @if (assignData?.submit && ddlGrant() && analysis) {
+      @if (assignData?.submit && ddlGrant()) {
         <nz-tab nzTitle="AI 分析">
           @if (!analysis) {
             <div class="empty-content">
@@ -119,10 +122,13 @@ import { SubmitScoreComponent } from "./submit-score.component";
         </nz-tab>
         <nz-tab nzTitle="Agent" class="agent-tab">
           <section class="history-panel">
-            <select>
-              <nz-icon nzType="history" nzTheme="outline"></nz-icon>
-              <h5>历史对话</h5>
-              @for (item of items; track $index) {}
+            <h5><span nz-icon nzType="history" nzTheme="outline"></span> 历史对话</h5>
+            <select (change)="onConversationChange($event)">
+              @for (conv of conversationHistory; track $index) {
+                <option [value]="conv.conversationId" [selected]="currentConversation?.conversationId === conv.conversationId">
+                  {{conv.title}} ({{conv.updatedAt | date:'short'}})
+                </option>
+              }
             </select>
           </section>
         </nz-tab>
@@ -260,6 +266,13 @@ import { SubmitScoreComponent } from "./submit-score.component";
       box-shadow: 0 2px 8px var(--color-shadow);
     }
   }
+
+  .history-panel>select{
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    display: flex;
+  }
   `],
   // styleUrl
 })
@@ -268,6 +281,11 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() analysis!: Analysis | undefined;
   @Input() handleAnalysisRegen = () => { };
   @Input() onAnalysisAiGenRequest = (notify: boolean = false) => { };
+  @Input() conversationHistory: MatrixAgentConversationSummary[] = [];
+  @Input() currentConversation: MatrixAgentConversation | null = null;
+  @Output() loadConversationInfo = new EventEmitter<ConversationId>();
+  @Output() refreshConversationHistory = new EventEmitter<void>();
+
   @Input() selectedTabIndex = signal(0);
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
@@ -290,6 +308,14 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   isValidMarkdown(content: string | null | undefined): content is string {
     return content != null && typeof content === 'string' && content.trim().length > 0;
   }
+
+  onConversationChange(event: Event) {
+    const value = (event.target as HTMLSelectElement | null)?.value;
+    if (value) {
+      this.loadConversationInfo.emit(value as ConversationId);
+    }
+  }
+
   progressScoreFormat = (percent: number) => `${percent}分`;
 
 }
