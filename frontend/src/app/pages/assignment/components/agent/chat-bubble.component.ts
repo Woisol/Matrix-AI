@@ -1,53 +1,53 @@
 import { Component, Input } from "@angular/core";
-import { MatrixAgentEvent } from "../../../../api/type/agent";
+import { MatrixAgentEvent, MatrixAgentEventUserMessage } from "../../../../api/type/agent";
+
+export type DisplayEvent = { type: 'user', events: MatrixAgentEventUserMessage[] } | { type: 'agent', events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[] };
 
 
 @Component({
   selector: "agent-assistant-message",
   standalone: true,
   template: `
-    @switch (event.type){
-      @case ('think') {
-        <div class="bubble-title">思考</div>
-        <div class="bubble-body">{{ event.payload.content }}</div>
+    <div class="chat-bubble agent">
+      @for(event of dEvent.events; track $index){
+        @switch (event.type){
+          @case ('think') {
+            <p class="bubble-body">{{ event.payload.content }}</p>
+          }
+          @case ('tool_call') {
+            <p class="bubble-body">{{ event.payload.toolName }}({{ event.payload.input.join(', ') }})</p>
+          }
+          @case ('tool_result') {
+            <p class="bubble-body">{{ event.payload.output }}</p>
+          }
+          @case ('assistant_final') {
+            <p class="bubble-body">{{ event.payload.content }}</p>
+          }
+        }
       }
-      @case ('tool_call') {
-        <div class="bubble-title">调用工具</div>
-        <div class="bubble-body">{{ event.payload.toolName }}({{ event.payload.input.join(', ') }})</div>
-      }
-      @case ('tool_result') {
-        <div class="bubble-title">工具结果</div>
-        <div class="bubble-body">{{ event.payload.output }}</div>
-      }
-      @case ('assistant_final') {
-        <div class="bubble-body">{{ event.payload.content }}</div>
-      }
-      @case ('turn_end') {
-        <div class="bubble-title">本轮结束</div>
-        <div class="bubble-body">{{ event.payload.reason }}</div>
-      }
-    }
+    </div>
   `,
   styles: [`
     `],
 })
 export class AgentAssistantMessageComponent {
-  @Input() event!: MatrixAgentEvent;
+  @Input() dEvent!: DisplayEvent;
 }
 @Component({
   selector: "agent-chat-bubble",
   imports: [AgentAssistantMessageComponent],
   standalone: true,
   template: `
-      <div class="chat-bubble" [class.user]="event.type === 'user_message'" [class.assistant]="event.type !== 'user_message'" [class.think]="event.type === 'think'" [class.tool]="event.type === 'tool_call' || event.type === 'tool_result'" [class.final]="event.type === 'assistant_final'" [class.end]="event.type === 'turn_end'">
-          @if (event.type === 'user_message') {
-            <div class="bubble-body">{{ event.payload.content }}</div>
-          }
-          @else {
-            <agent-assistant-message [event]="event"></agent-assistant-message>
-          }
+    @if(dEvent.type === 'user'){
+      @for(event of dEvent.events; track $index){
+      <div class="chat-bubble user" >
+        <div class="bubble-body">{{ event.payload.content }}</div>
       </div>
-    `,
+      }
+    }@else{
+      <agent-assistant-message [dEvent]="dEvent"></agent-assistant-message>
+    }
+  `,
   styles: [`
       .chat-bubble{
         max-width: min(80%, 680px);
@@ -100,6 +100,6 @@ export class AgentAssistantMessageComponent {
     `],
 })
 export class AgentChatBubbleComponent {
-  @Input() event!: MatrixAgentEvent;
+  @Input() dEvent!: DisplayEvent;
 
 }

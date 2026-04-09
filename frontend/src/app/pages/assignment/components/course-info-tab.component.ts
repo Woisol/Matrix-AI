@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, Output, SimpleChanges, signal, } from "@angular/core";
+import { Component, EventEmitter, Input, OnInit, OnChanges, Output, SimpleChanges, signal, WritableSignal, } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { NzTabsModule } from "ng-zorro-antd/tabs";
 import { Analysis, AssignData } from "../../../api/type/assigment";
@@ -12,14 +12,15 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { NzDropDownModule } from "ng-zorro-antd/dropdown";
 import { NzMenuModule } from "ng-zorro-antd/menu";
 import { SubmitScoreComponent } from "./submit-score.component";
-import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent, MatrixAgentEventUserMessage } from "../../../api/type/agent";
+import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../../api/type/agent";
 import { DatePipe } from "@angular/common";
-import { AssignId, CourseId } from "../../../api/type/general";
 import { NzInputModule } from "ng-zorro-antd/input";
 import { NzFormModule } from "ng-zorro-antd/form";
 import { FormsModule, NgForm } from "@angular/forms";
 import { CdkTextareaAutosize } from "@angular/cdk/text-field";
 import { AgentChatBubbleComponent } from "./agent/chat-bubble.component";
+import type { DisplayEvent } from "./agent/chat-bubble.component";
+
 
 @Component({
   selector: "course-info-tab",
@@ -169,8 +170,8 @@ import { AgentChatBubbleComponent } from "./agent/chat-bubble.component";
           </section>
           <section class="chat-section">
           @if (currentConversation) {
-            @for (event of currentConversation!.events; track $index) {
-              <agent-chat-bubble [event]="event"></agent-chat-bubble>
+            @for (event of _displayEvents(); track $index) {
+              <agent-chat-bubble [dEvent]="event"></agent-chat-bubble>
             }
           } @else {
             <div class="empty-content">
@@ -508,6 +509,9 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     return this.callIdCounter++;
   }
 
+  // 按 user_​message 分割事件流，方便按轮展示
+  _displayEvents: WritableSignal<DisplayEvent[]> = signal([]);
+
   ngOnInit() {
     // console.log('ngOnInit - assignData:', this.assignData);
   }
@@ -516,6 +520,10 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     if (changes['assignData']) {
       this.ddlGrant.set(!this.assignData?.ddl || this.assignData?.ddl! <= new Date());
       // console.log('assignData changed:', changes['assignData'].currentValue);
+    }
+    if (changes['currentConversation']) {
+      const conv = changes['currentConversation'].currentValue;
+      this._displayEvents.set(conv ? this._splitEventsForDisplay(conv.events) : []);
     }
   }
 
@@ -527,6 +535,37 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   onConversationSelect(conversationId: ConversationId) {
     this.loadConversationInfo.emit(conversationId);
   }
+
+  private _splitEventsForDisplay(events: MatrixAgentEvent[]): DisplayEvent[] {
+    const resDisplayEvents: DisplayEvent[] = [];
+    let currentDisplayEvents: DisplayEvent | null = null;
+    events.forEach((event) => {
+      if (event.type === 'user_message') {
+        // 用户消息，如果有推完前面的 agent 消息后直接推
+        if (currentDisplayEvents) {
+          resDisplayEvents.push(currentDisplayEvents);
+        }
+        currentDisplayEvents = { type: 'user', events: [event] };
+      } else {
+        // 助手消息：若当前不是 agent 批次，先落盘并新建 agent 批次
+        if (!currentDisplayEvents || currentDisplayEvents.type === 'user') {
+          if (currentDisplayEvents) {
+            resDisplayEvents.push(currentDisplayEvents);
+          }
+          currentDisplayEvents = { type: 'agent', events: [event] };
+        } else {
+          currentDisplayEvents.events.push(event);
+        }
+      }
+    });
+
+    if (currentDisplayEvents) {
+      resDisplayEvents.push(currentDisplayEvents);
+    }
+
+    return resDisplayEvents;
+  }
+
 
   progressScoreFormat = (percent: number) => `${percent}分`;
 
