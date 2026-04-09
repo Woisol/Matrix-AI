@@ -291,7 +291,8 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
 
   //! 暂不考虑更新，要看自己刷新⚫
-  ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! > new Date());
+  //？这里为什么是 ddl > now？？？
+  ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! <= new Date());
 
   ngOnInit() {
     // console.log('ngOnInit - assignData:', this.assignData);
@@ -299,7 +300,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['assignData']) {
-      this.ddlGrant.set(!this.assignData?.ddl || this.assignData?.ddl! > new Date());
+      this.ddlGrant.set(!this.assignData?.ddl || this.assignData?.ddl! <= new Date());
       // console.log('assignData changed:', changes['assignData'].currentValue);
     }
   }

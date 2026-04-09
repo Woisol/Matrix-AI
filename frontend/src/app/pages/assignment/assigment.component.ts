@@ -121,7 +121,7 @@ export class AssignmentComponent implements OnDestroy {
 
   // @todo az 所以现在不提交也能通过控制台看到预分析内容的()
   loadAnalysisBasic = (reGen: boolean = false) => {
-    if (!this.courseId || !this.assignId) return;
+    if (!this.courseId || !this.assignId || (this.assignData()?.ddl && this.assignData()?.ddl! > new Date())) return;
     const sub = this.assignService.getAnalysisBasic$(this.courseId, this.assignId, reGen).subscribe(data => {
       // 修复: 初次加载 analysis 为空时展开 undefined 会抛错
       const prev = this.analysis();
