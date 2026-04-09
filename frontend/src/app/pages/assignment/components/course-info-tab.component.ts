@@ -19,10 +19,11 @@ import { NzListEmptyComponent } from "ng-zorro-antd/list";
 import { NzInputDirective, NzInputModule } from "ng-zorro-antd/input";
 import { NzFormModule } from "ng-zorro-antd/form";
 import { FormsModule, NgForm } from "@angular/forms";
+import { CdkTextareaAutosize } from "@angular/cdk/text-field";
 
 @Component({
   selector: "course-info-tab",
-  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzInputModule, NzFormModule, FormsModule],
+  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzListEmptyComponent, NzInputModule, NzFormModule, FormsModule, CdkTextareaAutosize],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -186,6 +187,8 @@ import { FormsModule, NgForm } from "@angular/forms";
                 placeholder="描述要做的事，比如题目分析、代码纠错……"
                 class="agent-input"
                 cdkTextareaAutosize
+                cdkAutosizeMinRows="1"
+                cdkAutosizeMaxRows="6"
               ></textarea>
               <menu class="agent-action-buttons">
                 <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'">工具列表</button>
@@ -431,7 +434,7 @@ import { FormsModule, NgForm } from "@angular/forms";
 
     .agent-input{
       width: 100%;
-      padding: 8px;
+      padding: 6px 8px;
       border: none;
       border-radius: var(--size-radius-sm) var(--size-radius-sm) 0 0;
       overflow: auto;
