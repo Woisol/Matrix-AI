@@ -16,6 +16,7 @@
   --color-primary-light: #9ACFD1;
   --color-primary-light-xl: #b8d8da;
   --color-primary-dark: #dda712;
+  --color-secondary: #999;
   --color-border: #e0e0e0;
 
   --size-top-bar: 48px;
@@ -36,6 +37,7 @@
     --color-primary: #337275;
     --color-primary-light: #567374;
     --color-primary-dark: #b6880c;
+    --color-secondary: #666;
     --color-border: #333333;
     --color-shadow: rgba(0, 0, 0, 0.3);
   }

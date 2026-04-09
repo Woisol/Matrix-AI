@@ -31,7 +31,7 @@ export class AgentService {
   notify = inject(NotificationService)
 
   private buildUserParams(userId?: string) {
-    return userId ? { params: { user_id: userId } } : undefined;
+    return userId ? { headers: { user_id: userId } } : undefined;
   }
 
   // 两个 Map 函数
@@ -75,10 +75,6 @@ export class AgentService {
       map((conversations) => conversations.map((conversation) => this.mapConversationSummary(conversation))),
       this.handleAgentError<MatrixAgentConversationSummary[]>('无法获取对话历史'),
     );
-  }
-
-  getAgentConversationsHistory$(courseId: CourseId, assignId: AssignId, userId?: string) {
-    return this.listConversations$(courseId, assignId, userId);
   }
 
   createConversation$(courseId: CourseId, assignId: AssignId, userId?: string): Observable<MatrixAgentConversation | undefined> {

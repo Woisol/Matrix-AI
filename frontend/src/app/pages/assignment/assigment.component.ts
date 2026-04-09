@@ -29,6 +29,7 @@ import { AgentService } from "../../services/assign/agent.service";
           [onAnalysisAiGenRequest]="loadAnalysisAiGen"
           [conversationHistory]="conversationsHistory()"
           [currentConversation]="currentConversationInfo()"
+          (createNewConversation)="createAgentConversation()"
           (loadConversationInfo)="loadAgentConversationInfo($event)"
           (refreshConversationHistory)="loadAgentConversationsHistory()"
 
@@ -163,9 +164,19 @@ export class AssignmentComponent implements OnDestroy {
 
   loadAgentConversationsHistory() {
     if (!this.courseId || !this.assignId) return;
-    const sub = this.agentService.getAgentConversationsHistory$(this.courseId, this.assignId).subscribe(conversations => {
+    const sub = this.agentService.listConversations$(this.courseId, this.assignId).subscribe(conversations => {
       if (!conversations) return;
       this.conversationsHistory.set(conversations);
+    });
+    this.subs.push(sub);
+  }
+
+  createAgentConversation() {
+    if (!this.courseId || !this.assignId) return;
+    const sub = this.agentService.createConversation$(this.courseId, this.assignId).subscribe(conversation => {
+      if (!conversation) return;
+      this.currentConversationInfo.set(conversation);
+      this.loadAgentConversationsHistory();
     });
     this.subs.push(sub);
   }

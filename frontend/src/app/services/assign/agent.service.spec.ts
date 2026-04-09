@@ -55,7 +55,7 @@ describe('AgentService', () => {
     const result = await firstValueFrom(service.listConversations$('course-1', 'assign-1', 'user-1'));
 
     expect(apiStub.get$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/conversations', {
-      params: { user_id: 'user-1' },
+      headers: { user_id: 'user-1' },
     });
     expect(result).toEqual([
       {
@@ -80,7 +80,7 @@ describe('AgentService', () => {
     const result = await firstValueFrom(service.createConversation$('course-1', 'assign-1', 'user-1'));
 
     expect(apiStub.post$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/conversations', null, {
-      params: { user_id: 'user-1' },
+      headers: { user_id: 'user-1' },
     });
     expect(result).toEqual({
       conversationId: 'conv-1',
@@ -106,7 +106,7 @@ describe('AgentService', () => {
     const result = await firstValueFrom(service.getConversation$('course-1', 'assign-1', 'conv-1', 'user-1'));
 
     expect(apiStub.get$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/conversations/conv-1', {
-      params: { user_id: 'user-1' },
+      headers: { user_id: 'user-1' },
     });
     expect(result).toEqual({
       conversationId: 'conv-1',
@@ -128,7 +128,7 @@ describe('AgentService', () => {
     expect(apiStub.patch$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/conversations/conv-1/title', {
       title: '新的标题',
     }, {
-      params: { user_id: 'user-1' },
+      headers: { user_id: 'user-1' },
     });
     expect(result).toEqual({ message: '对话标题已更新' });
   });
@@ -140,7 +140,7 @@ describe('AgentService', () => {
     const result = await firstValueFrom(service.deleteConversation$('course-1', 'assign-1', 'conv-1', 'user-1'));
 
     expect(apiStub.delete$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/conversations/conv-1', {
-      params: { user_id: 'user-1' },
+      headers: { user_id: 'user-1' },
     });
     expect(result).toEqual({ message: '对话记录已删除' });
   });
@@ -166,7 +166,7 @@ describe('AgentService', () => {
         { type: 'turn_end', payload: { reason: 'completed' } },
       ],
     }, {
-      params: { user_id: 'user-1' },
+      headers: { user_id: 'user-1' },
     });
     expect(result).toEqual({ message: '事件追加成功' });
   });

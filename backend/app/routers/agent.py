@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Header
 
 from app.controller.agent import AIAgentController
 from app.schemas.agent import (
@@ -16,7 +16,7 @@ agent_route = APIRouter(tags=["agent"])
 async def create_conversation(
     course_id: str,
     assign_id: str,
-    user_id: str,
+    user_id: str = Header("", alias="user_id"),
 ):
     """创建新的对话记录"""
     return await AIAgentController.create_conversation(assign_id, user_id)
@@ -26,7 +26,7 @@ async def create_conversation(
 async def list_conversations(
     course_id: str,
     assign_id: str,
-    user_id: str
+    user_id: str = Header("", alias="user_id"),
 ):
     """列出用户在该作业下的所有对话记录"""
     return await AIAgentController.list_conversations(assign_id, user_id)
@@ -37,7 +37,7 @@ async def get_conversation(
     course_id: str,
     assign_id: str,
     conversation_id: str,
-    user_id: str,
+    user_id: str = Header("", alias="user_id"),
 ):
     """获取单个对话详情"""
     return await AIAgentController.get_conversation(conversation_id, assign_id, user_id)
@@ -48,8 +48,8 @@ async def update_conversation_title(
     course_id: str,
     assign_id: str,
     conversation_id: str,
-    user_id: str,
     request: AIAgentConversationTitleUpdateRequest,
+    user_id: str = Header("", alias="user_id"),
 ):
     """更新对话标题"""
     return await AIAgentController.update_conversation_title(conversation_id, assign_id, user_id, request.title)
@@ -60,7 +60,7 @@ async def delete_conversation(
     course_id: str,
     assign_id: str,
     conversation_id: str,
-    user_id: str
+    user_id: str = Header("", alias="user_id"),
 ):
     """删除对话记录（软删除）"""
     return await AIAgentController.delete_conversation(conversation_id, assign_id, user_id)
@@ -70,8 +70,8 @@ async def delete_conversation(
 async def append_agent_events(
     course_id: str,
     assign_id: str,
-    user_id: str,
     request: AIAgentAppendEventsRequest,
+    user_id: str = Header("", alias="user_id"),
 ):
     """按批次追加事件到指定会话。"""
     return await AIAgentController.append_events(

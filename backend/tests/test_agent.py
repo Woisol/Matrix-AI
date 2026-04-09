@@ -71,7 +71,7 @@ def test_agent_router_supports_get_conversation(monkeypatch):
 
     response = client.get(
         "/courses/course-1/assignments/assign-1/agent/conversations/conv-1",
-        params={"user_id": "user-1"},
+        headers={"user_id": "user-1"},
     )
 
     assert response.status_code == 200
@@ -100,7 +100,7 @@ def test_agent_router_supports_create_conversation(monkeypatch):
 
     response = client.post(
         "/courses/course-1/assignments/assign-1/agent/conversations",
-        params={"user_id": "user-1"},
+        headers={"user_id": "user-1"},
     )
 
     assert response.status_code == 200
@@ -121,7 +121,7 @@ def test_agent_router_supports_patch_conversation_title(monkeypatch):
 
     response = client.patch(
         "/courses/course-1/assignments/assign-1/agent/conversations/conv-1/title",
-        params={"user_id": "user-1"},
+        headers={"user_id": "user-1"},
         json={"title": "新的标题"},
     )
 
@@ -137,7 +137,7 @@ def test_agent_router_supports_batch_append_events(monkeypatch):
 
     response = client.post(
         "/courses/course-1/assignments/assign-1/agent/event",
-        params={"user_id": "user-1"},
+        headers={"user_id": "user-1"},
         json={
             "conversation_id": "conv-1",
             "expected_event_count": 2,

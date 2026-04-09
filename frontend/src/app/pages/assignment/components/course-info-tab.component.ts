@@ -9,14 +9,17 @@ import { MatrixAnalyseComponent } from "./matrix-analyse.component";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./matrix-analyse.utils";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
+import { NzDropDownModule } from "ng-zorro-antd/dropdown";
+import { NzMenuModule } from "ng-zorro-antd/menu";
 import { SubmitScoreComponent } from "./submit-score.component";
 import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary } from "../../../api/type/agent";
 import { DatePipe } from "@angular/common";
 import { AssignId, CourseId } from "../../../api/type/general";
+import { NzListEmptyComponent } from "ng-zorro-antd/list";
 
 @Component({
   selector: "course-info-tab",
-  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, SubmitScoreComponent],
+  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzListEmptyComponent],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -120,16 +123,52 @@ import { AssignId, CourseId } from "../../../api/type/general";
             </section>
           }
         </nz-tab>
-        <nz-tab nzTitle="Agent" class="agent-tab">
+        <!-- 不生效id="agent-tab" -->
+        <nz-tab nzTitle="Agent" >
           <section class="history-panel">
-            <h5><span nz-icon nzType="history" nzTheme="outline"></span> 历史对话</h5>
-            <select (change)="onConversationChange($event)">
-              @for (conv of conversationHistory; track $index) {
-                <option [value]="conv.conversationId" [selected]="currentConversation?.conversationId === conv.conversationId">
-                  {{conv.title}} ({{conv.updatedAt | date:'short'}})
-                </option>
-              }
-            </select>
+            <button
+              class="history-trigger"
+              nz-dropdown
+              [nzDropdownMenu]="historyMenu"
+              nzTrigger="click"
+              [nzOverlayClassName]="'history-dropdown-overlay'"
+              type="button"
+            >
+              <h5><span nz-icon nzType="history" nzTheme="outline"></span> 历史对话</h5>
+              <!-- <span class="history-current">{{ currentConversation?.title || '选择历史对话' }}</span> -->
+              <nz-icon class="history-arrow" nzType="down" nzTheme="outline"></nz-icon>
+            </button>
+
+            <nz-dropdown-menu #historyMenu="nzDropdownMenu">
+              <ul nz-menu class="history-dropdown-menu">
+                @if (!conversationHistory.length) {
+                  <li nz-menu-item nzDisabled>暂无历史对话</li>
+                }
+                @for (conv of conversationHistory; track $index) {
+                  <li
+                    nz-menu-item
+                    [class.is-active]="currentConversation?.conversationId === conv.conversationId"
+                    (click)="onConversationSelect(conv.conversationId)"
+                  >
+                    {{conv.title}} ({{conv.updatedAt | date:'short'}})
+                  </li>
+                }
+                <li
+                  nz-menu-item
+                  class="new-conversation-trigger"
+                  (click)="createNewConversation.emit()"
+                  >
+                  新建一个对话...
+                </li>
+              </ul>
+            </nz-dropdown-menu>
+          </section>
+          <section class="agent-tab-content">
+          @if (currentConversation){
+
+          }@else{
+            <nz-list-empty/>
+          }
           </section>
         </nz-tab>
       }
@@ -267,12 +306,77 @@ import { AssignId, CourseId } from "../../../api/type/general";
     }
   }
 
-  .history-panel>select{
-    width: 100%;
-    height: 40px;
-    padding: 0 12px;
-    display: flex;
+  //** agent tab
+
+  ::ng-deep .ant-tabs-nav{
+    margin: 0 !important;
+    padding: 0 !important;
   }
+
+  /* 给每个 tabpane 的直接内容统一留白，避免依赖动态 tab 索引 */
+  :host ::ng-deep .ant-tabs-tabpane > *{
+    margin-top: 16px;
+  }
+  //** history oanel
+
+  /* Agent 页签顶部是历史对话触发器，不需要额外上边距 */
+  :host ::ng-deep .ant-tabs-tabpane > .history-panel{
+    margin-top: 0;
+  }
+
+  .history-panel{
+    width: 100%;
+  }
+
+  .history-trigger{
+    width: 100%;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-radius-sm) var(--size-radius-sm) 0 0;
+    background: var(--color-bg);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    box-shadow: none;
+    &:hover{
+      box-shadow: none;
+    }
+
+    align-items: center;
+    gap: 2px 8px;
+    text-align: left;
+
+    h5{
+      margin: 0;
+      font-size: 12px;
+      color: var(--color-secondary);
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      font-weight: 500;
+    }
+
+    .history-arrow{
+      grid-column: 2 / 3;
+      color: var(--color-secondary);
+    }
+  }
+
+  :host ::ng-deep .history-dropdown-overlay .history-dropdown-menu{
+    max-height: 100%;
+    min-width: 200px;
+    overflow: auto;
+  }
+
+  :host ::ng-deep .history-dropdown-overlay .history-dropdown-menu .is-active{
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+  }
+
+  .new-conversation-trigger{
+    color: var(--color-secondary);
+  }
+
   `],
   // styleUrl
 })
@@ -283,6 +387,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() onAnalysisAiGenRequest = (notify: boolean = false) => { };
   @Input() conversationHistory: MatrixAgentConversationSummary[] = [];
   @Input() currentConversation: MatrixAgentConversation | null = null;
+  @Output() createNewConversation = new EventEmitter<void>();
   @Output() loadConversationInfo = new EventEmitter<ConversationId>();
   @Output() refreshConversationHistory = new EventEmitter<void>();
 
@@ -310,11 +415,8 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     return content != null && typeof content === 'string' && content.trim().length > 0;
   }
 
-  onConversationChange(event: Event) {
-    const value = (event.target as HTMLSelectElement | null)?.value;
-    if (value) {
-      this.loadConversationInfo.emit(value as ConversationId);
-    }
+  onConversationSelect(conversationId: ConversationId) {
+    this.loadConversationInfo.emit(conversationId);
   }
 
   progressScoreFormat = (percent: number) => `${percent}分`;
