@@ -11,6 +11,8 @@
   /* 浅色主题变量 */
   --color-text: #1a1a1a;
   --color-bg: #ffffff;
+  --color-bg-grey: #eee;
+  /* 弃用*/
   --color-surface: #f5f5f5;
   --color-primary: #479EA2;
   --color-primary-light: #9ACFD1;
@@ -33,11 +35,12 @@
     --color-text: #ffffff;
     /* 使用稍微偏离纯黑的颜色，减少眼疲劳 */
     --color-bg: #121212;
+    --color-bg-grey: #444;
     --color-surface: #1e1e1e;
     --color-primary: #337275;
     --color-primary-light: #567374;
     --color-primary-dark: #b6880c;
-    --color-secondary: #666;
+    --color-secondary: #333;
     --color-border: #333333;
     --color-shadow: rgba(0, 0, 0, 0.3);
   }
@@ -64,11 +67,13 @@
   --color-text: #ffffff;
   /* 使用稍微偏离纯黑的颜色，减少眼疲劳 */
   --color-bg: #121212;
+  --color-bg-grey: #444;
   --color-surface: #1e1e1e;
   --color-primary: #337275;
   --color-primary-light: #567374;
   --color-primary-dark: #b6880c;
-  --color-border: #333333;
+  --color-secondary: #333;
+  --color-border: #666;
   --color-shadow: rgba(0, 0, 0, 0.3);
 }
 

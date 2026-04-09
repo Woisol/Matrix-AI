@@ -16,10 +16,13 @@ import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary
 import { DatePipe } from "@angular/common";
 import { AssignId, CourseId } from "../../../api/type/general";
 import { NzListEmptyComponent } from "ng-zorro-antd/list";
+import { NzInputDirective, NzInputModule } from "ng-zorro-antd/input";
+import { NzFormModule } from "ng-zorro-antd/form";
+import { FormsModule, NgForm } from "@angular/forms";
 
 @Component({
   selector: "course-info-tab",
-  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzListEmptyComponent],
+  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzInputModule, NzFormModule, FormsModule],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -163,12 +166,40 @@ import { NzListEmptyComponent } from "ng-zorro-antd/list";
               </ul>
             </nz-dropdown-menu>
           </section>
-          <section class="agent-tab-content">
+          <section class="chat-section">
           @if (currentConversation){
 
           }@else{
-            <nz-list-empty/>
+            <div class="empty-content">
+              <p>请选择一个历史对话，或<a (click)="createNewConversation.emit()">新建一个对话</a>来开始</p>
+            </div>
           }
+          </section>
+          <section class="agent-action">
+            <form #agentForm="ngForm" (ngSubmit)="onAgentSubmit(agentForm)">
+
+              <textarea
+                nz-input
+                [(ngModel)]="userInput"
+                name="userInput"
+                (keydown)="onKeyDown($event, agentForm)"
+                placeholder="描述要做的事，比如题目分析、代码纠错……"
+                class="agent-input"
+                cdkTextareaAutosize
+              ></textarea>
+              <menu class="agent-action-buttons">
+                <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'">工具列表</button>
+                <button class="secondary" >BYOK</button>
+                <button class="secondary send-action"type="submit"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
+              </menu>
+              <nz-dropdown-menu #agentActionMenu="nzDropdownMenu">
+                <ul nz-menu>
+                  <li nz-menu-item>工具1</li>
+                  <li nz-menu-item>工具2</li>
+                  <li nz-menu-item>工具3</li>
+                </ul>
+              </nz-dropdown-menu>
+            </form>
           </section>
         </nz-tab>
       }
@@ -306,7 +337,7 @@ import { NzListEmptyComponent } from "ng-zorro-antd/list";
     }
   }
 
-  //** agent tab
+  /* agent tab*/
 
   ::ng-deep .ant-tabs-nav{
     margin: 0 !important;
@@ -314,15 +345,21 @@ import { NzListEmptyComponent } from "ng-zorro-antd/list";
   }
 
   /* 给每个 tabpane 的直接内容统一留白，避免依赖动态 tab 索引 */
-  :host ::ng-deep .ant-tabs-tabpane > *{
+  :host ::ng-deep .ant-tabs-tabpane:first-child{
     margin-top: 16px;
   }
-  //** history oanel
+  /* history oanel*/
 
   /* Agent 页签顶部是历史对话触发器，不需要额外上边距 */
   :host ::ng-deep .ant-tabs-tabpane > .history-panel{
     margin-top: 0;
   }
+  :host ::ng-deep .ant-tabs-tabpane:has(.history-panel){
+    height: calc(100% - 16px);
+    display:flex;
+    flex-direction: column;
+  }
+
 
   .history-panel{
     width: 100%;
@@ -377,6 +414,57 @@ import { NzListEmptyComponent } from "ng-zorro-antd/list";
     color: var(--color-secondary);
   }
 
+  /* chat section */
+  .chat-section{
+    flex:1;
+    background-color: var(--color-surface);
+  }
+
+  .chat-section .empty-content{
+    height:100%;
+  }
+
+  .agent-action{
+    height: fit-content;
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-radius-sm);
+
+    .agent-input{
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-radius: var(--size-radius-sm) var(--size-radius-sm) 0 0;
+      overflow: auto;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge Legacy */
+      &::-webkit-scrollbar{
+        width: 0;
+        height: 0;
+      }
+    }
+
+    .agent-action-buttons{
+      padding: 4px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      >*{
+        padding: 2px 6px;
+        font-size: 12px;
+        color: var(--color-secondary);
+        border: none;
+        border-radius: 6px;
+        box-shadow: none;
+      }
+
+      >.send-action{
+        padding: 2px 6px;
+        margin-left:auto;
+        /*align-self: flex-end;*/
+      }
+    }
+  }
+
   `],
   // styleUrl
 })
@@ -398,6 +486,8 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   //! 暂不考虑更新，要看自己刷新⚫
   //？这里为什么是 ddl > now？？？
   ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! <= new Date());
+
+  userInput = '';
 
   ngOnInit() {
     // console.log('ngOnInit - assignData:', this.assignData);
@@ -421,4 +511,21 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
 
   progressScoreFormat = (percent: number) => `${percent}分`;
 
+  onAgentSubmit(form: NgForm) {
+    const content = this.userInput.trim();
+    if (!content) {
+      return;
+    }
+
+    console.log('发送消息:', content);
+    // this.userInput = '';
+    // form.resetForm({ userInput: '' });
+  }
+
+  onKeyDown(event: KeyboardEvent, form: NgForm) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.onAgentSubmit(form);
+    }
+  }
 }

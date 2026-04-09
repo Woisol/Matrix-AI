@@ -417,6 +417,7 @@ export interface CarouselItem {
     &.completed::before{
       background-color: #52c41a;
     }
+  }
   `],
 })
 export class HomeComponent implements AfterViewInit {

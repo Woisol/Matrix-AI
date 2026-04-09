@@ -28,6 +28,7 @@ import {
   RedoOutline,
   DragOutline,
   BulbOutline,
+  SendOutline,
 } from '@ant-design/icons-angular/icons';
 import { MarkdownModule } from 'ngx-markdown';
 import { provideMonacoEditor } from 'ngx-monaco-editor-v2';
@@ -51,7 +52,8 @@ const icons: IconDefinition[] = [
   ReloadOutline,
   RocketOutline,
   DragOutline,
-  BulbOutline
+  BulbOutline,
+  SendOutline
 ];
 
 export const appConfig: ApplicationConfig = {
