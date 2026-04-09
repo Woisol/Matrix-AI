@@ -11,7 +11,7 @@ import { NotificationService } from "../../services/notification/notification.se
 import * as monaco from "monaco-editor";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
-import { MatrixAgentConversation, MatrixAgentConversationSummary } from "../../api/type/agent";
+import { MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../api/type/agent";
 import { AgentService } from "../../services/assign/agent.service";
 
 @Component({
@@ -32,6 +32,7 @@ import { AgentService } from "../../services/assign/agent.service";
           (createNewConversation)="createAgentConversation()"
           (loadConversationInfo)="loadAgentConversationInfo($event)"
           (refreshConversationHistory)="loadAgentConversationsHistory()"
+          (pushNewAgentEvent)="pushNewAgentEvent($event)"
 
           [selectedTabIndex]="selectedTabIndex"
           (focusRequestRangeOnEditor)="focusRequestRangeOnEditor($event)"
@@ -83,7 +84,14 @@ export class AssignmentComponent implements OnDestroy {
   useStreamingMode = signal(false);
 
   // ** agent 相关
-  currentConversationInfo = signal<MatrixAgentConversation | null>(null);
+  // TODO remove test data
+  currentConversationInfo = signal<MatrixAgentConversation | null>({
+    conversationId: 'test-conv-1',
+    title: '测试对话',
+    createdAt: new Date("2026-04-09T21:00:00Z").toISOString(),
+    updatedAt: new Date("2026-04-09T21:00:00Z").toISOString(),
+    events: []
+  });
   conversationsHistory = signal<MatrixAgentConversationSummary[]>([]);
 
 
@@ -188,6 +196,24 @@ export class AssignmentComponent implements OnDestroy {
       this.currentConversationInfo.set(conversation);
     });
     this.subs.push(sub);
+  }
+
+  pushNewAgentEvent(event: MatrixAgentEvent) {
+    const current = this.currentConversationInfo();
+    if (!current) {
+      this.notify.error("没有进行中的对话");
+      return;
+    }
+    const updatedConversation = {
+      ...current,
+      events: [...current.events, event]
+    };
+    this.currentConversationInfo.set(updatedConversation);
+
+    // TODO to implement send request
+    // this.userInput = '';
+    // form.resetForm({ userInput: '' });
+
   }
 
 

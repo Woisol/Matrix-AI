@@ -12,18 +12,18 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { NzDropDownModule } from "ng-zorro-antd/dropdown";
 import { NzMenuModule } from "ng-zorro-antd/menu";
 import { SubmitScoreComponent } from "./submit-score.component";
-import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary } from "../../../api/type/agent";
+import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent, MatrixAgentEventUserMessage } from "../../../api/type/agent";
 import { DatePipe } from "@angular/common";
 import { AssignId, CourseId } from "../../../api/type/general";
-import { NzListEmptyComponent } from "ng-zorro-antd/list";
-import { NzInputDirective, NzInputModule } from "ng-zorro-antd/input";
+import { NzInputModule } from "ng-zorro-antd/input";
 import { NzFormModule } from "ng-zorro-antd/form";
 import { FormsModule, NgForm } from "@angular/forms";
 import { CdkTextareaAutosize } from "@angular/cdk/text-field";
+import { AgentChatBubbleComponent } from "./agent/chat-bubble.component";
 
 @Component({
   selector: "course-info-tab",
-  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzListEmptyComponent, NzInputModule, NzFormModule, FormsModule, CdkTextareaAutosize],
+  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzInputModule, NzFormModule, FormsModule, CdkTextareaAutosize, AgentChatBubbleComponent],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -168,9 +168,11 @@ import { CdkTextareaAutosize } from "@angular/cdk/text-field";
             </nz-dropdown-menu>
           </section>
           <section class="chat-section">
-          @if (currentConversation){
-
-          }@else{
+          @if (currentConversation) {
+            @for (event of currentConversation!.events; track $index) {
+              <agent-chat-bubble [event]="event"></agent-chat-bubble>
+            }
+          } @else {
             <div class="empty-content">
               <p>请选择一个历史对话，或<a (click)="createNewConversation.emit()">新建一个对话</a>来开始</p>
             </div>
@@ -420,13 +422,19 @@ import { CdkTextareaAutosize } from "@angular/cdk/text-field";
   /* chat section */
   .chat-section{
     flex:1;
+    overflow: auto;
     background-color: var(--color-surface);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding: 12px 0;
   }
 
   .chat-section .empty-content{
     height:100%;
   }
 
+  /* agent action */
   .agent-action{
     height: fit-content;
     border: 1px solid var(--color-border);
@@ -481,6 +489,9 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Output() createNewConversation = new EventEmitter<void>();
   @Output() loadConversationInfo = new EventEmitter<ConversationId>();
   @Output() refreshConversationHistory = new EventEmitter<void>();
+  // @Input() pushNewAgentEvent = (event: MatrixAgentEvent) => { };
+  @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEvent>();
+  // @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEventUserMessage>();
 
   @Input() selectedTabIndex = signal(0);
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
@@ -491,6 +502,11 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! <= new Date());
 
   userInput = '';
+  // callIdCounter = (() => { for (let i = 0; ; i++) { yield `${this.currentConversation?.conversationId}-${i}` } })();
+  callIdCounter = 0;
+  nextCallId() {
+    return this.callIdCounter++;
+  }
 
   ngOnInit() {
     // console.log('ngOnInit - assignData:', this.assignData);
@@ -521,8 +537,30 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     }
 
     console.log('发送消息:', content);
-    // this.userInput = '';
-    // form.resetForm({ userInput: '' });
+    this.pushNewAgentEvent.emit({
+      type: 'user_message',
+      payload: { content },
+    });
+
+    // mock response
+    this.pushNewAgentEvent.emit({
+      type: 'think',
+      payload: { content: '正在思考...' },
+    });
+    this.pushNewAgentEvent.emit({
+      type: 'tool_call',
+      payload: { callId: this.nextCallId().toString(), toolName: 'read_editor', input: ['a.cpp'] },
+    })
+    this.pushNewAgentEvent.emit({
+      type: 'tool_result',
+      payload: { callId: (this.callIdCounter - 1).toString(), success: true, output: '文件内容：...\n' },
+    });
+    this.pushNewAgentEvent.emit({
+      type: 'assistant_final',
+      payload: { content: '这是我根据工具调用结果给出的最终回答。' },
+    });
+
+
   }
 
   onKeyDown(event: KeyboardEvent, form: NgForm) {
