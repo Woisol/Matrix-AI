@@ -192,7 +192,7 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
               </ul>
             </nz-dropdown-menu>
           </section>
-          <section class="chat-section">
+          <section class="chat-section" #chatScrollContainer>
           @if (currentConversation) {
             @for (event of _displayEvents(); track $index) {
               <agent-chat-bubble [dEvent]="event"></agent-chat-bubble>
@@ -220,7 +220,7 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
               <menu class="agent-action-buttons">
                 <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'">工具列表</button>
                 <button class="secondary" >BYOK</button>
-                <button class="secondary send-action"type="submit"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
+                <button class="secondary send-action" type="submit"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
               </menu>
               <nz-dropdown-menu #agentActionMenu="nzDropdownMenu">
                 <ul nz-menu>
@@ -576,6 +576,8 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
 export class CourseInfoTabComponent implements OnInit, OnChanges {
   @ViewChildren('conversationTitleInput')
   conversationTitleInputs!: QueryList<ElementRef<HTMLInputElement>>;
+  @ViewChildren('chatScrollContainer')
+  chatScrollContainer!: QueryList<ElementRef<HTMLInputElement>>;
 
   @Input() assignData!: AssignData | undefined;
   @Input() analysis!: Analysis | undefined;
@@ -624,7 +626,19 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     if (changes['currentConversation']) {
       const conv = changes['currentConversation'].currentValue;
       this._displayEvents.set(conv ? this._splitEventsForDisplay(conv.events) : []);
+      this.scrollChatToBottomNextTick('smooth');
     }
+  }
+
+  private scrollChatToBottomNextTick(behavior: ScrollBehavior = 'auto') {
+    setTimeout(() => {
+      const container = this.chatScrollContainer?.first?.nativeElement;
+      if (!container) return;
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    }, 0);
   }
 
   // 辅助方法：检查 markdown 内容是否有效
@@ -723,6 +737,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     });
     this.userInput = '';
     form.resetForm({ userInput: '' });
+    this.scrollChatToBottomNextTick('smooth');
   }
 
   onKeyDown(event: KeyboardEvent, form: NgForm) {
