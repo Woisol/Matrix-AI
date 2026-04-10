@@ -8,6 +8,7 @@ import { AssignmentComponent } from './assigment.component';
 import { CourseInfoTabComponent } from './components/course-info-tab.component';
 import { CodeEditorComponent } from './components/code-editor.component';
 import { AssignService } from '../../services/assign/assign.service';
+import { AgentService } from '../../services/assign/agent.service';
 import { NotificationService } from '../../services/notification/notification.service';
 import { Analysis, AssignData, CodeFileInfo } from '../../api/type/assigment';
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from './components/matrix-analyse.utils';
@@ -62,6 +63,16 @@ describe('AssignmentComponent', () => {
     warning: jasmine.createSpy('warning'),
   };
 
+  const agentServiceStub = {
+    listConversations$: jasmine.createSpy('listConversations$').and.returnValue(of([])),
+    createConversation$: jasmine.createSpy('createConversation$').and.returnValue(of(undefined)),
+    getConversation$: jasmine.createSpy('getConversation$').and.returnValue(of(undefined)),
+    updateConversationTitle$: jasmine.createSpy('updateConversationTitle$').and.returnValue(of(200)),
+    deleteConversation$: jasmine.createSpy('deleteConversation$').and.returnValue(of(200)),
+    appendEvents$: jasmine.createSpy('appendEvents$').and.returnValue(of({ message: '事件追加成功' })),
+    streamConversation$: jasmine.createSpy('streamConversation$').and.returnValue(of('这是流式回复')),
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AssignmentComponent],
@@ -73,6 +84,7 @@ describe('AssignmentComponent', () => {
           },
         },
         { provide: AssignService, useValue: assignServiceStub },
+        { provide: AgentService, useValue: agentServiceStub },
         { provide: NotificationService, useValue: notificationServiceStub },
       ],
     })
@@ -103,6 +115,20 @@ describe('AssignmentComponent', () => {
       executeEdits: jasmine.createSpy('executeEdits').and.returnValue(true),
     } as unknown as monaco.editor.IStandaloneCodeEditor;
   }
+
+  beforeEach(() => {
+    notificationServiceStub.success.calls.reset();
+    notificationServiceStub.error.calls.reset();
+    notificationServiceStub.info.calls.reset();
+    notificationServiceStub.warning.calls.reset();
+    agentServiceStub.listConversations$.calls.reset();
+    agentServiceStub.createConversation$.calls.reset();
+    agentServiceStub.getConversation$.calls.reset();
+    agentServiceStub.updateConversationTitle$.calls.reset();
+    agentServiceStub.deleteConversation$.calls.reset();
+    agentServiceStub.appendEvents$.calls.reset();
+    agentServiceStub.streamConversation$.calls.reset();
+  });
 
   it('wires the course tab focus event to the page handler', () => {
     const fixture = TestBed.createComponent(AssignmentComponent);
@@ -165,5 +191,41 @@ describe('AssignmentComponent', () => {
 
     expect(editor.executeEdits).toHaveBeenCalled();
     expect(editor.focus).toHaveBeenCalled();
+  });
+
+  it('appends a user event and streams assistant reply into the current conversation', () => {
+    const fixture = TestBed.createComponent(AssignmentComponent);
+    const component = fixture.componentInstance;
+    agentServiceStub.appendEvents$.and.returnValue(of(200));
+    agentServiceStub.streamConversation$.and.returnValue(of('这是流式回复'));
+
+    component.courseId = 'course-1' as any;
+    component.assignId = 'assign-1' as any;
+    component.currentConversationInfo.set({
+      conversationId: 'conv-1',
+      title: '新的对话',
+      createdAt: '2026-04-10T10:00:00Z',
+      updatedAt: '2026-04-10T10:00:00Z',
+      events: [],
+    });
+
+    component.pushNewAgentEvent({
+      type: 'user_message',
+      payload: { content: '你好' },
+    });
+
+    expect(agentServiceStub.appendEvents$).toHaveBeenCalledWith('course-1', 'assign-1', 'Matrix AI', {
+      conversationId: 'conv-1',
+      expectedEventCount: 0,
+      events: [
+        { type: 'user_message', payload: { content: '你好' } },
+      ],
+    });
+    expect(agentServiceStub.streamConversation$).toHaveBeenCalledWith('course-1', 'assign-1', 'conv-1', 'Matrix AI');
+    expect(component.currentConversationInfo()?.events).toEqual([
+      { type: 'user_message', payload: { content: '你好' } },
+      { type: 'assistant_final', payload: { content: '这是流式回复' } },
+      { type: 'turn_end', payload: { reason: 'completed' } },
+    ]);
   });
 });

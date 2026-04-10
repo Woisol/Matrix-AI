@@ -12,6 +12,7 @@ import {
 } from "../../api/type/agent";
 import { ApiHttpService } from "../../api/util/api-http.service";
 import { NotificationService } from "../notification/notification.service";
+import { SSEService } from "../see/see.service";
 
 // 行吧，所以意思是传过来的原始数据类型建议直接放同文件毕竟只用一次
 type RawMatrixAgentConversationSummary = {
@@ -30,6 +31,7 @@ export class AgentService {
   constructor(private api: ApiHttpService) { }
 
   notify = inject(NotificationService)
+  sse = inject(SSEService)
 
   private buildUserParams(userId?: string) {
     return userId ? { headers: { user_id: userId } } : undefined;
@@ -120,17 +122,25 @@ export class AgentService {
     );
   }
 
-  appendEvents$(courseId: CourseId, assignId: AssignId, userId: string | undefined, request: MatrixAgentAppendEventsRequest): Observable<MatrixAgentOperationResponse | undefined> {
-    return this.api.post$<MatrixAgentOperationResponse>(
+  appendEvents$(courseId: CourseId, assignId: AssignId, userId: string | undefined, request: MatrixAgentAppendEventsRequest): Observable<number | undefined> {
+    return this.api.post$<HttpResponse<MatrixAgentOperationResponse>>(
       `/courses/${courseId}/assignments/${assignId}/agent/event`,
       {
         conversation_id: request.conversationId,
         expected_event_count: request.expectedEventCount,
         events: request.events,
       },
-      this.buildUserParams(userId),
+      { ...this.buildUserParams(userId), observe: 'response' },
     ).pipe(
-      this.handleAgentError<MatrixAgentOperationResponse>('无法追加对话事件'),
+      map((response) => response.status),
+      this.handleAgentError<number>('无法追加对话事件'),
+    );
+  }
+
+  streamConversation$(courseId: CourseId, assignId: AssignId, conversationId: string, userId: string): Observable<string> {
+    const encodedUserId = encodeURIComponent(userId);
+    return this.sse.streamText(
+      `/api/courses/${courseId}/assignments/${assignId}/agent/conversations/${conversationId}/stream?user_id=${encodedUserId}`,
     );
   }
 }

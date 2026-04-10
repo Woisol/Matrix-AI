@@ -13,6 +13,9 @@ describe('AgentService', () => {
     patch$: jasmine.createSpy('patch$'),
     delete$: jasmine.createSpy('delete$'),
   };
+  const sseServiceStub = {
+    streamText: jasmine.createSpy('streamText'),
+  };
 
   const notificationServiceStub = {
     success: jasmine.createSpy('success'),
@@ -26,6 +29,7 @@ describe('AgentService', () => {
     apiStub.post$.calls.reset();
     apiStub.patch$.calls.reset();
     apiStub.delete$.calls.reset();
+    sseServiceStub.streamText.calls.reset();
     notificationServiceStub.success.calls.reset();
     notificationServiceStub.error.calls.reset();
     notificationServiceStub.info.calls.reset();
@@ -36,7 +40,7 @@ describe('AgentService', () => {
         AgentService,
         { provide: ApiHttpService, useValue: apiStub },
         { provide: NotificationService, useValue: notificationServiceStub },
-        { provide: SSEService, useValue: {} },
+        { provide: SSEService, useValue: sseServiceStub },
       ],
     });
   });
@@ -120,7 +124,7 @@ describe('AgentService', () => {
   });
 
   it('updates a conversation title', async () => {
-    apiStub.patch$.and.returnValue(of({ message: '对话标题已更新' }));
+    apiStub.patch$.and.returnValue(of({ status: 200 }));
 
     const service = TestBed.inject(AgentService);
     const result = await firstValueFrom(service.updateConversationTitle$('course-1', 'assign-1', 'conv-1', 'user-1', '新的标题'));
@@ -129,24 +133,26 @@ describe('AgentService', () => {
       title: '新的标题',
     }, {
       headers: { user_id: 'user-1' },
+      observe: 'response',
     });
-    expect(result).toEqual({ message: '对话标题已更新' });
+    expect(result).toBe(200);
   });
 
   it('deletes a conversation', async () => {
-    apiStub.delete$.and.returnValue(of({ message: '对话记录已删除' }));
+    apiStub.delete$.and.returnValue(of({ status: 200 }));
 
     const service = TestBed.inject(AgentService);
     const result = await firstValueFrom(service.deleteConversation$('course-1', 'assign-1', 'conv-1', 'user-1'));
 
     expect(apiStub.delete$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/conversations/conv-1', {
       headers: { user_id: 'user-1' },
+      observe: 'response',
     });
-    expect(result).toEqual({ message: '对话记录已删除' });
+    expect(result).toBe(200);
   });
 
   it('appends a batch of events using backend request keys', async () => {
-    apiStub.post$.and.returnValue(of({ message: '事件追加成功' }));
+    apiStub.post$.and.returnValue(of({ status: 200 }));
 
     const service = TestBed.inject(AgentService);
     const result = await firstValueFrom(service.appendEvents$('course-1', 'assign-1', 'user-1', {
@@ -167,7 +173,18 @@ describe('AgentService', () => {
       ],
     }, {
       headers: { user_id: 'user-1' },
+      observe: 'response',
     });
-    expect(result).toEqual({ message: '事件追加成功' });
+    expect(result).toBe(200);
+  });
+
+  it('streams a conversation by conversation id', async () => {
+    sseServiceStub.streamText.and.returnValue(of('你好'));
+
+    const service = TestBed.inject(AgentService);
+    const result = await firstValueFrom(service.streamConversation$('course-1', 'assign-1', 'conv-1', 'user-1'));
+
+    expect(sseServiceStub.streamText).toHaveBeenCalledWith('/api/courses/course-1/assignments/assign-1/agent/conversations/conv-1/stream?user_id=user-1');
+    expect(result).toBe('你好');
   });
 });

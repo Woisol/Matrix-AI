@@ -298,8 +298,50 @@
 1. 后端保存事件失败。
 2. 其他未处理异常。
 
+## 7. 会话流式对话
+
+- 方法：`GET`
+- 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}/stream`
+- Query：
+  - `user_id: string`
+
+### 说明
+
+1. 该接口基于当前会话已经持久化的 `events` 生成一轮最小的流式对话回复。
+2. 当前实现仅负责“对话式流式回答”，不包含完整 agent loop。
+3. 前端应在用户消息 append 成功后，再调用该接口拉取流式文本。
+
+### 返回
+
+返回 `text/event-stream`。
+
+### 事件格式
+
+#### 普通文本分片
+
+```text
+data: {"chunk":"你"}
+
+data: {"chunk":"好"}
+```
+
+#### 完成事件
+
+```text
+event: complete
+data: {"content":"你好"}
+```
+
+#### 错误事件
+
+```text
+event: error
+data: {"error":"具体错误信息"}
+```
+
 ## 当前实现边界
 
 1. 当前后端 `append /event` 只负责持久化事件，不负责在后端执行 agent loop。
 2. 原始模型流到 `MatrixAgentEvent` 的转换仍应由前端 runtime 负责。
 3. 后端存储的是已经转换好的业务事件流，而不是原始模型协议数据。
+4. `conversation stream` 只负责根据已持久化事件生成流式自然语言回复，前端仍需要在流式完成后自行追加 `assistant_final` / `turn_end`。

@@ -1,5 +1,7 @@
+import json
 from datetime import datetime, timezone
 import uuid
+from collections.abc import AsyncGenerator
 
 from fastapi import HTTPException
 from app.controller.ai import torExceptions
@@ -124,4 +126,35 @@ class AIAgentController:
             raise HTTPException(status_code=409, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"新增事件失败: {str(e)}")
+
+    @classmethod
+    async def stream_conversation(
+        cls,
+        conversation_id: str,
+        assign_id: str,
+        user_id: str,
+    ) -> AsyncGenerator[str, None]:
+        """基于当前会话已持久化事件流，生成最小对话式流式回复。"""
+        conversation = await AIAgentConservation.filter(
+            id=conversation_id,
+            assign_id=assign_id,
+            user_id=user_id,
+            deleted_at=None,
+        ).first()
+        if not conversation:
+            raise HTTPException(status_code=404, detail="对话记录不存在")
+
+        async def _stream() -> AsyncGenerator[str, None]:
+            try:
+                full_content = ""
+                stream = await AIAgent.request_ai_from_event_stream(conversation.events)
+                async for chunk in stream:
+                    full_content += chunk
+                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+
+                yield f"event: complete\ndata: {json.dumps({'content': full_content})}\n\n"
+            except Exception as e:
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+        return _stream()
 

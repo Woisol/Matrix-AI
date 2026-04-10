@@ -29,7 +29,7 @@ export class SSEService {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+
           if (data.chunk) {
             result.chunks.push(data.chunk);
             observer.next({ ...result });

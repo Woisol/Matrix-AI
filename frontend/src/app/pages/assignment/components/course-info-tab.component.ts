@@ -717,58 +717,12 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
       return;
     }
 
-    console.log('发送消息:', content);
     this.pushNewAgentEvent.emit({
       type: 'user_message',
       payload: { content },
     });
-
-    // mock response
-    this.pushNewAgentEvent.emit({
-      type: 'think',
-      payload: { content: '正在思考...' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'tool_call',
-      payload: { callId: this.nextCallId().toString(), toolName: 'read_editor', input: ['a.cpp'] },
-    })
-    this.pushNewAgentEvent.emit({
-      type: 'tool_result',
-      payload: { callId: (this.callIdCounter - 1).toString(), success: true, output: '文件内容：...\nint mian()' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'tool_call',
-      payload: { callId: this.nextCallId().toString(), toolName: 'write_editor', input: ['a.cpp'] },
-    })
-    this.pushNewAgentEvent.emit({
-      type: 'tool_result',
-      payload: { callId: (this.callIdCounter - 1).toString(), success: false, output: '文件写入失败。' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'assistant_final',
-      payload: { content: '这是我根据工具调用结果给出的最终回答。' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'think',
-      payload: { content: '这是一个新的思考块的开始。' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'think',
-      payload: { content: '这是同一个思考块的继续。' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'assistant_final',
-      payload: { content: '这是第二个回答，前面两个 think 事件应该合并成一个思考块。' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'tool_result',
-      payload: { callId: 'missing', success: true, output: '这是一个没有匹配 tool_call 的 tool_result，应该作为孤儿结果单独展示。' },
-    });
-    this.pushNewAgentEvent.emit({
-      type: 'turn_end',
-      payload: { reason: 'page_unload' },
-    })
-
+    this.userInput = '';
+    form.resetForm({ userInput: '' });
   }
 
   onKeyDown(event: KeyboardEvent, form: NgForm) {

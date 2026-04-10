@@ -86,17 +86,22 @@ class AI:
     # async def get_response_stream(cls, ) -> AsyncGenerator[str, None]:
         """获取AI流式响应（使用官方SDK的stream模式）"""
         try:
+            request_messages = cls.AIConfig.messages(messages) if isinstance(messages, str) else list(messages)
             stream = cls.client.chat.completions.create(
                 model=cls.AIConfig.MODEL,
-                messages=cls.AIConfig.messages(messages),
+                messages=request_messages,
                 max_tokens=cls.AIConfig.MAX_TOKENS,
                 temperature=cls.AIConfig.TEMPERATURE,
                 stream=True
             )
 
             for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+                if not getattr(chunk, "choices", None):
+                    continue
+                delta = getattr(chunk.choices[0], "delta", None)
+                content = getattr(delta, "content", None)
+                if content:
+                    yield content
         except Exception as e:
             logging.error(f"Stream error: {e}")
             raise

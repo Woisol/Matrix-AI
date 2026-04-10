@@ -1,5 +1,5 @@
 import { Injectable, inject, InjectionToken } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable, throwError, timeout, lastValueFrom, shareReplay } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -38,6 +38,9 @@ export interface RequestOptions {
   body?: any;                // verbFactory 统一处理
 }
 
+type RequestOptionsBody = RequestOptions & { observe?: 'body' };
+type RequestOptionsResponse = RequestOptions & { observe: 'response' };
+
 interface CacheEntry { exp: number; obs: Observable<any>; }
 
 @Injectable({ providedIn: 'root' })
@@ -49,23 +52,59 @@ export class ApiHttpService {
   private inflight = new Map<string, Observable<any>>();
 
   // ====== 公共方法（Observable 版） ======
-  get$<T>(url: string, opts?: RequestOptions) { return this.requestObs<T>('GET', url, opts); }
-  delete$<T>(url: string, opts?: RequestOptions) { return this.requestObs<T>('DELETE', url, opts); }
-  head$<T>(url: string, opts?: RequestOptions) { return this.requestObs<T>('HEAD', url, opts); }
-  post$<T>(url: string, body: any, opts?: RequestOptions) { return this.requestObs<T>('POST', url, { ...opts, body }); }
-  put$<T>(url: string, body: any, opts?: RequestOptions) { return this.requestObs<T>('PUT', url, { ...opts, body }); }
-  patch$<T>(url: string, body: any, opts?: RequestOptions) { return this.requestObs<T>('PATCH', url, { ...opts, body }); }
+  get$<T>(url: string, opts: RequestOptionsResponse): Observable<HttpResponse<T>>;
+  get$<T>(url: string, opts?: RequestOptionsBody): Observable<T>;
+  get$<T>(url: string, opts?: RequestOptionsBody | RequestOptionsResponse) { return this.requestObs<T>('GET', url, opts as any); }
+
+  delete$<T>(url: string, opts: RequestOptionsResponse): Observable<HttpResponse<T>>;
+  delete$<T>(url: string, opts?: RequestOptionsBody): Observable<T>;
+  delete$<T>(url: string, opts?: RequestOptionsBody | RequestOptionsResponse) { return this.requestObs<T>('DELETE', url, opts as any); }
+
+  head$<T>(url: string, opts: RequestOptionsResponse): Observable<HttpResponse<T>>;
+  head$<T>(url: string, opts?: RequestOptionsBody): Observable<T>;
+  head$<T>(url: string, opts?: RequestOptionsBody | RequestOptionsResponse) { return this.requestObs<T>('HEAD', url, opts as any); }
+
+  post$<T>(url: string, body: any, opts: RequestOptionsResponse): Observable<HttpResponse<T>>;
+  post$<T>(url: string, body: any, opts?: RequestOptionsBody): Observable<T>;
+  post$<T>(url: string, body: any, opts?: RequestOptionsBody | RequestOptionsResponse) { return this.requestObs<T>('POST', url, { ...(opts as any), body } as any); }
+
+  put$<T>(url: string, body: any, opts: RequestOptionsResponse): Observable<HttpResponse<T>>;
+  put$<T>(url: string, body: any, opts?: RequestOptionsBody): Observable<T>;
+  put$<T>(url: string, body: any, opts?: RequestOptionsBody | RequestOptionsResponse) { return this.requestObs<T>('PUT', url, { ...(opts as any), body } as any); }
+
+  patch$<T>(url: string, body: any, opts: RequestOptionsResponse): Observable<HttpResponse<T>>;
+  patch$<T>(url: string, body: any, opts?: RequestOptionsBody): Observable<T>;
+  patch$<T>(url: string, body: any, opts?: RequestOptionsBody | RequestOptionsResponse) { return this.requestObs<T>('PATCH', url, { ...(opts as any), body } as any); }
 
   // ====== 便捷 Promise 版 ======
-  get<T>(url: string, opts?: RequestOptions) { return lastValueFrom(this.get$<T>(url, opts)); }
-  delete<T>(url: string, opts?: RequestOptions) { return lastValueFrom(this.delete$<T>(url, opts)); }
-  head<T>(url: string, opts?: RequestOptions) { return lastValueFrom(this.head$<T>(url, opts)); }
-  post<T>(url: string, body: any, opts?: RequestOptions) { return lastValueFrom(this.post$<T>(url, body, opts)); }
-  put<T>(url: string, body: any, opts?: RequestOptions) { return lastValueFrom(this.put$<T>(url, body, opts)); }
-  patch<T>(url: string, body: any, opts?: RequestOptions) { return lastValueFrom(this.patch$<T>(url, body, opts)); }
+  get<T>(url: string, opts: RequestOptionsResponse): Promise<HttpResponse<T>>;
+  get<T>(url: string, opts?: RequestOptionsBody): Promise<T>;
+  get<T>(url: string, opts?: RequestOptionsBody | RequestOptionsResponse) { return lastValueFrom(this.get$<T>(url, opts as any)); }
+
+  delete<T>(url: string, opts: RequestOptionsResponse): Promise<HttpResponse<T>>;
+  delete<T>(url: string, opts?: RequestOptionsBody): Promise<T>;
+  delete<T>(url: string, opts?: RequestOptionsBody | RequestOptionsResponse) { return lastValueFrom(this.delete$<T>(url, opts as any)); }
+
+  head<T>(url: string, opts: RequestOptionsResponse): Promise<HttpResponse<T>>;
+  head<T>(url: string, opts?: RequestOptionsBody): Promise<T>;
+  head<T>(url: string, opts?: RequestOptionsBody | RequestOptionsResponse) { return lastValueFrom(this.head$<T>(url, opts as any)); }
+
+  post<T>(url: string, body: any, opts: RequestOptionsResponse): Promise<HttpResponse<T>>;
+  post<T>(url: string, body: any, opts?: RequestOptionsBody): Promise<T>;
+  post<T>(url: string, body: any, opts?: RequestOptionsBody | RequestOptionsResponse) { return lastValueFrom(this.post$<T>(url, body, opts as any)); }
+
+  put<T>(url: string, body: any, opts: RequestOptionsResponse): Promise<HttpResponse<T>>;
+  put<T>(url: string, body: any, opts?: RequestOptionsBody): Promise<T>;
+  put<T>(url: string, body: any, opts?: RequestOptionsBody | RequestOptionsResponse) { return lastValueFrom(this.put$<T>(url, body, opts as any)); }
+
+  patch<T>(url: string, body: any, opts: RequestOptionsResponse): Promise<HttpResponse<T>>;
+  patch<T>(url: string, body: any, opts?: RequestOptionsBody): Promise<T>;
+  patch<T>(url: string, body: any, opts?: RequestOptionsBody | RequestOptionsResponse) { return lastValueFrom(this.patch$<T>(url, body, opts as any)); }
 
   // ====== 核心请求实现 ======
-  private requestObs<T>(method: string, url: string, opts: RequestOptions = {}): Observable<T> {
+  private requestObs<T>(method: string, url: string, opts: RequestOptionsResponse): Observable<HttpResponse<T>>;
+  private requestObs<T>(method: string, url: string, opts?: RequestOptionsBody): Observable<T>;
+  private requestObs<T>(method: string, url: string, opts: RequestOptions = {}): Observable<T | HttpResponse<T>> {
     const {
       params,
       headers,

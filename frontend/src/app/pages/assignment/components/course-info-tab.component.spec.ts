@@ -77,18 +77,10 @@ describe('CourseInfoTabComponent', () => {
     component.userInput = '  帮我看下这段代码  ';
     component.onAgentSubmit({ resetForm: () => undefined } as unknown as NgForm);
 
-    expect(emitted.map((e) => e.type)).toEqual([
-      'user_message',
-      'think',
-      'tool_call',
-      'tool_result',
-      'assistant_final',
+    expect(emitted).toEqual([
+      { type: 'user_message', payload: { content: '帮我看下这段代码' } },
     ]);
-
-    const toolCall = emitted.find((e) => e.type === 'tool_call') as { payload: { callId: string } };
-    const toolResult = emitted.find((e) => e.type === 'tool_result') as { payload: { callId: string } };
-    expect(toolCall.payload.callId).toBe('0');
-    expect(toolResult.payload.callId).toBe('0');
+    expect(component.userInput).toBe('');
   });
 
   it('does not emit events when input is blank', () => {

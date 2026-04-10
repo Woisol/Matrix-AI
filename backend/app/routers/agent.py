@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Query
+from fastapi.responses import StreamingResponse
 
 from app.controller.agent import AIAgentController
 from app.schemas.agent import (
@@ -80,4 +81,24 @@ async def append_agent_events(
         user_id,
         request.expected_event_count,
         request.events,
+    )
+
+
+@agent_route.get("/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}/stream")
+async def stream_conversation(
+    course_id: str,
+    assign_id: str,
+    conversation_id: str,
+    user_id: str = Query("", alias="user_id"),
+):
+    """基于当前已持久化会话生成最小流式对话回复。"""
+    stream = await AIAgentController.stream_conversation(conversation_id, assign_id, user_id)
+    return StreamingResponse(
+        stream,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
