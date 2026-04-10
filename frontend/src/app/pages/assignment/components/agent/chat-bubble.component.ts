@@ -1,105 +1,359 @@
 import { Component, Input } from "@angular/core";
-import { MatrixAgentEvent, MatrixAgentEventUserMessage } from "../../../../api/type/agent";
+import {
+  MatrixAgentEvent,
+  MatrixAgentEventAssistantFinal,
+  MatrixAgentEventThink,
+  MatrixAgentEventToolCall,
+  MatrixAgentEventToolResult,
+  MatrixAgentEventTurnEnd,
+  MatrixAgentEventUserMessage,
+} from "../../../../api/type/agent";
 
-export type DisplayEvent = { type: 'user', events: MatrixAgentEventUserMessage[] } | { type: 'agent', events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[] };
-
+export type DisplayEvent =
+  | { type: 'user', events: MatrixAgentEventUserMessage[] }
+  | { type: 'agent', events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[] };
 
 @Component({
   selector: "agent-assistant-message",
   standalone: true,
   template: `
     <div class="chat-bubble agent">
-      @for(event of dEvent.events; track $index){
-        @switch (event.type){
-          @case ('think') {
-            <p class="bubble-body">{{ event.payload.content }}</p>
-          }
-          @case ('tool_call') {
-            <p class="bubble-body">{{ event.payload.toolName }}({{ event.payload.input.join(', ') }})</p>
-          }
-          @case ('tool_result') {
-            <p class="bubble-body">{{ event.payload.output }}</p>
-          }
-          @case ('assistant_final') {
-            <p class="bubble-body">{{ event.payload.content }}</p>
-          }
+      @for (event of dEvent.events; track $index) {
+        @if (event.type === 'think' && shouldRenderThinkBlock($index)) {
+            <details class="think-block animated-details">
+              <summary class="think-summary">think</summary>
+              <div class="think-content">
+                @for (content of getThinkContents($index); track $index) {
+                  <p>{{ content }}</p>
+                }
+              </div>
+            </details>
+        } @else if (event.type === 'tool_call') {
+            <section class="bubble-card tool-card">
+              <div class="tool-card-header">
+                <code class="tool-title"> {{event.payload.toolName}}({{ event.payload.input.join(', ') }})</code>
+                <span
+                  class="tool-status"
+                  [class.pending]="this.toolResultsByCallId.get(event.payload.callId) === null"
+                  [class.success]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === true"
+                  [class.error]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === false"
+                >
+                  {{ getToolStatusText(event.payload.callId) }}
+                </span>
+              </div>
+              @if (getToolResultOutput(event.payload.callId)) {
+                <pre class="tool-output">{{ getToolResultOutput(event.payload.callId) }}</pre>
+              }
+            </section>
+        } @else if (event.type === 'tool_result' && this.orphanToolResultIndexes.has($index)) {
+          <!-- 孤儿 tool_result 渲染 -->
+          <section class="bubble-card tool-card orphan-result">
+            <div class="tool-card-header">
+              <code class="tool-title">tool_result</code>
+              <span
+                class="tool-status"
+                [class.success]="event.payload.success"
+                [class.error]="!event.payload.success"
+              >
+                {{ event.payload.success ? '成功' : '失败' }}
+              </span>
+            </div>
+            @if (event.payload.output) {
+              <pre class="tool-output">{{ event.payload.output }}</pre>
+            }
+          </section>
+        } @else if (event.type === 'assistant_final') {
+          <p class="final">{{ event.payload.content }}</p>
+        } @else if (event.type === 'turn_end' ) {
+          <!-- && !hasAssistantFinal -->
+          <p class="bubble-body system-end">{{ turnEndReasonMap[event.payload.reason] }}</p>
         }
       }
     </div>
   `,
   styles: [`
-    `],
+    .chat-bubble.agent {
+      padding: 10px 12px;
+      border-radius: 14px 14px 14px 2px;
+      background: var(--color-bg);
+      color: var(--color-text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+      margin-right: auto;
+      border: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bubble-card {
+      padding: 8px 10px;
+      font-size: 14px;
+      border-radius: var(--size-radius-sm);
+      margin: 0;
+    }
+
+    .think-block {
+      color: var(--color-secondary);
+      display: list-item;
+      /*background: var(--color-surface);
+      border: 1px dashed var(--color-border);*/
+    }
+
+    .think-summary {
+      cursor: pointer;
+      user-select: none;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .think-summary {
+      list-style: none;
+    }
+
+    /*！ 好用！ */
+    .animated-details{
+      &>summary::before {
+        content: '>';
+        width: 16px;
+        height: 16px;
+        font-size: 14px;
+        line-height: 16px;
+        display: inline-block;
+        transform: rotate(0deg);
+        transform-origin: 25% 50%;
+        transition: transform 160ms ease;
+      }
+
+      &[open] >summary::before {
+        transform: rotate(90deg);
+      }
+    }
+
+    .think-content {
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .think-content p {
+      margin: 0;
+    }
+
+    .tool-card {
+      background: #eef4ff;
+      border: 1px solid #cdd9f8;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tool-card.orphan-result {
+      background: #fff5f5;
+      border-color: #f1b8b8;
+    }
+
+    .tool-card-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: nowrap;
+      gap: 12px;
+    }
+
+    .tool-title {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+      font-size: 13px;
+      color: #1f2937;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .tool-status {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .tool-status::after {
+      content: '';
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: currentColor;
+      flex: 0 0 auto;
+    }
+
+    .tool-status.pending {
+      color: #ad6800;
+    }
+
+    .tool-status.success {
+      color: #237804;
+    }
+
+    .tool-status.error {
+      color: #cf1322;
+    }
+
+    .tool-output {
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: var(--size-radius-sm);
+      background: rgba(255, 255, 255, 0.72);
+      color: #334155;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .final {
+      background: #ffffff;
+    }
+
+    .system-end {
+      color: var(--color-secondary);
+      border: 1px dashed #cbd5e1;
+      border-radius: var(--size-radius-sm);
+      font-size: 13px;
+      text-align: center;
+    }
+  `],
 })
 export class AgentAssistantMessageComponent {
-  @Input() dEvent!: DisplayEvent;
+  private _dEvent!: Extract<DisplayEvent, { type: 'agent' }>;
+  // 小关键，通过 callId 将 tool_result 事件合并回对应的 tool_call 卡片中，如果没有找到对应的 tool_call 则标记为孤儿结果，单独渲染在卡片外
+  // 设为非 private 来在组件中访问
+  toolResultsByCallId = new Map<string, MatrixAgentEventToolResult>();
+  orphanToolResultIndexes = new Set<number>();
+  hasAssistantFinal = false;
+
+  turnEndReasonMap: Record<MatrixAgentEventTurnEnd['payload']['reason'], string> = {
+    completed: '本轮对话已完成。',
+    aborted: '对话被用户终止',
+    page_unload: '对话由于标签页切换被终止',
+    max_turn_limit_reached: '由于超过单轮最大对话数被终止',
+    tool_retry_limit_reached: '由于工具调用失败次数过多被终止',
+    client_error: '由于客户端错误被终止',
+    server_error: '由于服务端错误被终止',
+  }
+
+  // 😨Input 还能设 get set
+  @Input()
+  set dEvent(value: Extract<DisplayEvent, { type: 'agent' }>) {
+    this._dEvent = value;
+    this.rebuildDerivedState(value?.events ?? []);
+  }
+
+  get dEvent(): Extract<DisplayEvent, { type: 'agent' }> {
+    return this._dEvent;
+  }
+
+  // 判断 think 事件是否连续，如果有则只在第一个 think 事件上渲染 think 块，后续的 think 事件内容会合并到同一个 think 块中
+  shouldRenderThinkBlock(index: number): boolean {
+    const event = this.dEvent.events[index];
+    if (event?.type !== 'think') return false;
+    return index === 0 || this.dEvent.events[index - 1]?.type !== 'think';
+  }
+
+  // 获取从 index 开始的连续合并 think 块
+  getThinkContents(index: number): string[] {
+    const contents: string[] = [];
+    for (let cursor = index; cursor < this.dEvent.events.length; cursor += 1) {
+      const currentEvent = this.dEvent.events[cursor];
+      if (currentEvent.type !== 'think') break;
+      contents.push(currentEvent.payload.content);
+    }
+    return contents;
+  }
+
+  //** tool 卡片工具函数
+  // getToolResultForCall(callId: string): MatrixAgentEventToolResult | null {
+  //   return this.toolResultsByCallId.get(callId) ?? null;
+  // }
+
+  getToolResultOutput(callId: string): string {
+    return this.toolResultsByCallId.get(callId)?.payload.output ?? '';
+  }
+
+  getToolStatusText(callId: string): string {
+    const result = this.toolResultsByCallId.get(callId);
+    if (!result) return '执行中';
+    return result.payload.success ? '成功' : '失败';
+  }
+
+  // 主要更新 tool 结果的映射 和 hasAssistantFinal
+  private rebuildDerivedState(events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[]): void {
+    this.toolResultsByCallId = new Map<string, MatrixAgentEventToolResult>();
+    this.orphanToolResultIndexes = new Set<number>();
+    this.hasAssistantFinal = events.some((event) => event.type === 'assistant_final');
+
+    const seenToolCallIds = new Set<string>();
+    events.forEach((event, index) => {
+      if (event.type === 'tool_call') {
+        seenToolCallIds.add(event.payload.callId);
+        return;
+      }
+
+      if (event.type !== 'tool_result') return;
+
+      if (seenToolCallIds.has(event.payload.callId) && !this.toolResultsByCallId.has(event.payload.callId)) {
+        this.toolResultsByCallId.set(event.payload.callId, event);
+        return;
+      }
+
+      this.orphanToolResultIndexes.add(index);
+    });
+  }
+
+
 }
+
 @Component({
   selector: "agent-chat-bubble",
   imports: [AgentAssistantMessageComponent],
   standalone: true,
   template: `
-    @if(dEvent.type === 'user'){
-      @for(event of dEvent.events; track $index){
-      <div class="chat-bubble user" >
-        <div class="bubble-body">{{ event.payload.content }}</div>
-      </div>
+    @if (dEvent.type === 'user') {
+      @for (event of dEvent.events; track $index) {
+        <div class="chat-bubble user">
+          <div class="bubble-body">{{ event.payload.content }}</div>
+        </div>
       }
-    }@else{
+    } @else {
       <agent-assistant-message [dEvent]="dEvent"></agent-assistant-message>
     }
   `,
   styles: [`
-      .chat-bubble{
-        max-width: min(80%, 680px);
-        padding: 10px 12px;
-        border-radius: 14px 14px 14px 4px;
-        background: #f7f8fa;
-        color: #262626;
-        white-space: pre-wrap;
-        word-break: break-word;
-        line-height: 1.6;
-        margin-right: auto;
-        border: 1px solid #ececec;
-      }
+    .chat-bubble.user {
+      padding: 10px 12px;
+      border-radius: 14px 14px 2px 14px;
+      background: var(--color-primary-light);
+      margin-left: auto;
+      color: var(--color-text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+      margin-right: 0;
+      border: 1px solid var(--color-border);
+    }
 
-      .chat-bubble.user{
-        max-width: min(80%, 640px);
-        border-radius: 14px 14px 4px 14px;
-        background: var(--color-primary-light);
-        margin-left: auto;
-        margin-right: 0;
-      }
-
-      .bubble-title{
-        margin-bottom: 4px;
-        font-size: 12px;
-        color: #8c8c8c;
-        font-weight: 600;
-      }
-
-      .bubble-body{
-        font-size: 14px;
-      }
-
-      .think{
-        background: #fafafa;
-        border-style: dashed;
-      }
-
-      .tool{
-        background: #f0f5ff;
-      }
-
-      .final{
-        background: #ffffff;
-      }
-
-      .end{
-        opacity: 0.85;
-      }
-    `],
+    .bubble-body {
+      font-size: 14px;
+    }
+  `],
 })
 export class AgentChatBubbleComponent {
   @Input() dEvent!: DisplayEvent;
-
 }

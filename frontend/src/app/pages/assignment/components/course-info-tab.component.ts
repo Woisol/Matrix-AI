@@ -428,7 +428,7 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
     display:flex;
     flex-direction:column;
     gap:12px;
-    padding: 12px 0;
+    padding: 12px 10px;
   }
 
   .chat-section .empty-content{
@@ -598,7 +598,26 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
       type: 'assistant_final',
       payload: { content: '这是我根据工具调用结果给出的最终回答。' },
     });
-
+    this.pushNewAgentEvent.emit({
+      type: 'think',
+      payload: { content: '这是一个新的思考块的开始。' },
+    });
+    this.pushNewAgentEvent.emit({
+      type: 'think',
+      payload: { content: '这是同一个思考块的继续。' },
+    });
+    this.pushNewAgentEvent.emit({
+      type: 'assistant_final',
+      payload: { content: '这是第二个回答，前面两个 think 事件应该合并成一个思考块。' },
+    });
+    this.pushNewAgentEvent.emit({
+      type: 'tool_result',
+      payload: { callId: 'missing', success: false, output: '这是一个没有匹配 tool_call 的 tool_result，应该作为孤儿结果单独展示。' },
+    });
+    this.pushNewAgentEvent.emit({
+      type: 'turn_end',
+      payload: { reason: 'page_unload' },
+    })
 
   }
 
