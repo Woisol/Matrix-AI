@@ -29,39 +29,43 @@ export type DisplayEvent =
               </div>
             </details>
         } @else if (event.type === 'tool_call') {
-            <section class="bubble-card tool-card">
-              <div class="tool-card-header">
-                <code class="tool-title"> {{event.payload.toolName}}({{ event.payload.input.join(', ') }})</code>
-                <span
-                  class="tool-status"
-                  [class.pending]="this.toolResultsByCallId.get(event.payload.callId) === null"
-                  [class.success]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === true"
-                  [class.error]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === false"
-                >
-                  {{ getToolStatusText(event.payload.callId) }}
-                </span>
-              </div>
-              @if (getToolResultOutput(event.payload.callId)) {
-                <pre class="tool-output">{{ getToolResultOutput(event.payload.callId) }}</pre>
-              }
-            </section>
+            <details class="bubble-card tool-card">
+              <summary class="tool-summary">
+                <div class="tool-card-header">
+                  <code class="tool-title"> {{event.payload.toolName}}({{ event.payload.input.join(', ') }})</code>
+                  <span
+                    class="tool-status"
+                    [class.pending]="this.toolResultsByCallId.get(event.payload.callId) === null"
+                    [class.success]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === true"
+                    [class.error]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === false"
+                  >
+                    {{ getToolStatusText(event.payload.callId) }}
+                  </span>
+                </div>
+                @if (getToolResultOutput(event.payload.callId)) {
+                  <pre class="tool-output">{{ getToolResultOutput(event.payload.callId) }}</pre>
+                }
+              </summary>
+            </details>
         } @else if (event.type === 'tool_result' && this.orphanToolResultIndexes.has($index)) {
           <!-- 孤儿 tool_result 渲染 -->
-          <section class="bubble-card tool-card orphan-result">
-            <div class="tool-card-header">
-              <code class="tool-title">tool_result</code>
-              <span
-                class="tool-status"
-                [class.success]="event.payload.success"
-                [class.error]="!event.payload.success"
-              >
-                {{ event.payload.success ? '成功' : '失败' }}
-              </span>
-            </div>
-            @if (event.payload.output) {
-              <pre class="tool-output">{{ event.payload.output }}</pre>
-            }
-          </section>
+          <details class="bubble-card tool-card orphan-result">
+            <summary class="tool-summary">
+              <div class="tool-card-header">
+                <code class="tool-title">tool_result<span style="color: #d08585;font-size:9px;">(tool_call missing)</span></code>
+                <span
+                  class="tool-status"
+                  [class.success]="event.payload.success"
+                  [class.error]="!event.payload.success"
+                >
+                  {{ event.payload.success ? '成功' : '失败' }}
+                </span>
+              </div>
+              @if (event.payload.output) {
+                <pre class="tool-output">{{ event.payload.output }}</pre>
+              }
+            </summary>
+          </details>
         } @else if (event.type === 'assistant_final') {
           <p class="final">{{ event.payload.content }}</p>
         } @else if (event.type === 'turn_end' ) {
@@ -107,9 +111,6 @@ export type DisplayEvent =
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 13px;
       color: #6b7280;
-    }
-
-    .think-summary {
       list-style: none;
     }
 
@@ -124,7 +125,7 @@ export type DisplayEvent =
         display: inline-block;
         transform: rotate(0deg);
         transform-origin: 25% 50%;
-        transition: transform 160ms ease;
+        transition: transform .2s ease;
       }
 
       &[open] >summary::before {
@@ -139,30 +140,53 @@ export type DisplayEvent =
       gap: 4px;
     }
 
-    .think-content p {
+    p {
       margin: 0;
     }
 
+    /* 害依然要重新定制另一份 animated-details……*/
+    .tool-card{
+      .tool-card-header::before {
+        content: '>';
+        width: 16px;
+        height: 16px;
+        font-size: 14px;
+        line-height: 16px;
+        display: inline-block;
+        transform: rotate(0deg);
+        /* 又要微调…… */
+        transform-origin: 30% 50%;
+        transition: transform .2s ease;
+      }
+
+      &[open] .tool-card-header::before {
+        transform: rotate(90deg);
+      }
+    }
+
     .tool-card {
-      background: #eef4ff;
-      border: 1px solid #cdd9f8;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
-    .tool-card.orphan-result {
-      background: #fff5f5;
-      border-color: #f1b8b8;
-    }
-
     .tool-card-header {
-      width: 100%;
-      display: flex;
+      /*width: 100%;*/
+      flex:1;
+      display: inline-flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: nowrap;
-      gap: 12px;
+    }
+
+    .tool-summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     .tool-title {
@@ -179,7 +203,7 @@ export type DisplayEvent =
       flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 2px;
       font-size: 12px;
       line-height: 1.4;
     }
@@ -193,12 +217,16 @@ export type DisplayEvent =
       flex: 0 0 auto;
     }
 
+    .tool-card.orphan-result {
+      border-color: #d08585;
+    }
+
     .tool-status.pending {
       color: #ad6800;
     }
 
     .tool-status.success {
-      color: #237804;
+      color: rgb(51, 117, 28);
     }
 
     .tool-status.error {
@@ -209,13 +237,19 @@ export type DisplayEvent =
       margin: 0;
       padding: 8px 10px;
       border-radius: var(--size-radius-sm);
-      background: rgba(255, 255, 255, 0.72);
+      background: var(--color-bg);
       color: #334155;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 12px;
       line-height: 1.5;
       white-space: pre-wrap;
-      word-break: break-word;
+      word-break: break-all;
+    }
+
+    .tool-card:not([open]) .tool-output {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .final {

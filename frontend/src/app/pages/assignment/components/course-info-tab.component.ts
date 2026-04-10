@@ -428,7 +428,21 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
     display:flex;
     flex-direction:column;
     gap:12px;
-    padding: 12px 10px;
+    padding: 12px 2px 12px 10px;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-secondary) var(--color-surface);
+    scrollbar-gutter: stable;
+
+    /*scrollbar-color: auto var(--color-surface);*/
+    /* 力竭了…… &::-webkit-scrollbar-button{
+      width: 0;
+      height: 0;
+      display: none;
+    }*/
+    /*&::-webkit-scrollbar-track{
+      background-color: var(--color-surface);
+    }*/
   }
 
   .chat-section .empty-content{
@@ -592,7 +606,15 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     })
     this.pushNewAgentEvent.emit({
       type: 'tool_result',
-      payload: { callId: (this.callIdCounter - 1).toString(), success: true, output: '文件内容：...\n' },
+      payload: { callId: (this.callIdCounter - 1).toString(), success: true, output: '文件内容：...\nint mian()' },
+    });
+    this.pushNewAgentEvent.emit({
+      type: 'tool_call',
+      payload: { callId: this.nextCallId().toString(), toolName: 'write_editor', input: ['a.cpp'] },
+    })
+    this.pushNewAgentEvent.emit({
+      type: 'tool_result',
+      payload: { callId: (this.callIdCounter - 1).toString(), success: false, output: '文件写入失败。' },
     });
     this.pushNewAgentEvent.emit({
       type: 'assistant_final',
@@ -612,7 +634,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     });
     this.pushNewAgentEvent.emit({
       type: 'tool_result',
-      payload: { callId: 'missing', success: false, output: '这是一个没有匹配 tool_call 的 tool_result，应该作为孤儿结果单独展示。' },
+      payload: { callId: 'missing', success: true, output: '这是一个没有匹配 tool_call 的 tool_result，应该作为孤儿结果单独展示。' },
     });
     this.pushNewAgentEvent.emit({
       type: 'turn_end',
