@@ -1,4 +1,5 @@
 import { inject, Injectable } from "@angular/core";
+import { HttpResponse } from "@angular/common/http";
 import { catchError, map, Observable, of, OperatorFunction } from "rxjs";
 
 import { AssignId, CourseId } from "../../api/type/general";
@@ -98,22 +99,24 @@ export class AgentService {
     );
   }
 
-  updateConversationTitle$(courseId: CourseId, assignId: AssignId, conversationId: string, userId: string | undefined, title: string): Observable<MatrixAgentOperationResponse | undefined> {
-    return this.api.patch$<MatrixAgentOperationResponse>(
+  updateConversationTitle$(courseId: CourseId, assignId: AssignId, conversationId: string, userId: string | undefined, title: string): Observable<number | undefined> {
+    return this.api.patch$<HttpResponse<unknown>>(
       `/courses/${courseId}/assignments/${assignId}/agent/conversations/${conversationId}/title`,
       { title },
-      this.buildUserParams(userId),
+      { ...this.buildUserParams(userId), observe: 'response' },
     ).pipe(
-      this.handleAgentError<MatrixAgentOperationResponse>('无法更新对话标题'),
+      map((response) => response.status),
+      this.handleAgentError<number>('无法更新对话标题'),
     );
   }
 
-  deleteConversation$(courseId: CourseId, assignId: AssignId, conversationId: string, userId?: string): Observable<MatrixAgentOperationResponse | undefined> {
-    return this.api.delete$<MatrixAgentOperationResponse>(
+  deleteConversation$(courseId: CourseId, assignId: AssignId, conversationId: string, userId?: string): Observable<number | undefined> {
+    return this.api.delete$<HttpResponse<unknown>>(
       `/courses/${courseId}/assignments/${assignId}/agent/conversations/${conversationId}`,
-      this.buildUserParams(userId),
+      { ...this.buildUserParams(userId), observe: 'response' },
     ).pipe(
-      this.handleAgentError<MatrixAgentOperationResponse>('无法删除对话'),
+      map((response) => response.status),
+      this.handleAgentError<number>('无法删除对话'),
     );
   }
 

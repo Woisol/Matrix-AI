@@ -11,7 +11,7 @@ import { NotificationService } from "../../services/notification/notification.se
 import * as monaco from "monaco-editor";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
-import { MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../api/type/agent";
+import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../api/type/agent";
 import { AgentService } from "../../services/assign/agent.service";
 
 @Component({
@@ -32,6 +32,8 @@ import { AgentService } from "../../services/assign/agent.service";
           (createNewConversation)="createAgentConversation()"
           (loadConversationInfo)="loadAgentConversationInfo($event)"
           (refreshConversationHistory)="loadAgentConversationsHistory()"
+          (patchConversationTitle)="updateConversationTitle($event.conversationId, $event.title)"
+          (deleteConversation)="deleteConversation($event)"
           (pushNewAgentEvent)="pushNewAgentEvent($event)"
 
           [selectedTabIndex]="selectedTabIndex"
@@ -85,13 +87,7 @@ export class AssignmentComponent implements OnDestroy {
 
   // ** agent 相关
   // TODO remove test data
-  currentConversationInfo = signal<MatrixAgentConversation | null>({
-    conversationId: 'test-conv-1',
-    title: '测试对话',
-    createdAt: new Date("2026-04-09T21:00:00Z").toISOString(),
-    updatedAt: new Date("2026-04-09T21:00:00Z").toISOString(),
-    events: []
-  });
+  currentConversationInfo = signal<MatrixAgentConversation | null>(null);
   conversationsHistory = signal<MatrixAgentConversationSummary[]>([]);
 
 
@@ -172,7 +168,8 @@ export class AssignmentComponent implements OnDestroy {
 
   loadAgentConversationsHistory() {
     if (!this.courseId || !this.assignId) return;
-    const sub = this.agentService.listConversations$(this.courseId, this.assignId).subscribe(conversations => {
+    // TODO 目前是写死了用户 ID，后续需要改成动态的
+    const sub = this.agentService.listConversations$(this.courseId, this.assignId, 'Matrix AI').subscribe(conversations => {
       if (!conversations) return;
       this.conversationsHistory.set(conversations);
     });
@@ -181,7 +178,7 @@ export class AssignmentComponent implements OnDestroy {
 
   createAgentConversation() {
     if (!this.courseId || !this.assignId) return;
-    const sub = this.agentService.createConversation$(this.courseId, this.assignId).subscribe(conversation => {
+    const sub = this.agentService.createConversation$(this.courseId, this.assignId, 'Matrix AI').subscribe(conversation => {
       if (!conversation) return;
       this.currentConversationInfo.set(conversation);
       this.loadAgentConversationsHistory();
@@ -191,10 +188,52 @@ export class AssignmentComponent implements OnDestroy {
 
   loadAgentConversationInfo(conversationId: string) {
     if (!this.courseId || !this.assignId) return;
-    const sub = this.agentService.getConversation$(this.courseId, this.assignId, conversationId).subscribe(conversation => {
+    const sub = this.agentService.getConversation$(this.courseId, this.assignId, conversationId, 'Matrix AI').subscribe(conversation => {
       if (!conversation) return;
       this.currentConversationInfo.set(conversation);
     });
+    this.subs.push(sub);
+  }
+
+  updateConversationTitle(conversationId: ConversationId, title: string) {
+    if (!this.courseId || !this.assignId) return;
+    const nextTitle = title.trim();
+    if (!nextTitle) return;
+
+    const sub = this.agentService
+      .updateConversationTitle$(this.courseId, this.assignId, conversationId, 'Matrix AI', nextTitle)
+      .subscribe((statusCode) => {
+        if (!statusCode || statusCode < 200 || statusCode >= 300) return;
+
+        this.conversationsHistory.update((items) =>
+          items.map((item) =>
+            item.conversationId === conversationId
+              ? { ...item, title: nextTitle, updatedAt: new Date().toISOString() }
+              : item,
+          ),
+        );
+
+        const current = this.currentConversationInfo();
+        if (current && current.conversationId === conversationId) {
+          this.currentConversationInfo.set({ ...current, title: nextTitle, updatedAt: new Date().toISOString() });
+        }
+      });
+    this.subs.push(sub);
+  }
+
+  deleteConversation(conversationId: ConversationId) {
+    if (!this.courseId || !this.assignId) return;
+    const sub = this.agentService
+      .deleteConversation$(this.courseId, this.assignId, conversationId, 'Matrix AI')
+      .subscribe((statusCode) => {
+        if (!statusCode || statusCode < 200 || statusCode >= 300) return;
+
+        this.conversationsHistory.update((items) => items.filter((item) => item.conversationId !== conversationId));
+
+        if (this.currentConversationInfo()?.conversationId === conversationId) {
+          this.currentConversationInfo.set(null);
+        }
+      });
     this.subs.push(sub);
   }
 

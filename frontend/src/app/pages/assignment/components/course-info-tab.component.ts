@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, Output, SimpleChanges, signal, WritableSignal, } from "@angular/core";
+import { Component, ElementRef, EventEmitter, Input, OnInit, OnChanges, Output, QueryList, SimpleChanges, signal, ViewChildren, WritableSignal, } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { NzTabsModule } from "ng-zorro-antd/tabs";
 import { Analysis, AssignData } from "../../../api/type/assigment";
@@ -152,10 +152,34 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
                 @for (conv of conversationHistory; track $index) {
                   <li
                     nz-menu-item
+                    class="history-conversation-item"
                     [class.is-active]="currentConversation?.conversationId === conv.conversationId"
-                    (click)="onConversationSelect(conv.conversationId)"
+                    (click)="onConversationItemClick(conv.conversationId)"
                   >
-                    {{conv.title}} ({{conv.updatedAt | date:'short'}})
+                    @if (editingConversationId === conv.conversationId) {
+                      <input
+                        #conversationTitleInput
+                        nz-input
+                        class="conversation-title-input"
+                        [(ngModel)]="editingTitleDraft"
+                        [name]="'conversationTitle-' + conv.conversationId"
+                        (click)="$event.stopPropagation()"
+                        (keydown.enter)="submitConversationTitleEdit(conv.conversationId, $event)"
+                        (keydown.escape)="cancelConversationTitleEdit($event)"
+                        (blur)="submitConversationTitleEdit(conv.conversationId)"
+                      />
+                    } @else {
+                      <span class="conversation-title">{{conv.title}} <span>{{conv.updatedAt | date:'yy-MM-dd HH:mm'}}</span></span>
+                    }
+                  <span class="conversation-actions">
+                    <button class="secondary" type="button" (click)="startConversationTitleEdit(conv, $event)">
+                      <span nz-icon nzType="edit" nzTheme="outline"></span>
+                    </button>
+                    <button class="secondary" type="button" (click)="requestDeleteConversation(conv.conversationId, $event)">
+                      <span nz-icon nzType="delete" nzTheme="outline"></span>
+                    </button>
+                  </span>
+
                   </li>
                 }
                 <li
@@ -405,15 +429,70 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
     }
   }
 
-  :host ::ng-deep .history-dropdown-overlay .history-dropdown-menu{
+  /* 正常的 class 反而不能用 :host ::ng-deep */
+  .history-dropdown-menu{
     max-height: 100%;
     min-width: 200px;
     overflow: auto;
   }
 
-  :host ::ng-deep .history-dropdown-overlay .history-dropdown-menu .is-active{
-    color: var(--color-primary);
-    background: var(--color-primary-light);
+  .history-conversation-item{
+    min-width: 0;
+
+    &.is-active{
+      background: var(--color-primary-light-xl);
+    }
+  }
+
+  .conversation-title{
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    &>span{
+      font-size: 12px;
+      color: var(--color-secondary);
+    }
+  }
+
+  .conversation-title-input{
+    flex: 1 1 0;
+    width: 0;
+    max-width: 100%;
+    min-width: 0;
+    height: 24px;
+    padding: 0 6px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  ::ng-deep .history-dropdown-menu .ant-menu-title-content{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .conversation-actions{
+    padding: 4px;
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: auto;
+    flex: 0 0 auto;
+    >button{
+      padding: 2px 6px;
+      font-size: 12px;
+      color: var(--color-secondary);
+      border: none;
+      border-radius: 999px;
+      box-shadow: none;
+    }
+
   }
 
   .new-conversation-trigger{
@@ -495,6 +574,9 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
   // styleUrl
 })
 export class CourseInfoTabComponent implements OnInit, OnChanges {
+  @ViewChildren('conversationTitleInput')
+  conversationTitleInputs!: QueryList<ElementRef<HTMLInputElement>>;
+
   @Input() assignData!: AssignData | undefined;
   @Input() analysis!: Analysis | undefined;
   @Input() handleAnalysisRegen = () => { };
@@ -504,6 +586,8 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Output() createNewConversation = new EventEmitter<void>();
   @Output() loadConversationInfo = new EventEmitter<ConversationId>();
   @Output() refreshConversationHistory = new EventEmitter<void>();
+  @Output() patchConversationTitle = new EventEmitter<{ conversationId: ConversationId, title: string }>();
+  @Output() deleteConversation = new EventEmitter<ConversationId>();
   // @Input() pushNewAgentEvent = (event: MatrixAgentEvent) => { };
   @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEvent>();
   // @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEventUserMessage>();
@@ -517,6 +601,8 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! <= new Date());
 
   userInput = '';
+  editingConversationId: ConversationId | null = null;
+  editingTitleDraft = '';
   // callIdCounter = (() => { for (let i = 0; ; i++) { yield `${this.currentConversation?.conversationId}-${i}` } })();
   callIdCounter = 0;
   nextCallId() {
@@ -546,8 +632,50 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     return content != null && typeof content === 'string' && content.trim().length > 0;
   }
 
-  onConversationSelect(conversationId: ConversationId) {
-    this.loadConversationInfo.emit(conversationId);
+  onConversationItemClick(conversationId: ConversationId) {
+    if (this.editingConversationId) return;
+    this.loadConversationInfo.emit(conversationId);;
+  }
+
+  startConversationTitleEdit(conversation: MatrixAgentConversationSummary, event: MouseEvent) {
+    event.stopPropagation();
+    this.editingConversationId = conversation.conversationId;
+    this.editingTitleDraft = conversation.title;
+
+    // 渲染后手动聚焦
+    setTimeout(() => {
+      const input = this.conversationTitleInputs?.first?.nativeElement;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 0);
+  }
+
+  cancelConversationTitleEdit(event?: Event) {
+    event?.stopPropagation();
+    this.editingConversationId = null;
+    this.editingTitleDraft = '';
+  }
+
+  submitConversationTitleEdit(conversationId: ConversationId, event?: Event) {
+    event?.stopPropagation();
+    if (this.editingConversationId !== conversationId) return;
+
+    const nextTitle = this.editingTitleDraft.trim();
+    const currentTitle = this.conversationHistory.find((item) => item.conversationId === conversationId)?.title ?? '';
+
+    if (!nextTitle || nextTitle === currentTitle) {
+      this.cancelConversationTitleEdit();
+      return;
+    }
+
+    this.patchConversationTitle.emit({ conversationId, title: nextTitle });
+    this.cancelConversationTitleEdit();
+  }
+
+  requestDeleteConversation(conversationId: ConversationId, event: MouseEvent) {
+    event.stopPropagation();
+    this.deleteConversation.emit(conversationId);
   }
 
   private _splitEventsForDisplay(events: MatrixAgentEvent[]): DisplayEvent[] {

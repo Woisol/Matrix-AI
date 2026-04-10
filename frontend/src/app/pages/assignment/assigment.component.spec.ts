@@ -11,6 +11,7 @@ import { AssignService } from '../../services/assign/assign.service';
 import { NotificationService } from '../../services/notification/notification.service';
 import { Analysis, AssignData, CodeFileInfo } from '../../api/type/assigment';
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from './components/matrix-analyse.utils';
+import { MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from '../../api/type/agent';
 
 @Component({
   selector: 'course-info-tab',
@@ -20,9 +21,17 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from './componen
 class MockCourseInfoTabComponent {
   @Input() assignData: AssignData | undefined;
   @Input() analysis: Analysis | undefined;
-  @Input() handleAnalysisRegen = () => {};
-  @Input() onAnalysisAiGenRequest = (_notify = false) => {};
+  @Input() handleAnalysisRegen = () => { };
+  @Input() onAnalysisAiGenRequest = (_notify = false) => { };
+  @Input() conversationHistory: MatrixAgentConversationSummary[] = [];
+  @Input() currentConversation: MatrixAgentConversation | null = null;
   @Input() selectedTabIndex = signal(0);
+  @Output() createNewConversation = new EventEmitter<void>();
+  @Output() loadConversationInfo = new EventEmitter<string>();
+  @Output() refreshConversationHistory = new EventEmitter<void>();
+  @Output() patchConversationTitle = new EventEmitter<{ conversationId: string; title: string }>();
+  @Output() deleteConversation = new EventEmitter<string>();
+  @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEvent>();
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
 }
@@ -34,7 +43,7 @@ class MockCourseInfoTabComponent {
 })
 class MockCodeEditorComponent {
   @Input() codeFile: CodeFileInfo = { fileName: '', content: '' };
-  @Input() onSubmitRequest: () => void = () => {};
+  @Input() onSubmitRequest: () => void = () => { };
   @Output() editorReady = new EventEmitter<monaco.editor.IStandaloneCodeEditor>();
 }
 

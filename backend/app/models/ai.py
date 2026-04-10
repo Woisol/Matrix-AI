@@ -48,7 +48,7 @@ class AI:
 
     class AIConfig:
         """AI配置类"""
-        MODEL = "qwen3-max"
+        MODEL = os.getenv("OPENAI_MODEL", "qwen3-max")
         MAX_TOKENS = 1000
         TEMPERATURE = 0.7
 
@@ -88,7 +88,7 @@ class AI:
         try:
             stream = cls.client.chat.completions.create(
                 model=cls.AIConfig.MODEL,
-                messages=cls.AIConfig.messages(messages) if isinstance(messages, str) else messages,
+                messages=cls.AIConfig.messages(messages),
                 max_tokens=cls.AIConfig.MAX_TOKENS,
                 temperature=cls.AIConfig.TEMPERATURE,
                 stream=True
@@ -545,7 +545,7 @@ class AIAnalysisGenerator:
 
             full_content = ""
             async for chunk in AI.get_response_stream(
-                prompt=AIPrompt.RESOLUTION(
+                messages=AIPrompt.RESOLUTION(
                     assign_data.title,
                     assign_data.description,
                     assign_data.assignOriginalCode[0].content
@@ -603,7 +603,7 @@ class AIAnalysisGenerator:
 
             full_content = ""
             async for chunk in AI.get_response_stream(
-                prompt=AIPrompt.KNOWLEDGEANALYSIS(
+                messages=AIPrompt.KNOWLEDGEANALYSIS(
                     assign_data.title,
                     assign_data.description,
                     assign_data.assignOriginalCode[0].content
@@ -659,7 +659,7 @@ class AIAnalysisGenerator:
 
             full_content = ""
             async for chunk in AI.get_response_stream(
-                prompt=AIPrompt.CODEANALYSIS(
+                messages=AIPrompt.CODEANALYSIS(
                     assign_data.title,
                     assign_data.description,
                     submitted_code,
@@ -716,7 +716,7 @@ class AIAnalysisGenerator:
 
             full_content = ""
             async for chunk in AI.get_response_stream(
-                prompt=AIPrompt.LEARNING_SUGGESTIONS(
+                messages=AIPrompt.LEARNING_SUGGESTIONS(
                     assign_data.title,
                     assign_data.description,
                     submitted_code,

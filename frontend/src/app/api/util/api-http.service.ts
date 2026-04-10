@@ -34,7 +34,7 @@ export interface RequestOptions {
   responseType?: 'json' | 'text' | 'blob';
   dedupeKey?: string;        // 简单去重 key（同 key 同时多次调用复用一个请求）
   cacheTTL?: number;         // 缓存毫秒 (与 dedupeKey 或自动签名一起使用)
-  observe?: 'body';          // 预留扩展
+  observe?: 'body' | 'response';
   body?: any;                // verbFactory 统一处理
 }
 
@@ -71,6 +71,7 @@ export class ApiHttpService {
       headers,
       timeoutMs = this.cfg.defaultTimeout,
       responseType = 'json',
+      observe = 'body',
       dedupeKey,
       cacheTTL,
       body
@@ -96,7 +97,7 @@ export class ApiHttpService {
 
     const obs = this.http.request<T>(method, fullUrl, {
       body,
-      observe: 'body',
+      observe: observe as any,
       responseType: responseType as any,
       headers: new HttpHeaders(headers || {}),
       params: httpParams
