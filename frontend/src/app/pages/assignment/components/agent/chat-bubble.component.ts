@@ -8,6 +8,7 @@ import {
   MatrixAgentEventTurnEnd,
   MatrixAgentEventUserMessage,
 } from "../../../../api/type/agent";
+import { MarkdownModule } from "ngx-markdown";
 
 export type DisplayEvent =
   | { type: 'user', events: MatrixAgentEventUserMessage[] }
@@ -16,6 +17,7 @@ export type DisplayEvent =
 @Component({
   selector: "agent-assistant-message",
   standalone: true,
+  imports: [MarkdownModule],
   template: `
     <div class="chat-bubble agent">
       @for (event of dEvent.events; track $index) {
@@ -24,7 +26,7 @@ export type DisplayEvent =
               <summary class="think-summary">think</summary>
               <div class="think-content">
                 @for (content of getThinkContents($index); track $index) {
-                  <p>{{ content }}</p>
+                  <markdown class="markdown-patched" [data]="content"></markdown>
                 }
               </div>
             </details>
@@ -67,7 +69,7 @@ export type DisplayEvent =
             </summary>
           </details>
         } @else if (event.type === 'assistant_final') {
-          <p class="final">{{ event.payload.content }}</p>
+          <markdown class="markdown-patched final" [data]="event.payload.content"></markdown>
         } @else if (event.type === 'turn_end' ) {
           <!-- && !hasAssistantFinal -->
           <p class="bubble-body system-end">{{ turnEndReasonMap[event.payload.reason] }}</p>
