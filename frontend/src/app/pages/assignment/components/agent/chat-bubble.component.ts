@@ -244,7 +244,7 @@ export type DisplayEvent =
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 12px;
       line-height: 1.5;
-      white-space: pre-wrap;
+      white-space: pre;
       word-break: break-all;
     }
 
