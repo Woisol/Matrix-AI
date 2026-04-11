@@ -513,6 +513,20 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
     scrollbar-color: var(--color-secondary) var(--color-surface);
     scrollbar-gutter: stable;
 
+    user-select: text;
+    -webkit-user-select: text;
+
+    & *{
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    /* 子组件内部模板内容需要穿透样式作用域 */
+    ::ng-deep * {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
     /*scrollbar-color: auto var(--color-surface);*/
     /* 力竭了…… &::-webkit-scrollbar-button{
       width: 0;

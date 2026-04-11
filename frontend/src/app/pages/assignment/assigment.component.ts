@@ -12,7 +12,8 @@ import * as monaco from "monaco-editor";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
 import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../api/type/agent";
-import { AgentService } from "../../services/assign/agent.service";
+import { AgentService } from "../../services/assign/agent/agent.service";
+import { AgentLoopService } from "../../services/assign/agent/agent-loop.service";
 
 @Component({
   selector: "app-assignment",
@@ -74,6 +75,7 @@ export class AssignmentComponent implements OnDestroy {
   private route: ActivatedRoute = inject(ActivatedRoute);
   private assignService = inject(AssignService);
   private agentService = inject(AgentService)
+  private agentLoopService = inject(AgentLoopService)
 
   courseId: CourseId | undefined;
   assignId: AssignId | undefined;
@@ -237,139 +239,42 @@ export class AssignmentComponent implements OnDestroy {
     this.subs.push(sub);
   }
 
-  // 单纯的本地 append 事件
-  private appendEventsToCurrentConversation(events: MatrixAgentEvent[]) {
-    const current = this.currentConversationInfo();
-    if (!current) return;
-
-    const nextConversation: MatrixAgentConversation = {
-      ...current,
-      updatedAt: new Date().toISOString(),
-      events: [...current.events, ...events],
-    }
-    this.currentConversationInfo.set(nextConversation);
-  }
-
-  // 专门 append AssitantFinal，保证只有一个
-  private upsertStreamingAssistantFinal(content: string) {
-    const current = this.currentConversationInfo();
-    if (!current) return;
-
-    const nextEvents = [...current.events];
-    const lastEvent = nextEvents.at(-1);
-    const nextAssistantFinal: MatrixAgentEvent = {
-      type: 'assistant_final',
-      payload: { content },
-    };
-
-    if (lastEvent?.type === 'assistant_final') {
-      nextEvents[nextEvents.length - 1] = nextAssistantFinal;
-    } else {
-      nextEvents.push(nextAssistantFinal);
-    }
-
-    const nextConversation: MatrixAgentConversation = {
-      ...current,
-      updatedAt: new Date().toISOString(),
-      events: nextEvents,
-    };
-    this.currentConversationInfo.set(nextConversation);
-  }
-
   // 核心事件
   pushNewAgentEvent(event: MatrixAgentEvent) {
-    if (!this.courseId || !this.assignId) return;
-
     const currentConversation = this.currentConversationInfo();
-    if (!currentConversation) {
+    if (!this.courseId || !this.assignId || !currentConversation) {
       this.notify.error("没有进行中的对话");
       return;
     }
+    if (event.type !== 'user_message') {
+      return;
+    }
 
-    const expectedEventCount = currentConversation.events.length;
-    this.appendEventsToCurrentConversation([event]);
-
-    const appendSub = this.agentService.appendEvents$(this.courseId, this.assignId, this._agentUserId, {
-      conversationId: currentConversation.conversationId,
-      expectedEventCount,
-      events: [event],
-    }).subscribe((statusCode) => {
-      if (!statusCode || statusCode < 200 || statusCode >= 300) {
-        this.currentConversationInfo.set(currentConversation);
-        return;
-      }
-
-      if (event.type !== 'user_message') {
-        return;
-      }
-
-      let streamedContent = '';
-      const persistedEventCountAfterUserMessage = expectedEventCount + 1;
-
-      const streamSub = this.agentService
-        .streamConversation$(this.courseId!, this.assignId!, currentConversation.conversationId, this._agentUserId)
-        .subscribe({
-          next: (content) => {
-            streamedContent = content;
-            this.upsertStreamingAssistantFinal(content);
-          },
-          error: () => {
-            // 流式过程中发生错误（如网络中断），也把已经流式得到的内容以 final 形式保留下来，并追加一个 turn_end 事件
-            const trailingEvents: MatrixAgentEvent[] = streamedContent
-              ? [
-                { type: 'assistant_final', payload: { content: streamedContent } },
-                { type: 'turn_end', payload: { reason: 'server_error' } },
-              ]
-              : [
-                { type: 'turn_end', payload: { reason: 'server_error' } },
-              ];
-            const currentEvents = this.currentConversationInfo()?.events ?? [];
-            const withoutStreamingFinal = currentEvents.at(-1)?.type === 'assistant_final'
-              ? currentEvents.slice(0, -1)
-              : currentEvents;
-
-            this.currentConversationInfo.set({
-              ...(this.currentConversationInfo() ?? currentConversation),
-              updatedAt: new Date().toISOString(),
-              events: [...withoutStreamingFinal, ...trailingEvents],
-            });
-            // 持久化
-            this.agentService.appendEvents$(this.courseId!, this.assignId!, this._agentUserId, {
-              conversationId: currentConversation.conversationId,
-              expectedEventCount: persistedEventCountAfterUserMessage,
-              events: trailingEvents,
-            }).subscribe();
-          },
-          complete: () => {
-            // 正常完成
-            const finalEvents: MatrixAgentEvent[] = [
-              { type: 'assistant_final', payload: { content: streamedContent } },
-              { type: 'turn_end', payload: { reason: 'completed' } },
-            ];
-
-            const currentEvents = this.currentConversationInfo()?.events ?? [];
-            const withoutStreamingFinal = currentEvents.at(-1)?.type === 'assistant_final'
-              ? currentEvents.slice(0, -1)
-              : currentEvents;
-
-            this.currentConversationInfo.set({
-              ...(this.currentConversationInfo() ?? currentConversation),
-              updatedAt: new Date().toISOString(),
-              events: [...withoutStreamingFinal, ...finalEvents],
-            });
-
-            this.agentService.appendEvents$(this.courseId!, this.assignId!, this._agentUserId, {
-              conversationId: currentConversation.conversationId,
-              expectedEventCount: persistedEventCountAfterUserMessage,
-              events: finalEvents,
-            }).subscribe();
-          },
-        });
-
-      this.subs.push(streamSub);
+    void this.agentLoopService.runUserTurn({
+      courseId: this.courseId,
+      assignId: this.assignId,
+      userId: this._agentUserId,
+      userMessageContent: event.payload.content,
+      getConversation: () => this.currentConversationInfo(),
+      setConversation: (conversation) => this.currentConversationInfo.set(conversation),
+      assignData: this.assignData(),
+      analysis: this.analysis(),
+      getEditorContent: (): string => this.codeEditor?.getModel()?.getValue()
+        ?? this.codeFile().content
+        ?? '',
+      getSelectionContent: (): string | null => {
+        const editor = this.codeEditor;
+        const model = editor?.getModel();
+        const selection = editor?.getSelection();
+        if (!editor || !model || !selection || selection.isEmpty()) {
+          return null;
+        }
+        return model.getValueInRange(selection);
+      },
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.notify.error(`Agent loop 运行失败: ${message}`);
     });
-
-    this.subs.push(appendSub);
   }
 
 

@@ -16,7 +16,7 @@ export type MatrixAgentConversation = MatrixAgentConversationSummary & {
 // export type MatrixAgentEventThink = Extract<MatrixAgentEvent, { type: 'think' }>
 // export type MatrixAgentEventToolCall = Extract<MatrixAgentEvent, { type: 'tool_call' }>
 // export type MatrixAgentEventToolResult = Extract<MatrixAgentEvent, { type: 'tool_result' }>
-// export type MatrixAgentEventAssistantFinal = Extract<MatrixAgentEvent, { type: 'assistant_final' }>
+// export type MatrixAgentEventFinal = Extract<MatrixAgentEvent, { type: 'final' }>
 // export type MatrixAgentEventTurnEnd = Extract<MatrixAgentEvent, { type: 'turn_end' }>
 
 export type MatrixAgentEventUserMessage = {
@@ -47,8 +47,8 @@ export type MatrixAgentEventToolResult = {
     output: string
   }
 }
-export type MatrixAgentEventAssistantFinal = {
-  type: 'assistant_final'
+export type MatrixAgentEventFinal = {
+  type: 'final'
   payload: {
     content: string
   }
@@ -65,6 +65,7 @@ export type MatrixAgentEventTurnEnd = {
   type: 'turn_end'
   payload: {
     reason: MatrixAgentEventTurnEndReason
+    detail?: string
   }
 }
 export type MatrixAgentEvent =
@@ -72,7 +73,7 @@ export type MatrixAgentEvent =
   | MatrixAgentEventThink
   | MatrixAgentEventToolCall
   | MatrixAgentEventToolResult
-  | MatrixAgentEventAssistantFinal
+  | MatrixAgentEventFinal
   | MatrixAgentEventTurnEnd
 
 export type MatrixAgentAppendEventsRequest = {

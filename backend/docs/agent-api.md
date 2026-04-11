@@ -4,10 +4,11 @@
 
 ## 约定
 
-1. 当前接口中的 `user_id` 仍然通过 query 参数传入，属于临时联调方案。
-2. 后续如果接入鉴权，推荐使用 FastAPI `Depends()` 从认证上下文中注入当前用户，而不是继续由前端显式传 `user_id`。
+1. 当前大部分接口通过请求头传入 `user_id`。
+2. `GET /agent/conversations/{conversation_id}/stream` 为了兼容浏览器 `EventSource`，仍然通过 query 参数传 `user_id`。
 3. 会话事件采用 append-only 模式持久化。
 4. `POST /agent/event` 虽然路径是单数 `event`，但请求体里传的是 `MatrixAgentEvent[]`，因为它表达的是“一次追加动作中的一批事件”。
+5. `POST /agent/stream` 不持久化任何会话数据，只代理模型流式输出，供前端 loop 使用。
 
 ## 数据结构
 
@@ -15,8 +16,17 @@
 
 ```json
 {
-  "type": "user_message | think | tool_call | tool_result | assistant_final | turn_end",
+  "type": "user_message | think | tool_call | tool_result | final | turn_end",
   "payload": {}
+}
+```
+
+### TurnEnd payload
+
+```json
+{
+  "reason": "completed | aborted | page_unload | max_turn_limit_reached | tool_retry_limit_reached | client_error | server_error",
+  "detail": "可选的补充说明"
 }
 ```
 
@@ -54,16 +64,12 @@
 
 - 方法：`POST`
 - 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations`
-- Query：
+- Header：
   - `user_id: string`
 
 ### 请求体
 
 无。
-
-### 返回
-
-返回完整会话对象，初始标题为 `新的对话`，事件列表为空。
 
 ### 返回示例
 
@@ -81,12 +87,8 @@
 
 - 方法：`GET`
 - 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations`
-- Query：
+- Header：
   - `user_id: string`
-
-### 返回
-
-返回当前用户在指定作业下的未删除会话列表，按 `updated_at` 倒序排列。
 
 ### 返回示例
 
@@ -97,12 +99,6 @@
     "title": "修复 main.cpp 边界问题",
     "created_at": "2026-04-08T12:00:00Z",
     "updated_at": "2026-04-08T12:05:00Z"
-  },
-  {
-    "conversation_id": "6f5a7325-7a1d-49e9-a20f-2662490dc5d1",
-    "title": "新的对话",
-    "created_at": "2026-04-08T11:00:00Z",
-    "updated_at": "2026-04-08T11:00:00Z"
   }
 ]
 ```
@@ -111,12 +107,8 @@
 
 - 方法：`GET`
 - 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}`
-- Query：
+- Header：
   - `user_id: string`
-
-### 返回
-
-返回完整会话对象及其 `events`。
 
 ### 返回示例
 
@@ -151,6 +143,12 @@
         "success": true,
         "output": "int main() {}"
       }
+    },
+    {
+      "type": "final",
+      "payload": {
+        "content": "这里是最终回答"
+      }
     }
   ]
 }
@@ -160,7 +158,7 @@
 
 - 方法：`PATCH`
 - 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}/title`
-- Query：
+- Header：
   - `user_id: string`
 
 ### 请求体
@@ -171,28 +169,20 @@
 }
 ```
 
-### 返回
+### 成功返回
 
-```json
-{
-  "message": "对话标题已更新"
-}
-```
+状态码 `200`，无响应体约束。
 
 ## 5. 删除会话
 
 - 方法：`DELETE`
 - 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}`
-- Query：
+- Header：
   - `user_id: string`
 
-### 返回
+### 成功返回
 
-```json
-{
-  "message": "对话记录已删除"
-}
-```
+状态码 `200`，无响应体约束。
 
 说明：
 
@@ -203,7 +193,7 @@
 
 - 方法：`POST`
 - 路径：`/courses/{course_id}/assignments/{assign_id}/agent/event`
-- Query：
+- Header：
   - `user_id: string`
 
 ### 请求体
@@ -233,16 +223,6 @@
 }
 ```
 
-### 字段说明
-
-- `conversation_id`
-  - 要追加事件的会话 ID。
-- `expected_event_count`
-  - 前端认为当前会话中已经持久化的事件数量。
-  - 后端会在追加前检查当前数据库中的事件数是否一致。
-- `events`
-  - 本次要顺序追加的一批事件。
-
 ### 为什么这里是 `MatrixAgentEvent[]`
 
 因为前端不会逐 token 持久化，而是按语义阶段提交一小批事件，例如：
@@ -251,17 +231,13 @@
 2. `[think]`
 3. `[tool_call]`
 4. `[tool_result]`
-5. `[assistant_final, turn_end]`
+5. `[final, turn_end]`
 
 因此这个接口表达的是“一次 append 动作”，而不是“单条 event 上传”。
 
 ### 成功返回
 
-```json
-{
-  "message": "事件追加成功"
-}
-```
+状态码 `200`，无响应体约束。
 
 ### 冲突返回
 
@@ -274,6 +250,73 @@
   "detail": "expected_event_count mismatch: expected 2, got 4"
 }
 ```
+
+## 7. 会话流式对话
+
+- 方法：`GET`
+- 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}/stream`
+- Query：
+  - `user_id: string`
+
+### 说明
+
+1. 该接口基于当前会话已经持久化的 `events` 生成一轮最小的流式对话回复。
+2. 当前实现仅负责“对话式流式回答”，不包含完整 agent loop。
+3. 前端应在用户消息 append 成功后，再调用该接口拉取流式文本。
+
+### 返回
+
+返回 `text/event-stream`。
+
+### 事件格式
+
+```text
+data: {"chunk":"你"}
+
+data: {"chunk":"好"}
+
+event: complete
+data: {"content":"你好"}
+```
+
+## 8. 模型消息流式代理
+
+- 方法：`POST`
+- 路径：`/courses/{course_id}/assignments/{assign_id}/agent/stream`
+- Header：
+  - `user_id: string`
+
+### 请求体
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are Matrix Agent..."
+    },
+    {
+      "role": "user",
+      "content": "请读取当前代码"
+    }
+  ]
+}
+```
+
+### 说明
+
+1. 该接口不持久化任何会话数据。
+2. 该接口用于前端 agent loop 自主构建 messages 后发起流式模型请求。
+3. 允许的 `role`：
+   - `system`
+   - `user`
+   - `assistant`
+   - `tool`
+4. `tool_call_id` 仅在 `role = tool` 时按需携带。
+
+### 返回
+
+返回 `text/plain` 分块流。
 
 ## 错误码约定
 
@@ -298,50 +341,10 @@
 1. 后端保存事件失败。
 2. 其他未处理异常。
 
-## 7. 会话流式对话
-
-- 方法：`GET`
-- 路径：`/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}/stream`
-- Query：
-  - `user_id: string`
-
-### 说明
-
-1. 该接口基于当前会话已经持久化的 `events` 生成一轮最小的流式对话回复。
-2. 当前实现仅负责“对话式流式回答”，不包含完整 agent loop。
-3. 前端应在用户消息 append 成功后，再调用该接口拉取流式文本。
-
-### 返回
-
-返回 `text/event-stream`。
-
-### 事件格式
-
-#### 普通文本分片
-
-```text
-data: {"chunk":"你"}
-
-data: {"chunk":"好"}
-```
-
-#### 完成事件
-
-```text
-event: complete
-data: {"content":"你好"}
-```
-
-#### 错误事件
-
-```text
-event: error
-data: {"error":"具体错误信息"}
-```
-
 ## 当前实现边界
 
-1. 当前后端 `append /event` 只负责持久化事件，不负责在后端执行 agent loop。
-2. 原始模型流到 `MatrixAgentEvent` 的转换仍应由前端 runtime 负责。
+1. 当前后端 `append /event` 只负责持久化事件，不负责在后端执行完整 agent loop。
+2. 原始模型流到 `MatrixAgentEvent` 的转换由前端 runtime 负责。
 3. 后端存储的是已经转换好的业务事件流，而不是原始模型协议数据。
-4. `conversation stream` 只负责根据已持久化事件生成流式自然语言回复，前端仍需要在流式完成后自行追加 `assistant_final` / `turn_end`。
+4. `conversation stream` 只负责根据已持久化会话生成流式自然语言回复，前端仍需要在流式完成后自行追加 `final` / `turn_end`。
+5. `agent/stream` 只做模型流式代理，不做持久化。

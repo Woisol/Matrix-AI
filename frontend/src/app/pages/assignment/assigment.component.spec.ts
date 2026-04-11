@@ -8,7 +8,8 @@ import { AssignmentComponent } from './assigment.component';
 import { CourseInfoTabComponent } from './components/course-info-tab.component';
 import { CodeEditorComponent } from './components/code-editor.component';
 import { AssignService } from '../../services/assign/assign.service';
-import { AgentService } from '../../services/assign/agent.service';
+import { AgentService } from '../../services/assign/agent/agent.service';
+import { AgentLoopService } from '../../services/assign/agent/agent-loop.service';
 import { NotificationService } from '../../services/notification/notification.service';
 import { Analysis, AssignData, CodeFileInfo } from '../../api/type/assigment';
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from './components/matrix-analyse.utils';
@@ -69,8 +70,10 @@ describe('AssignmentComponent', () => {
     getConversation$: jasmine.createSpy('getConversation$').and.returnValue(of(undefined)),
     updateConversationTitle$: jasmine.createSpy('updateConversationTitle$').and.returnValue(of(200)),
     deleteConversation$: jasmine.createSpy('deleteConversation$').and.returnValue(of(200)),
-    appendEvents$: jasmine.createSpy('appendEvents$').and.returnValue(of({ message: '事件追加成功' })),
-    streamConversation$: jasmine.createSpy('streamConversation$').and.returnValue(of('这是流式回复')),
+  };
+
+  const agentLoopServiceStub = {
+    runUserTurn: jasmine.createSpy('runUserTurn').and.resolveTo(undefined),
   };
 
   beforeEach(async () => {
@@ -85,6 +88,7 @@ describe('AssignmentComponent', () => {
         },
         { provide: AssignService, useValue: assignServiceStub },
         { provide: AgentService, useValue: agentServiceStub },
+        { provide: AgentLoopService, useValue: agentLoopServiceStub },
         { provide: NotificationService, useValue: notificationServiceStub },
       ],
     })
@@ -126,8 +130,7 @@ describe('AssignmentComponent', () => {
     agentServiceStub.getConversation$.calls.reset();
     agentServiceStub.updateConversationTitle$.calls.reset();
     agentServiceStub.deleteConversation$.calls.reset();
-    agentServiceStub.appendEvents$.calls.reset();
-    agentServiceStub.streamConversation$.calls.reset();
+    agentLoopServiceStub.runUserTurn.calls.reset();
   });
 
   it('wires the course tab focus event to the page handler', () => {
@@ -193,11 +196,9 @@ describe('AssignmentComponent', () => {
     expect(editor.focus).toHaveBeenCalled();
   });
 
-  it('appends a user event and streams assistant reply into the current conversation', () => {
+  it('delegates a user event to AgentLoopService', () => {
     const fixture = TestBed.createComponent(AssignmentComponent);
     const component = fixture.componentInstance;
-    agentServiceStub.appendEvents$.and.returnValue(of(200));
-    agentServiceStub.streamConversation$.and.returnValue(of('这是流式回复'));
 
     component.courseId = 'course-1' as any;
     component.assignId = 'assign-1' as any;
@@ -214,18 +215,13 @@ describe('AssignmentComponent', () => {
       payload: { content: '你好' },
     });
 
-    expect(agentServiceStub.appendEvents$).toHaveBeenCalledWith('course-1', 'assign-1', 'Matrix AI', {
-      conversationId: 'conv-1',
-      expectedEventCount: 0,
-      events: [
-        { type: 'user_message', payload: { content: '你好' } },
-      ],
-    });
-    expect(agentServiceStub.streamConversation$).toHaveBeenCalledWith('course-1', 'assign-1', 'conv-1', 'Matrix AI');
-    expect(component.currentConversationInfo()?.events).toEqual([
-      { type: 'user_message', payload: { content: '你好' } },
-      { type: 'assistant_final', payload: { content: '这是流式回复' } },
-      { type: 'turn_end', payload: { reason: 'completed' } },
-    ]);
+    expect(agentLoopServiceStub.runUserTurn).toHaveBeenCalled();
+    expect(agentLoopServiceStub.runUserTurn.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+      courseId: 'course-1',
+      assignId: 'assign-1',
+      userId: 'Matrix AI',
+      userMessageContent: '你好',
+      assignData: undefined,
+    }));
   });
 });

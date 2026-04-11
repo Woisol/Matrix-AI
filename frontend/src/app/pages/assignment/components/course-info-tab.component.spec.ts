@@ -28,7 +28,7 @@ describe('CourseInfoTabComponent', () => {
       { type: 'user_message', payload: { content: '你好' } },
       { type: 'think', payload: { content: '先分析一下' } },
       { type: 'tool_call', payload: { callId: '1', toolName: 'read_editor', input: ['a.cpp'] } },
-      { type: 'assistant_final', payload: { content: '完成' } },
+      { type: 'final', payload: { content: '完成' } },
       { type: 'user_message', payload: { content: '再来一次' } },
       { type: 'turn_end', payload: { reason: 'completed' } },
     ] as const;
@@ -42,7 +42,7 @@ describe('CourseInfoTabComponent', () => {
     expect(grouped[1].events.map((e: { type: string }) => e.type)).toEqual([
       'think',
       'tool_call',
-      'assistant_final',
+      'final',
     ]);
     expect(grouped[2].type).toBe('user');
     expect(grouped[2].events.map((e: { type: string }) => e.type)).toEqual(['user_message']);
@@ -56,7 +56,7 @@ describe('CourseInfoTabComponent', () => {
     const component = createComponent();
     const events = [
       { type: 'think', payload: { content: '先分析一下' } },
-      { type: 'assistant_final', payload: { content: '结果' } },
+      { type: 'final', payload: { content: '结果' } },
     ] as const;
 
     const grouped = (component as any)._splitEventsForDisplay(events);
@@ -65,7 +65,7 @@ describe('CourseInfoTabComponent', () => {
     expect(grouped[0].type).toBe('agent');
     expect(grouped[0].events.map((e: { type: string }) => e.type)).toEqual([
       'think',
-      'assistant_final',
+      'final',
     ]);
   });
 

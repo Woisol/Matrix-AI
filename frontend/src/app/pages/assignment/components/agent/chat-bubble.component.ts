@@ -1,7 +1,6 @@
 import { Component, Input } from "@angular/core";
 import {
   MatrixAgentEvent,
-  MatrixAgentEventAssistantFinal,
   MatrixAgentEventThink,
   MatrixAgentEventToolCall,
   MatrixAgentEventToolResult,
@@ -68,11 +67,16 @@ export type DisplayEvent =
               }
             </summary>
           </details>
-        } @else if (event.type === 'assistant_final') {
+        } @else if (event.type === 'final') {
           <markdown class="markdown-patched final" [data]="event.payload.content"></markdown>
         } @else if (event.type === 'turn_end' ) {
           <!-- && !hasAssistantFinal -->
-          <p class="bubble-body system-end">{{ turnEndReasonMap[event.payload.reason] }}</p>
+          <p class="bubble-body system-end">
+            {{ turnEndReasonMap[event.payload.reason] }}
+            @if (event.payload.detail) {
+              <span class="system-end-detail">：{{ event.payload.detail }}</span>
+            }
+          </p>
         }
       }
     </div>
@@ -244,7 +248,7 @@ export type DisplayEvent =
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 12px;
       line-height: 1.5;
-      white-space: pre;
+      white-space: pre-wrap;
       word-break: break-all;
     }
 
@@ -264,6 +268,9 @@ export type DisplayEvent =
       border-radius: var(--size-radius-sm);
       font-size: 13px;
       text-align: center;
+    }
+    .system-end-detail{
+      color: #94a3b8;
     }
   `],
 })
@@ -333,7 +340,7 @@ export class AgentAssistantMessageComponent {
   private rebuildDerivedState(events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[]): void {
     this.toolResultsByCallId = new Map<string, MatrixAgentEventToolResult>();
     this.orphanToolResultIndexes = new Set<number>();
-    this.hasAssistantFinal = events.some((event) => event.type === 'assistant_final');
+    this.hasAssistantFinal = events.some((event) => event.type === 'final');
 
     const seenToolCallIds = new Set<string>();
     events.forEach((event, index) => {

@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timezone
 import uuid
 from collections.abc import AsyncGenerator
@@ -8,6 +7,7 @@ from app.controller.ai import torExceptions
 from app.models.agent import AIAgent, AIAgentConservation
 from app.models.assignment import Assignment
 from app.schemas.agent import AIAgentEvent
+from app.models.ai import AI
 
 
 class AIAgentController:
@@ -128,33 +128,21 @@ class AIAgentController:
             raise HTTPException(status_code=500, detail=f"新增事件失败: {str(e)}")
 
     @classmethod
-    async def stream_conversation(
+    async def stream_messages(
         cls,
-        conversation_id: str,
         assign_id: str,
         user_id: str,
+        messages: list[dict],
     ) -> AsyncGenerator[str, None]:
-        """基于当前会话已持久化事件流，生成最小对话式流式回复。"""
-        conversation = await AIAgentConservation.filter(
-            id=conversation_id,
-            assign_id=assign_id,
-            user_id=user_id,
-            deleted_at=None,
-        ).first()
-        if not conversation:
-            raise HTTPException(status_code=404, detail="对话记录不存在")
+        """直接代理模型流式输出，供前端 loop 自主编排。"""
+        try:
+            await Assignment.get(id=assign_id)
+        except torExceptions.DoesNotExist:
+            raise HTTPException(status_code=404, detail="请求了不存在的作业 ID")
 
         async def _stream() -> AsyncGenerator[str, None]:
-            try:
-                full_content = ""
-                stream = await AIAgent.request_ai_from_event_stream(conversation.events)
-                async for chunk in stream:
-                    full_content += chunk
-                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-
-                yield f"event: complete\ndata: {json.dumps({'content': full_content})}\n\n"
-            except Exception as e:
-                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+            async for chunk in AI.get_response_stream(messages):
+                yield chunk
 
         return _stream()
 

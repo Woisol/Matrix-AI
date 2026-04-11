@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { MarkdownModule } from 'ngx-markdown';
 
 import { MatrixAgentEvent, MatrixAgentEventUserMessage } from '../../../../api/type/agent';
 import { AgentAssistantMessageComponent, AgentChatBubbleComponent } from './chat-bubble.component';
@@ -6,7 +7,7 @@ import { AgentAssistantMessageComponent, AgentChatBubbleComponent } from './chat
 describe('AgentChatBubbleComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AgentChatBubbleComponent],
+      imports: [MarkdownModule.forRoot(), AgentChatBubbleComponent],
     }).compileComponents();
   });
 
@@ -29,7 +30,7 @@ describe('AgentChatBubbleComponent', () => {
 describe('AgentAssistantMessageComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AgentAssistantMessageComponent],
+      imports: [MarkdownModule.forRoot(), AgentAssistantMessageComponent],
     }).compileComponents();
   });
 
@@ -87,15 +88,15 @@ describe('AgentAssistantMessageComponent', () => {
     const fixture = createAgentFixture([
       { type: 'think', payload: { content: '先分析一下' } },
       { type: 'think', payload: { content: '再看一眼边界' } },
-      { type: 'assistant_final', payload: { content: '完成' } },
+      { type: 'final', payload: { content: '完成' } },
     ]);
 
     const root = fixture.nativeElement as HTMLElement;
     const thinkBlocks = root.querySelectorAll('.think-block');
+    const component = fixture.componentInstance;
 
     expect(thinkBlocks.length).toBe(1);
-    expect(thinkBlocks[0].textContent).toContain('先分析一下');
-    expect(thinkBlocks[0].textContent).toContain('再看一眼边界');
+    expect(component.getThinkContents(0)).toEqual(['先分析一下', '再看一眼边界']);
   });
 
   it('shows a system ending message when there is no assistant final', () => {
@@ -105,6 +106,6 @@ describe('AgentAssistantMessageComponent', () => {
 
     const root = fixture.nativeElement as HTMLElement;
 
-    expect(root.querySelector('.system-end')?.textContent).toContain('页面离开');
+    expect(root.querySelector('.system-end')?.textContent).toContain('标签页切换');
   });
 });

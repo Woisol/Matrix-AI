@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of } from 'rxjs';
 
-import { ApiHttpService } from '../../api/util/api-http.service';
-import { NotificationService } from '../notification/notification.service';
-import { SSEService } from '../see/see.service';
+import { MatrixAgentConversation } from '../../../api/type/agent';
+import { ApiHttpService } from '../../../api/util/api-http.service';
+import { NotificationService } from '../../notification/notification.service';
 import { AgentService } from './agent.service';
 
 describe('AgentService', () => {
@@ -13,9 +13,7 @@ describe('AgentService', () => {
     patch$: jasmine.createSpy('patch$'),
     delete$: jasmine.createSpy('delete$'),
   };
-  const sseServiceStub = {
-    streamText: jasmine.createSpy('streamText'),
-  };
+  const originalFetch = globalThis.fetch;
 
   const notificationServiceStub = {
     success: jasmine.createSpy('success'),
@@ -29,7 +27,6 @@ describe('AgentService', () => {
     apiStub.post$.calls.reset();
     apiStub.patch$.calls.reset();
     apiStub.delete$.calls.reset();
-    sseServiceStub.streamText.calls.reset();
     notificationServiceStub.success.calls.reset();
     notificationServiceStub.error.calls.reset();
     notificationServiceStub.info.calls.reset();
@@ -40,9 +37,12 @@ describe('AgentService', () => {
         AgentService,
         { provide: ApiHttpService, useValue: apiStub },
         { provide: NotificationService, useValue: notificationServiceStub },
-        { provide: SSEService, useValue: sseServiceStub },
       ],
     });
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it('lists conversations and maps summary fields to camelCase', async () => {
@@ -178,13 +178,87 @@ describe('AgentService', () => {
     expect(result).toBe(200);
   });
 
-  it('streams a conversation by conversation id', async () => {
-    sseServiceStub.streamText.and.returnValue(of('你好'));
+  it('streams model messages through the backend agent stream endpoint', async () => {
+    const encoder = new TextEncoder();
+    globalThis.fetch = jasmine.createSpy('fetch').and.resolveTo(
+      new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('hello'));
+          controller.enqueue(encoder.encode(' world'));
+          controller.close();
+        },
+      })),
+    ) as typeof fetch;
 
     const service = TestBed.inject(AgentService);
-    const result = await firstValueFrom(service.streamConversation$('course-1', 'assign-1', 'conv-1', 'user-1'));
+    const chunks: string[] = [];
 
-    expect(sseServiceStub.streamText).toHaveBeenCalledWith('/api/courses/course-1/assignments/assign-1/agent/conversations/conv-1/stream?user_id=user-1');
-    expect(result).toBe('你好');
+    for await (const chunk of service.streamMessages('course-1', 'assign-1', 'user-1', [
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'hello' },
+    ])) {
+      chunks.push(chunk);
+    }
+
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/courses/course-1/assignments/assign-1/agent/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        user_id: 'user-1',
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: 'sys' },
+          { role: 'user', content: 'hello' },
+        ],
+      }),
+    });
+    expect(chunks).toEqual(['hello', ' world']);
+  });
+
+  it('appends local events into a conversation', () => {
+    const service = TestBed.inject(AgentService);
+    const conversation: MatrixAgentConversation = {
+      conversationId: 'conv-1',
+      title: '新的对话',
+      createdAt: '2026-04-11T10:00:00Z',
+      updatedAt: '2026-04-11T10:00:00Z',
+      events: [
+        { type: 'user_message', payload: { content: '你好' } },
+      ],
+    };
+
+    const nextConversation = service.appendLocalEvents(conversation, [
+      { type: 'think', payload: { content: '先分析一下' } },
+    ]);
+
+    expect(nextConversation.events).toEqual([
+      { type: 'user_message', payload: { content: '你好' } },
+      { type: 'think', payload: { content: '先分析一下' } },
+    ]);
+    expect(nextConversation.updatedAt).not.toBe(conversation.updatedAt);
+  });
+
+  it('upserts a temporary text event by index', () => {
+    const service = TestBed.inject(AgentService);
+    const conversation: MatrixAgentConversation = {
+      conversationId: 'conv-1',
+      title: '新的对话',
+      createdAt: '2026-04-11T10:00:00Z',
+      updatedAt: '2026-04-11T10:00:00Z',
+      events: [],
+    };
+
+    const first = service.upsertLocalTempTextEvent(conversation, null, 'think', '第一段');
+    const second = service.upsertLocalTempTextEvent(first.conversation, first.index, 'think', '第二段');
+
+    expect(first.index).toBe(0);
+    expect(first.conversation.events).toEqual([
+      { type: 'think', payload: { content: '第一段' } },
+    ]);
+    expect(second.index).toBe(0);
+    expect(second.conversation.events).toEqual([
+      { type: 'think', payload: { content: '第二段' } },
+    ]);
   });
 });

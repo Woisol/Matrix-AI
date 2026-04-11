@@ -2,17 +2,18 @@ import { inject, Injectable } from "@angular/core";
 import { HttpResponse } from "@angular/common/http";
 import { catchError, map, Observable, of, OperatorFunction } from "rxjs";
 
-import { AssignId, CourseId } from "../../api/type/general";
+import { AssignId, CourseId } from "../../../api/type/general";
 import {
   MatrixAgentAppendEventsRequest,
   MatrixAgentConversation,
   MatrixAgentConversationSummary,
   MatrixAgentEvent,
+  MatrixAgentEventFinal,
+  MatrixAgentEventThink,
   MatrixAgentOperationResponse,
-} from "../../api/type/agent";
-import { ApiHttpService } from "../../api/util/api-http.service";
-import { NotificationService } from "../notification/notification.service";
-import { SSEService } from "../see/see.service";
+} from "../../../api/type/agent";
+import { ApiHttpService } from "../../../api/util/api-http.service";
+import { NotificationService } from "../../notification/notification.service";
 
 // 行吧，所以意思是传过来的原始数据类型建议直接放同文件毕竟只用一次
 type RawMatrixAgentConversationSummary = {
@@ -31,7 +32,6 @@ export class AgentService {
   constructor(private api: ApiHttpService) { }
 
   notify = inject(NotificationService)
-  sse = inject(SSEService)
 
   private buildUserParams(userId?: string) {
     return userId ? { headers: { user_id: userId } } : undefined;
@@ -137,10 +137,86 @@ export class AgentService {
     );
   }
 
-  streamConversation$(courseId: CourseId, assignId: AssignId, conversationId: string, userId: string): Observable<string> {
-    const encodedUserId = encodeURIComponent(userId);
-    return this.sse.streamText(
-      `/api/courses/${courseId}/assignments/${assignId}/agent/conversations/${conversationId}/stream?user_id=${encodedUserId}`,
-    );
+  appendLocalEvents(conversation: MatrixAgentConversation, events: MatrixAgentEvent[]): MatrixAgentConversation {
+    return {
+      ...conversation,
+      updatedAt: new Date().toISOString(),
+      events: [...conversation.events, ...events],
+    };
+  }
+
+  replaceLocalEventAt(conversation: MatrixAgentConversation, index: number, event: MatrixAgentEvent): MatrixAgentConversation {
+    const nextEvents = [...conversation.events];
+    if (!nextEvents[index]) {
+      return conversation;
+    }
+
+    nextEvents[index] = event;
+    return {
+      ...conversation,
+      updatedAt: new Date().toISOString(),
+      events: nextEvents,
+    };
+  }
+
+  appendLocalEventAndGetIndex(conversation: MatrixAgentConversation, event: MatrixAgentEvent): { conversation: MatrixAgentConversation, index: number } {
+    const nextConversation = this.appendLocalEvents(conversation, [event]);
+    return {
+      conversation: nextConversation,
+      index: nextConversation.events.length - 1,
+    };
+  }
+
+  upsertLocalTempTextEvent(
+    conversation: MatrixAgentConversation,
+    currentIndex: number | null,
+    type: 'think' | 'final',
+    content: string,
+  ): { conversation: MatrixAgentConversation, index: number } {
+    const event: MatrixAgentEventThink | MatrixAgentEventFinal = {
+      type,
+      payload: { content },
+    };
+
+    if (currentIndex === null) {
+      return this.appendLocalEventAndGetIndex(conversation, event);
+    }
+
+    return {
+      conversation: this.replaceLocalEventAt(conversation, currentIndex, event),
+      index: currentIndex,
+    };
+  }
+
+  async *streamMessages(courseId: CourseId, assignId: AssignId, userId: string, messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }>): AsyncGenerator<string, void, void> {
+    const response = await fetch(`/api/courses/${courseId}/assignments/${assignId}/agent/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        user_id: userId,
+      },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`Model stream request failed with status ${response.status}.`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      if (text) {
+        yield text;
+      }
+    }
+
+    const rest = decoder.decode();
+    if (rest) {
+      yield rest;
+    }
   }
 }

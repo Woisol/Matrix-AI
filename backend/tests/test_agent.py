@@ -33,7 +33,7 @@ async def test_request_ai_from_event_stream_supports_persisted_dict_events(monke
         {"type": "think", "payload": {"content": "先分析一下"}},
         {"type": "tool_call", "payload": {"callId": "c1", "toolName": "read_editor", "input": ["main.cpp"]}},
         {"type": "tool_result", "payload": {"callId": "c1", "success": True, "output": "int main() {}"}},
-        {"type": "assistant_final", "payload": {"content": "这是结果"}},
+        {"type": "final", "payload": {"content": "这是结果"}},
     ]
 
     stream = await AIAgent.request_ai_from_event_stream(events)
@@ -164,28 +164,38 @@ def test_agent_router_supports_batch_append_events(monkeypatch):
     ]
 
 
-def test_agent_router_supports_stream_conversation(monkeypatch):
+def test_agent_router_supports_stream_messages(monkeypatch):
     client = build_agent_test_client()
 
-    async def fake_stream_conversation(conversation_id, assign_id, user_id):
-        assert (conversation_id, assign_id, user_id) == ("conv-1", "assign-1", "user-1")
+    async def fake_stream_messages(assign_id, user_id, messages):
+        assert assign_id == "assign-1"
+        assert user_id == "user-1"
+        assert messages == [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "hello"},
+        ]
 
         async def _stream():
-            yield 'data: {"chunk":"你"}\n\n'
-            yield 'event: complete\ndata: {"content":"你好"}\n\n'
+            yield "hello"
+            yield " world"
 
         return _stream()
 
-    monkeypatch.setattr("app.routers.agent.AIAgentController.stream_conversation", fake_stream_conversation)
+    monkeypatch.setattr("app.routers.agent.AIAgentController.stream_messages", fake_stream_messages)
 
-    response = client.get(
-        "/courses/course-1/assignments/assign-1/agent/conversations/conv-1/stream",
-        params={"user_id": "user-1"},
+    response = client.post(
+        "/courses/course-1/assignments/assign-1/agent/stream",
+        headers={"user_id": "user-1"},
+        json={
+            "messages": [
+                {"role": "system", "content": "sys"},
+                {"role": "user", "content": "hello"},
+            ],
+        },
     )
 
     assert response.status_code == 200
-    assert 'data: {"chunk":"你"}' in response.text
-    assert 'event: complete' in response.text
+    assert response.text == "hello world"
 
 
 @pytest.mark.asyncio

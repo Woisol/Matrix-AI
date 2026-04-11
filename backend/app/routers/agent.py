@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, Query
+from fastapi import APIRouter, Header
 from fastapi.responses import StreamingResponse
 
 from app.controller.agent import AIAgentController
@@ -6,6 +6,7 @@ from app.schemas.agent import (
     AIAgentAppendEventsRequest,
     AIAgentConversation,
     AIAgentConversationSummary,
+    AIAgentStreamRequest,
     AIAgentConversationTitleUpdateRequest,
 )
 
@@ -82,23 +83,17 @@ async def append_agent_events(
         request.expected_event_count,
         request.events,
     )
-
-
-@agent_route.get("/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}/stream")
-async def stream_conversation(
+@agent_route.post("/courses/{course_id}/assignments/{assign_id}/agent/stream")
+async def stream_messages(
     course_id: str,
     assign_id: str,
-    conversation_id: str,
-    user_id: str = Query("", alias="user_id"),
+    request: AIAgentStreamRequest,
+    user_id: str = Header("", alias="user_id"),
 ):
-    """基于当前已持久化会话生成最小流式对话回复。"""
-    stream = await AIAgentController.stream_conversation(conversation_id, assign_id, user_id)
-    return StreamingResponse(
-        stream,
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+    """直接按消息列表代理模型流式输出。"""
+    stream = await AIAgentController.stream_messages(
+        assign_id,
+        user_id,
+        [message.model_dump(exclude_none=True) for message in request.messages],
     )
+    return StreamingResponse(stream, media_type="text/plain; charset=utf-8")
