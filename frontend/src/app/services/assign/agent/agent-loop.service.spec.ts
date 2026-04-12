@@ -38,7 +38,7 @@ describe('AgentLoopService', () => {
       };
       return { conversation: nextConversation, index: nextConversation.events.length - 1 };
     }),
-    upsertLocalTempTextEvent: jasmine.createSpy('upsertLocalTempTextEvent').and.callFake((conversation: MatrixAgentConversation, currentIndex: number | null, type: 'think' | 'final', content: string) => {
+    upsertLocalTempTextEvent: jasmine.createSpy('upsertLocalTempTextEvent').and.callFake((conversation: MatrixAgentConversation, currentIndex: number | null, type: 'think' | 'output', content: string) => {
       const event = { type, payload: { content } } as MatrixAgentEvent;
       if (currentIndex === null) {
         const nextConversation = {
@@ -112,14 +112,14 @@ describe('AgentLoopService', () => {
 
     expect(prompt).toContain('<think>');
     expect(prompt).toContain('<tool_call>');
-    expect(prompt).toContain('<final>');
+    expect(prompt).toContain('<output>');
     expect(prompt).toContain('read_editor');
     expect(prompt).toContain('read_problem_info');
     expect(prompt).not.toContain('write_editor');
   });
 
-  it('runs a simple final-only turn and persists user/think/final events', async () => {
-    agentServiceStub.streamMessages.and.returnValue(asyncChunks(['<think>先分析一下</think><final>最终答案</final>']));
+  it('runs a simple output-only turn and persists user/think/output events', async () => {
+    agentServiceStub.streamMessages.and.returnValue(asyncChunks(['<think>先分析一下</think><output>最终答案</output>']));
     const service = TestBed.inject(AgentLoopService);
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
@@ -149,23 +149,25 @@ describe('AgentLoopService', () => {
     expect(agentServiceStub.appendEvents$.calls.argsFor(2)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 2,
-      events: [
-        { type: 'final', payload: { content: '最终答案' } },
-        { type: 'turn_end', payload: { reason: 'completed' } },
-      ],
+      events: [{ type: 'output', payload: { content: '最终答案' } }],
+    });
+    expect(agentServiceStub.appendEvents$.calls.argsFor(3)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 3,
+      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
     });
     expect(conversationSignal()?.events).toEqual([
       { type: 'user_message', payload: { content: '你好' } },
       { type: 'think', payload: { content: '先分析一下' } },
-      { type: 'final', payload: { content: '最终答案' } },
+      { type: 'output', payload: { content: '最终答案' } },
       { type: 'turn_end', payload: { reason: 'completed' } },
     ]);
   });
 
-  it('handles a read_editor tool call before producing a final answer', async () => {
+  it('handles a read_editor tool call before producing an output answer', async () => {
     agentServiceStub.streamMessages.and.returnValues(
       asyncChunks(['<tool_call>{"toolName":"read_editor","input":[]}</tool_call>']),
-      asyncChunks(['<final>根据代码内容给出的答案</final>']),
+      asyncChunks(['<output>根据代码内容给出的答案</output>']),
     );
 
     const service = TestBed.inject(AgentLoopService);
@@ -201,15 +203,17 @@ describe('AgentLoopService', () => {
     expect(agentServiceStub.appendEvents$.calls.argsFor(3)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 3,
-      events: [
-        { type: 'final', payload: { content: '根据代码内容给出的答案' } },
-        { type: 'turn_end', payload: { reason: 'completed' } },
-      ],
+      events: [{ type: 'output', payload: { content: '根据代码内容给出的答案' } }],
     });
-    expect(conversationSignal()?.events.at(-2)).toEqual({ type: 'final', payload: { content: '根据代码内容给出的答案' } });
+    expect(agentServiceStub.appendEvents$.calls.argsFor(4)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 4,
+      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
+    });
+    expect(conversationSignal()?.events.at(-2)).toEqual({ type: 'output', payload: { content: '根据代码内容给出的答案' } });
   });
 
-  it('salvages plain text outside tags into a final answer', async () => {
+  it('salvages plain text outside tags into an output answer', async () => {
     agentServiceStub.streamMessages.and.returnValue(asyncChunks(['模型有点不听话但还是给出了答案']));
     const service = TestBed.inject(AgentLoopService);
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
@@ -230,16 +234,61 @@ describe('AgentLoopService', () => {
     expect(agentServiceStub.appendEvents$.calls.argsFor(1)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 1,
-      events: [
-        { type: 'final', payload: { content: '模型有点不听话但还是给出了答案' } },
-        {
-          type: 'turn_end',
-          payload: {
-            reason: 'completed',
-            detail: 'Model output contained plain text outside XML tags and was salvaged as final content.',
-          },
-        },
-      ],
+      events: [{ type: 'output', payload: { content: '模型有点不听话但还是给出了答案' } }],
+    });
+    expect(agentServiceStub.appendEvents$.calls.argsFor(2)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 2,
+      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
+    });
+  });
+
+  it('allows output blocks to interleave with tool calls in one response', async () => {
+    agentServiceStub.streamMessages.and.returnValues(
+      asyncChunks(['<output>前置说明</output><tool_call>{"toolName":"read_editor","input":[]}</tool_call>']),
+      asyncChunks(['<output>补充说明</output>']),
+    );
+
+    const service = TestBed.inject(AgentLoopService);
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
+
+    await service.runUserTurn({
+      courseId: 'course-1' as any,
+      assignId: 'assign-1' as any,
+      userId: 'Matrix AI',
+      userMessageContent: '混合输出和工具',
+      conversationSignal,
+      assignData: createAssignData(),
+      analysis: undefined,
+      getEditorContent: () => 'int main() { return 0; }',
+      getSelectionContent: () => null,
+      enabledTools: ['read_editor'],
+    });
+
+    expect(agentServiceStub.appendEvents$.calls.argsFor(1)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 1,
+      events: [{ type: 'output', payload: { content: '前置说明' } }],
+    });
+    expect(agentServiceStub.appendEvents$.calls.argsFor(2)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 2,
+      events: [{ type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: [] } }],
+    });
+    expect(agentServiceStub.appendEvents$.calls.argsFor(3)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 3,
+      events: [{ type: 'tool_result', payload: { callId: 'call-1', success: true, output: 'int main() { return 0; }' } }],
+    });
+    expect(agentServiceStub.appendEvents$.calls.argsFor(4)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 4,
+      events: [{ type: 'output', payload: { content: '补充说明' } }],
+    });
+    expect(agentServiceStub.appendEvents$.calls.argsFor(5)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 5,
+      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
     });
   });
 });

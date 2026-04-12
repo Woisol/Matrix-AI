@@ -10,7 +10,7 @@ class AIAgentEventType(str, Enum):
     THINK = "think"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
-    FINAL = "final"
+    OUTPUT = "output"
     TURN_END = "turn_end"
 
 

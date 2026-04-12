@@ -88,7 +88,7 @@ describe('AgentAssistantMessageComponent', () => {
     const fixture = createAgentFixture([
       { type: 'think', payload: { content: '先分析一下' } },
       { type: 'think', payload: { content: '再看一眼边界' } },
-      { type: 'final', payload: { content: '完成' } },
+      { type: 'output', payload: { content: '完成' } },
     ]);
 
     const root = fixture.nativeElement as HTMLElement;
@@ -99,7 +99,7 @@ describe('AgentAssistantMessageComponent', () => {
     expect(component.getThinkContents(0)).toEqual(['先分析一下', '再看一眼边界']);
   });
 
-  it('shows a system ending message when there is no assistant final', () => {
+  it('shows a system ending message when there is no assistant output', () => {
     const fixture = createAgentFixture([
       { type: 'turn_end', payload: { reason: 'page_unload' } },
     ]);

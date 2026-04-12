@@ -5,7 +5,7 @@ import { Analysis, AssignData } from "../../../api/type/assigment";
 import {
   MatrixAgentConversation,
   MatrixAgentEvent,
-  MatrixAgentEventFinal,
+  MatrixAgentEventOutput,
   MatrixAgentEventThink,
   MatrixAgentEventToolCall,
   MatrixAgentEventToolResult,
@@ -41,7 +41,7 @@ export type AgentLoopRunConfig = {
   enabledTools?: AgentLoopToolName[];
 };
 
-type AgentXmlTag = 'think' | 'tool_call' | 'final';
+type AgentXmlTag = 'think' | 'tool_call' | 'output';
 
 type ToolExecutionResult = {
   success: boolean;
@@ -49,12 +49,12 @@ type ToolExecutionResult = {
 };
 
 type ParserState = {
+  _fullResponse: string;
   pendingText: string;
   activeTag: AgentXmlTag | null;
   activeBuffer: string;
   activeTempEventIndex: number | null;
   sawToolCall: boolean;
-  finalClosedContent: string | null;
   protocolErrorDetail: string | null;
   toolFailureHappened: boolean;
 };
@@ -146,8 +146,8 @@ export class AgentLoopService {
             })}</tool_result>`,
           });
           break;
-        case 'final':
-          messages.push({ role: 'assistant', content: `<final>${escapeXml(event.payload.content)}</final>` });
+        case 'output':
+          messages.push({ role: 'assistant', content: `${escapeXml(event.payload.content)}` });
           break;
         case 'turn_end':
           break;
@@ -162,7 +162,7 @@ export class AgentLoopService {
    * @param config 运行配置，包含必要的上下文获取函数和事件管理函数
    *
    */
-  async runUserTurn(config: AgentLoopRunConfig): Promise<void> {
+  async emitAgentLoop(config: AgentLoopRunConfig): Promise<void> {
     const originalConversation = config.conversationSignal();
     if (!originalConversation) {
       console.error('Conversation not found. Aborting agent loop.');
@@ -200,7 +200,7 @@ export class AgentLoopService {
         return;
       }
 
-      const iteration = await this.runSingleResponse(config, currentConversation, persistedEventCount, enabledTools);
+      const iteration = await this.emitSingleRun(config, currentConversation, persistedEventCount, enabledTools);
       persistedEventCount = iteration.persistedEventCount;
 
       if (iteration.kind === 'complete' || iteration.kind === 'error_end') {
@@ -234,20 +234,21 @@ export class AgentLoopService {
   }
 
   //** 单次循环逻辑
-  private async runSingleResponse(
+  private async emitSingleRun(
     config: AgentLoopRunConfig,
     conversation: MatrixAgentConversation,
     persistedEventCount: number,
     enabledTools: AgentLoopToolName[],
   ): Promise<{ kind: 'continue' | 'complete' | 'error_end'; persistedEventCount: number; toolFailureHappened: boolean }> {
     const parserState: ParserState = {
+      _fullResponse: '',
+      // 新的 chunk 来了但还没来得及消费到 activeBuffer 里的内容，先放在 pendingText 里
       pendingText: '',
       activeTag: null,
       // 当前 tag 内的内容 buffer
       activeBuffer: '',
       activeTempEventIndex: null,
       sawToolCall: false,
-      finalClosedContent: null,
       protocolErrorDetail: null,
       toolFailureHappened: false,
     };
@@ -255,12 +256,15 @@ export class AgentLoopService {
     const messages = this.buildModelMessages(conversation, enabledTools);
 
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
+      parserState._fullResponse += chunk;
       parserState.pendingText += chunk;
       // 每次收到新内容都尝试消费一次 parser state
       persistedEventCount = await this.consumeParserState(config, parserState, persistedEventCount);
     }
 
-    persistedEventCount = await this.finishParserState(config, parserState, persistedEventCount);
+    persistedEventCount = await this.finishRun(config, parserState, persistedEventCount);
+
+    console.log('Model full output ', parserState._fullResponse);
 
     if (parserState.protocolErrorDetail) {
       return { kind: 'error_end', persistedEventCount, toolFailureHappened: parserState.toolFailureHappened };
@@ -270,29 +274,14 @@ export class AgentLoopService {
       return { kind: 'continue', persistedEventCount, toolFailureHappened: parserState.toolFailureHappened };
     }
 
-    if (parserState.finalClosedContent !== null) {
-      const turnEnd: MatrixAgentEventTurnEnd = {
-        type: 'turn_end',
-        payload: { reason: 'completed' },
-      };
-      this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
-      persistedEventCount = await this.persistBatch(config, persistedEventCount, [
-        { type: 'final', payload: { content: parserState.finalClosedContent } },
-        turnEnd,
-      ], conversation);
-      return { kind: 'complete', persistedEventCount, toolFailureHappened: false };
-    }
-
-    const missingFinalEnd: MatrixAgentEventTurnEnd = {
+    const turnEnd: MatrixAgentEventTurnEnd = {
       type: 'turn_end',
-      payload: {
-        reason: 'client_error',
-        detail: 'Model response ended without <final> or <tool_call>.',
-      },
+      payload: { reason: 'completed' },
     };
-    this.agentService.appendLocalEvents(config.conversationSignal, [missingFinalEnd]);
-    persistedEventCount = await this.persistBatch(config, persistedEventCount, [missingFinalEnd], conversation);
-    return { kind: 'error_end', persistedEventCount, toolFailureHappened: false };
+    this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
+
+    persistedEventCount = await this.persistBatch(config, persistedEventCount, [turnEnd], conversation);
+    return { kind: 'complete', persistedEventCount, toolFailureHappened: false };
   }
 
   // private async *streamModelMessages(config: AgentLoopRunConfig, messages: AgentLoopMessage[]): AsyncGenerator<string, void, void> {
@@ -304,6 +293,10 @@ export class AgentLoopService {
   //   //   }
   // }
 
+  /**
+   * 流中消费
+   * 每次收到模型输出的新内容时都尝试消费一次 parser state，来决定是否持久化事件、是否需要调用工具等
+   */
   private async consumeParserState(
     config: AgentLoopRunConfig,
     state: ParserState,
@@ -316,19 +309,15 @@ export class AgentLoopService {
 
       // 匹配 XML 开始
       if (state.activeTag === null) {
-        const tagMatch = state.pendingText.match(/<(think|tool_call|final)>/);
+        const tagMatch = state.pendingText.match(/<(think|tool_call|output)>/);
         if (!tagMatch || tagMatch.index === undefined) {
           return persistedEventCount;
         }
 
         const prefix = state.pendingText.slice(0, tagMatch.index);
         if (prefix.trim()) {
-          if (!state.sawToolCall) {
-            this.appendPlainTextToFinal(config, state, prefix.trim());
-            state.pendingText = state.pendingText.slice(tagMatch.index);
-            return persistedEventCount;
-          }
-          state.protocolErrorDetail = `Unexpected text outside XML tag: ${prefix.trim().slice(0, 120)}`;
+          this.appendPlainTextToOutput(config, state, prefix.trim());
+          state.pendingText = state.pendingText.slice(tagMatch.index);
           return persistedEventCount;
         }
 
@@ -345,20 +334,22 @@ export class AgentLoopService {
       const closingTag = `</${state.activeTag}>`;
       const closingIndex = state.activeBuffer.indexOf(closingTag);
 
+      // 未闭合
       if (closingIndex === -1) {
-        if (state.activeTag === 'think' || state.activeTag === 'final') {
+        // think 和 output 块流式更新
+        if (state.activeTag === 'think' || state.activeTag === 'output') {
           const partialContent = this.stripPartialClosingSuffix(state.activeBuffer, closingTag);
           state.activeTempEventIndex = this.upsertLocalTempTextEvent(
             config,
             state.activeTempEventIndex,
-            state.activeTag === 'think' ? 'think' : 'final',
+            state.activeTag === 'think' ? 'think' : 'output',
             partialContent,
           );
         }
         return persistedEventCount;
       }
 
-      // 如果已有 xml 标签
+      // 执行标签相应逻辑
       const finalizedContent = state.activeBuffer.slice(0, closingIndex);
       const remainder = state.activeBuffer.slice(closingIndex + closingTag.length);
       const activeTag = state.activeTag;
@@ -369,6 +360,7 @@ export class AgentLoopService {
       state.activeTempEventIndex = null;
       state.pendingText = remainder + state.pendingText;
 
+      // think 和 output 闭合后持久化，tool_call 则交给专门的 handler 调用与持久化
       if (activeTag === 'think') {
         state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, tempIndex, 'think', finalizedContent);
         const thinkEvent: MatrixAgentEventThink = {
@@ -376,13 +368,13 @@ export class AgentLoopService {
           payload: { content: finalizedContent },
         };
         persistedEventCount = await this.persistBatch(config, persistedEventCount, [thinkEvent]);
-      } else if (activeTag === 'final') {
-        if (state.sawToolCall) {
-          state.protocolErrorDetail = 'A response containing <tool_call> must not also contain <final>.';
-          return persistedEventCount;
-        }
-        state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, tempIndex, 'final', finalizedContent);
-        state.finalClosedContent = finalizedContent;
+      } else if (activeTag === 'output') {
+        state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, tempIndex, 'output', finalizedContent);
+        const outputEvent: MatrixAgentEventOutput = {
+          type: 'output',
+          payload: { content: finalizedContent },
+        };
+        persistedEventCount = await this.persistBatch(config, persistedEventCount, [outputEvent]);
       } else if (activeTag === 'tool_call') {
         state.sawToolCall = true;
         persistedEventCount = await this.handleToolCallBlock(config, finalizedContent, persistedEventCount, state);
@@ -390,44 +382,38 @@ export class AgentLoopService {
     }
   }
 
-  private async finishParserState(
+  /**
+   * 流末收尾\
+   * 主要处理 协议错误、未闭合标签、残留文本，并 append turn_end 事件
+   */
+  private async finishRun(
     config: AgentLoopRunConfig,
     state: ParserState,
     persistedEventCount: number,
   ): Promise<number> {
     if (state.protocolErrorDetail) {
-      const trailingEvents: MatrixAgentEvent[] = [];
-      if (state.finalClosedContent) {
-        trailingEvents.push({
-          type: 'final',
-          payload: { content: state.finalClosedContent },
-        });
-        trailingEvents.push({
-          type: 'turn_end',
-          payload: {
-            reason: 'client_error',
-            detail: state.protocolErrorDetail,
-          },
-        });
-      } else {
-        trailingEvents.push({
-          type: 'turn_end',
-          payload: {
-            reason: 'client_error',
-            detail: state.protocolErrorDetail,
-          },
-        });
-      }
+      const endEvent: MatrixAgentEventTurnEnd = {
+        type: 'turn_end',
+        payload: {
+          reason: 'client_error',
+          detail: state.protocolErrorDetail,
+        },
+      };
 
-      this.agentService.appendLocalEvents(config.conversationSignal, trailingEvents);
-      return this.persistBatch(config, persistedEventCount, trailingEvents);
+      this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
+      return this.persistBatch(config, persistedEventCount, [endEvent]);
     }
 
+    // 未闭合标签
     if (state.activeTag !== null) {
       const salvageContent = this.stripPartialClosingSuffix(state.activeBuffer, `</${state.activeTag}>`).trim();
-      if (state.activeTag === 'final' && salvageContent) {
-        state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, state.activeTempEventIndex, 'final', salvageContent);
-        state.finalClosedContent = salvageContent;
+      if (state.activeTag === 'output' && salvageContent) {
+        state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, state.activeTempEventIndex, 'output', salvageContent);
+        const outputEvent: MatrixAgentEventOutput = {
+          type: 'output',
+          payload: { content: salvageContent },
+        };
+        persistedEventCount = await this.persistBatch(config, persistedEventCount, [outputEvent]);
       }
 
       const endEvent: MatrixAgentEventTurnEnd = {
@@ -437,38 +423,33 @@ export class AgentLoopService {
           detail: `Unclosed <${state.activeTag}> block in model response.`,
         },
       };
-      if (state.finalClosedContent) {
-        this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
-        return this.persistBatch(config, persistedEventCount, [
-          { type: 'final', payload: { content: state.finalClosedContent } },
-          endEvent,
-        ]);
-      }
-
       this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
       return this.persistBatch(config, persistedEventCount, [endEvent]);
     }
 
+    // 残留文本
     if (state.pendingText.trim()) {
       if (!state.sawToolCall) {
-        const salvageFinal = state.pendingText.trim();
-        this.appendPlainTextToFinal(config, state, salvageFinal);
-        const events: MatrixAgentEvent[] = [
-          { type: 'final', payload: { content: state.finalClosedContent ?? salvageFinal } },
-          { type: 'turn_end', payload: { reason: 'completed', detail: 'Model output contained plain text outside XML tags and was salvaged as final content.' } },
-        ];
-        return this.persistBatch(config, persistedEventCount, events);
+        const salvageOutput = state.pendingText.trim();
+        this.appendPlainTextToOutput(config, state, salvageOutput);
+        const outputEvent: MatrixAgentEventOutput = {
+          type: 'output',
+          payload: { content: salvageOutput },
+        };
+        persistedEventCount = await this.persistBatch(config, persistedEventCount, [outputEvent]);
+        state.pendingText = '';
+        return persistedEventCount;
       }
 
-      const endEvent: MatrixAgentEventTurnEnd = {
-        type: 'turn_end',
-        payload: {
-          reason: 'client_error',
-          detail: 'Unexpected trailing text after tool execution response.',
-        },
-      };
-      this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
-      return this.persistBatch(config, persistedEventCount, [endEvent]);
+      // const endEvent: MatrixAgentEventTurnEnd = {
+      //   type: 'turn_end',
+      //   payload: {
+      //     reason: 'client_error',
+      //     detail: 'Unexpected trailing text after tool execution response.',
+      //   },
+      // };
+      // this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
+      // return this.persistBatch(config, persistedEventCount, [endEvent]);
     }
 
     return persistedEventCount;
@@ -482,17 +463,8 @@ export class AgentLoopService {
   ): Promise<number> {
     const parsed = this.parseToolCallPayload(blockContent);
     if (!parsed.ok) {
-      state.toolFailureHappened = true;
-      const toolResultEvent: MatrixAgentEventToolResult = {
-        type: 'tool_result',
-        payload: {
-          callId: this.nextCallId(),
-          success: false,
-          output: parsed.detail,
-        },
-      };
-      this.agentService.appendLocalEvents(config.conversationSignal, [toolResultEvent]);
-      return this.persistBatch(config, persistedEventCount, [toolResultEvent]);
+      state.protocolErrorDetail = parsed.detail;
+      return persistedEventCount;
     }
 
     const callId = this.nextCallId();
@@ -540,14 +512,21 @@ export class AgentLoopService {
         return { ok: false, detail: `工具 ${String(parsed.toolName)} 未启用或未实现。` };
       }
 
-      if (!Array.isArray(parsed.input) || !parsed.input.every((item: unknown) => typeof item === 'string')) {
-        return { ok: false, detail: 'tool_call JSON 的 input 必须是 string[]。' };
+      // if (!Array.isArray(parsed.input) || !parsed.input.every((item: unknown) => typeof item === 'string')) {
+      //   return { ok: false, detail: 'tool_call JSON 的 input 必须是 string[]。' };
+      // }
+
+      const input = Array.isArray(parsed.input) ? parsed.input.map(String) :
+        parsed.input instanceof String ? parsed.input.split(',，') : null;
+
+      if (!input) {
+        return { ok: false, detail: 'tool_call JSON 的 input 必须是 string[] 或中/英文逗号分隔的单行字符串。' };
       }
 
       return {
         ok: true,
         toolName: parsed.toolName as AgentLoopToolName,
-        input: parsed.input,
+        input,
       };
     } catch (error) {
       return {
@@ -575,7 +554,7 @@ export class AgentLoopService {
   private upsertLocalTempTextEvent(
     config: AgentLoopRunConfig,
     currentIndex: number | null,
-    type: 'think' | 'final',
+    type: 'think' | 'output',
     content: string,
   ): number | null {
     const conversation = config.conversationSignal();
@@ -585,10 +564,8 @@ export class AgentLoopService {
     return result.index;
   }
 
-  private appendPlainTextToFinal(config: AgentLoopRunConfig, state: ParserState, text: string): void {
-    const nextFinalContent = `${state.finalClosedContent ?? ''}${text}`;
-    state.finalClosedContent = nextFinalContent;
-    state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, state.activeTempEventIndex, 'final', nextFinalContent);
+  private appendPlainTextToOutput(config: AgentLoopRunConfig, state: ParserState, text: string): void {
+    state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, state.activeTempEventIndex, 'output', text);
   }
 
   private stripPartialClosingSuffix(content: string, closingTag: string): string {
@@ -600,6 +577,10 @@ export class AgentLoopService {
     return content;
   }
 
+  /**
+   * 请求持久化到后端，在错误时回滚\
+   * TODO，应该重新请求后端，现在的 fallback 容易出错
+   */
   private async persistBatch(
     config: AgentLoopRunConfig,
     expectedEventCount: number,

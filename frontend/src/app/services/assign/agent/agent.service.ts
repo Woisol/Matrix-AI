@@ -8,7 +8,7 @@ import {
   MatrixAgentConversation,
   MatrixAgentConversationSummary,
   MatrixAgentEvent,
-  MatrixAgentEventFinal,
+  MatrixAgentEventOutput,
   MatrixAgentEventThink,
   MatrixAgentOperationResponse,
 } from "../../../api/type/agent";
@@ -181,10 +181,10 @@ export class AgentService {
   upsertLocalTempTextEvent(
     conversation: MatrixAgentConversation,
     currentIndex: number | null,
-    type: 'think' | 'final',
+    type: 'think' | 'output',
     content: string,
   ): { conversation: MatrixAgentConversation, index: number } {
-    const event: MatrixAgentEventThink | MatrixAgentEventFinal = {
+    const event: MatrixAgentEventThink | MatrixAgentEventOutput = {
       type,
       payload: { content },
     };

@@ -10,7 +10,7 @@
 2. 前端重建当前会话的模型 messages
 3. 前端请求后端模型流式代理接口
 4. 前端按 XML 协议流式解析模型输出
-5. 根据解析结果生成 `think / tool_call / tool_result / final / turn_end`
+5. 根据解析结果生成 `think / tool_call / tool_result / output / turn_end`
 6. 语义阶段结束后按批次持久化到后端
 
 ## 2. 入口与职责分层
@@ -70,9 +70,9 @@ system prompt 不进入持久化 event。
 system prompt 主要约束：
 
 1. 角色定位：`Matrix Agent`
-2. 输出协议：只能使用 `<think> / <tool_call> / <final>`
+2. 输出协议：使用 `<think> / <tool_call> / <output>`，并允许无 XML 的纯文本输出
 3. `tool_call` 必须输出合法 JSON
-4. 一次响应中只要出现 `tool_call`，就不允许再出现 `final`
+4. 一次响应中只要出现 `tool_call`，就不允许再出现 `output` 或标签外纯文本
 5. 当前启用的工具列表
 
 ### 从 event 重建模型消息
@@ -94,9 +94,9 @@ system prompt 主要约束：
    - 转为 user 消息，内容包装成：
    - `<tool_result>{"callId":"...","success":true,"output":"..."}</tool_result>`
 
-5. `final`
+5. `output`
    - 转为 assistant 消息，内容包装成：
-   - `<final>...</final>`
+   - `<output>...</output>`
 
 6. `turn_end`
    - 不参与模型消息重建
@@ -109,7 +109,8 @@ system prompt 主要约束：
 
 1. `<think>...</think>`
 2. `<tool_call>...</tool_call>`
-3. `<final>...</final>`
+3. `<output>...</output>`
+4. 标签外纯文本（仅当本轮没有 `tool_call`）
 
 ### 当前解析策略
 
@@ -120,12 +121,12 @@ system prompt 主要约束：
 3. 遇到 `</think>` 时，固化成正式 `think` event
 4. 再按 `[think]` 这个批次持久化
 
-#### final
+#### output
 
-1. 一旦读到 `<final>`，立刻进入 `final` 块状态
-2. 块未闭合前，内容会作为临时 `final` 事件本地更新
-3. 遇到 `</final>` 时，认为本轮已经拿到最终答复
-4. 本轮最终按 `[final, turn_end]` 一起持久化
+1. 一旦读到 `<output>`，立刻进入 `output` 块状态
+2. 块未闭合前，内容会作为临时 `output` 事件本地更新
+3. 遇到 `</output>` 时，记录本轮输出内容
+4. 只要本轮没有 `tool_call`，本轮即结束，按 `[output, turn_end]` 持久化
 
 #### tool_call
 
@@ -172,7 +173,7 @@ system prompt 主要约束：
 2. `[think]`
 3. `[tool_call]`
 4. `[tool_result]`
-5. `[final, turn_end]`
+5. `[output, turn_end]`
 
 调用后端持久化时，仍带：
 
@@ -199,13 +200,13 @@ system prompt 主要约束：
 如果发生下面这类错误：
 
 1. 标签外出现意外文本
-2. `tool_call` 后又出现 `final`
+2. `tool_call` 后又出现 `output`
 3. 标签未闭合
 4. 流结束时结构不完整
 
 则按“最佳努力兜底”处理：
 
-1. 能 salvage 的 `final` 文本尽量保留
+1. 能 salvage 的 `output` 文本尽量保留
 2. 然后追加：
 
 ```json

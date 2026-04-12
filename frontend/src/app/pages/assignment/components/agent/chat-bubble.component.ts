@@ -67,10 +67,10 @@ export type DisplayEvent =
               }
             </summary>
           </details>
-        } @else if (event.type === 'final') {
-          <markdown class="markdown-patched final" [data]="event.payload.content"></markdown>
+        } @else if (event.type === 'output') {
+          <markdown class="markdown-patched output" [data]="event.payload.content"></markdown>
         } @else if (event.type === 'turn_end' ) {
-          <!-- && !hasAssistantFinal -->
+          <!-- && !hasAssistantOutput -->
           <p class="bubble-body system-end">
             {{ turnEndReasonMap[event.payload.reason] }}
             @if (event.payload.detail) {
@@ -258,7 +258,7 @@ export type DisplayEvent =
       text-overflow: ellipsis;
     }
 
-    .final {
+    .output {
       background: #ffffff;
     }
 
@@ -280,7 +280,7 @@ export class AgentAssistantMessageComponent {
   // 设为非 private 来在组件中访问
   toolResultsByCallId = new Map<string, MatrixAgentEventToolResult>();
   orphanToolResultIndexes = new Set<number>();
-  hasAssistantFinal = false;
+  hasAssistantOutput = false;
 
   turnEndReasonMap: Record<MatrixAgentEventTurnEnd['payload']['reason'], string> = {
     completed: '本轮对话已完成。',
@@ -336,11 +336,11 @@ export class AgentAssistantMessageComponent {
     return result.payload.success ? '成功' : '失败';
   }
 
-  // 主要更新 tool 结果的映射 和 hasAssistantFinal
+  // 主要更新 tool 结果的映射 和 hasAssistantOutput
   private rebuildDerivedState(events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[]): void {
     this.toolResultsByCallId = new Map<string, MatrixAgentEventToolResult>();
     this.orphanToolResultIndexes = new Set<number>();
-    this.hasAssistantFinal = events.some((event) => event.type === 'final');
+    this.hasAssistantOutput = events.some((event) => event.type === 'output');
 
     const seenToolCallIds = new Set<string>();
     events.forEach((event, index) => {

@@ -250,7 +250,7 @@ export class AssignmentComponent implements OnDestroy {
       return;
     }
 
-    void this.agentLoopService.runUserTurn({
+    void this.agentLoopService.emitAgentLoop({
       courseId: this.courseId,
       assignId: this.assignId,
       userId: this._agentUserId,

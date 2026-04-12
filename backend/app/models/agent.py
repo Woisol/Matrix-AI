@@ -75,7 +75,7 @@ class AIAgent:
             match event_type:
                 case AIAgentEventType.USER_MESSAGE.value:
                     messages.append({"role": "user", "content": content})
-                case AIAgentEventType.THINK.value | AIAgentEventType.FINAL.value:
+                case AIAgentEventType.THINK.value | AIAgentEventType.OUTPUT.value:
                     messages.append({"role": "assistant", "content": content})
                 case AIAgentEventType.TOOL_CALL.value:
                     messages.append({"role": "user", "content": cls._tool_call_to_message_content(payload)})
