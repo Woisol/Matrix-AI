@@ -123,7 +123,7 @@ describe('AgentLoopService', () => {
     const service = TestBed.inject(AgentLoopService);
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
-    await service.runUserTurn({
+    await service.emitAgentLoop({
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
       userId: 'Matrix AI',
@@ -173,7 +173,7 @@ describe('AgentLoopService', () => {
     const service = TestBed.inject(AgentLoopService);
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
-    await service.runUserTurn({
+    await service.emitAgentLoop({
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
       userId: 'Matrix AI',
@@ -218,7 +218,7 @@ describe('AgentLoopService', () => {
     const service = TestBed.inject(AgentLoopService);
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
-    await service.runUserTurn({
+    await service.emitAgentLoop({
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
       userId: 'Matrix AI',
@@ -252,7 +252,7 @@ describe('AgentLoopService', () => {
     const service = TestBed.inject(AgentLoopService);
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
-    await service.runUserTurn({
+    await service.emitAgentLoop({
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
       userId: 'Matrix AI',

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of } from 'rxjs';
+import { signal } from '@angular/core';
 
 import { MatrixAgentConversation } from '../../../api/type/agent';
 import { ApiHttpService } from '../../../api/util/api-http.service';
@@ -227,16 +228,21 @@ describe('AgentService', () => {
         { type: 'user_message', payload: { content: '你好' } },
       ],
     };
+    const conversationSignal = signal<MatrixAgentConversation | null | undefined>(conversation);
 
-    const nextConversation = service.appendLocalEvents(conversation, [
+    service.appendLocalEvents(conversationSignal, [
       { type: 'think', payload: { content: '先分析一下' } },
     ]);
+    const nextConversation = conversationSignal();
 
-    expect(nextConversation.events).toEqual([
+    expect(nextConversation).not.toBeNull();
+    expect(nextConversation).toBeDefined();
+
+    expect(nextConversation!.events).toEqual([
       { type: 'user_message', payload: { content: '你好' } },
       { type: 'think', payload: { content: '先分析一下' } },
     ]);
-    expect(nextConversation.updatedAt).not.toBe(conversation.updatedAt);
+    expect(nextConversation!.updatedAt).not.toBe(conversation.updatedAt);
   });
 
   it('upserts a temporary text event by index', () => {

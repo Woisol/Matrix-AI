@@ -73,7 +73,7 @@ describe('AssignmentComponent', () => {
   };
 
   const agentLoopServiceStub = {
-    runUserTurn: jasmine.createSpy('runUserTurn').and.resolveTo(undefined),
+    emitAgentLoop: jasmine.createSpy('emitAgentLoop').and.resolveTo(undefined),
   };
 
   beforeEach(async () => {
@@ -130,7 +130,7 @@ describe('AssignmentComponent', () => {
     agentServiceStub.getConversation$.calls.reset();
     agentServiceStub.updateConversationTitle$.calls.reset();
     agentServiceStub.deleteConversation$.calls.reset();
-    agentLoopServiceStub.runUserTurn.calls.reset();
+    agentLoopServiceStub.emitAgentLoop.calls.reset();
   });
 
   it('wires the course tab focus event to the page handler', () => {
@@ -215,8 +215,8 @@ describe('AssignmentComponent', () => {
       payload: { content: '你好' },
     });
 
-    expect(agentLoopServiceStub.runUserTurn).toHaveBeenCalled();
-    expect(agentLoopServiceStub.runUserTurn.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+    expect(agentLoopServiceStub.emitAgentLoop).toHaveBeenCalled();
+    expect(agentLoopServiceStub.emitAgentLoop.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
       courseId: 'course-1',
       assignId: 'assign-1',
       userId: 'Matrix AI',
