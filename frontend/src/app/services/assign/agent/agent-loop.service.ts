@@ -1,4 +1,4 @@
-import { inject, Injectable } from "@angular/core";
+import { inject, Injectable, WritableSignal } from "@angular/core";
 import { firstValueFrom } from "rxjs";
 
 import { Analysis, AssignData } from "../../../api/type/assigment";
@@ -33,8 +33,7 @@ export type AgentLoopRunConfig = {
   assignId: string;
   userId: string;
   userMessageContent: string;
-  getConversation: () => MatrixAgentConversation | null;
-  setConversation: (conversation: MatrixAgentConversation) => void;
+  conversationSignal: WritableSignal<MatrixAgentConversation | null | undefined>;
   assignData?: AssignData | undefined;
   analysis?: Analysis | undefined;
   getEditorContent: () => string;
@@ -62,8 +61,14 @@ type ParserState = {
 
 @Injectable({ providedIn: 'root' })
 export class AgentLoopService {
+
+  // 配置项，意思自己看
+  private readonly MAX_TURN_STEP = 20;
+  private readonly MAX_TOOL_RETRY = 3;
+
   private readonly agentService = inject(AgentService);
 
+  //~~? 没有更新的逻辑重新开对话不就乱了吗 咳单个对话内罢了
   private toolCallCounter = 0;
 
   /**
@@ -106,20 +111,17 @@ export class AgentLoopService {
     }],
   ]);
 
-  buildSystemPrompt(enabledTools: AgentLoopToolName[]): string {
-    return SYSTEM_PROMPT(enabledTools);
-  }
-
+  /**
+   * 在开头加上 system prompt & 翻译 event 为标准模型 message
+   */
   buildModelMessages(conversation: MatrixAgentConversation, enabledTools: AgentLoopToolName[]): AgentLoopMessage[] {
-    // 在开头加上 system prompt
     const messages: AgentLoopMessage[] = [
       {
         role: 'system',
-        content: this.buildSystemPrompt(enabledTools),
+        content: SYSTEM_PROMPT(enabledTools),
       },
     ];
 
-    // 翻译各 event 为标准模型 message
     for (const event of conversation.events) {
       switch (event.type) {
         case 'user_message':
@@ -156,13 +158,14 @@ export class AgentLoopService {
   }
 
   /**
-   * agent loop 核心方法
+   * agent loop 核心入口方法
    * @param config 运行配置，包含必要的上下文获取函数和事件管理函数
    *
    */
   async runUserTurn(config: AgentLoopRunConfig): Promise<void> {
-    const originalConversation = config.getConversation();
+    const originalConversation = config.conversationSignal();
     if (!originalConversation) {
+      console.error('Conversation not found. Aborting agent loop.');
       return;
     }
 
@@ -180,7 +183,8 @@ export class AgentLoopService {
       payload: { content: trimmedContent },
     };
 
-    this.appendLocalEvents(config, [userEvent]);
+    //** 核心循环
+    this.agentService.appendLocalEvents(config.conversationSignal, [userEvent]);
 
     let persistedEventCount = originalConversation.events.length;
     persistedEventCount = await this.persistBatch(config, persistedEventCount, [userEvent], originalConversation);
@@ -188,24 +192,23 @@ export class AgentLoopService {
     let turnStep = 0;
     let toolRetryCount = 0;
 
-    while (turnStep < 8) {
+    while (turnStep < this.MAX_TURN_STEP) {
       turnStep += 1;
-      const currentConversation = config.getConversation();
-      if (!currentConversation) return;
+      const currentConversation = config.conversationSignal();
+      if (!currentConversation) {
+        console.error('Conversation not found. Aborting agent loop.');
+        return;
+      }
 
       const iteration = await this.runSingleResponse(config, currentConversation, persistedEventCount, enabledTools);
       persistedEventCount = iteration.persistedEventCount;
 
-      if (iteration.kind === 'complete') {
-        return;
-      }
-
-      if (iteration.kind === 'error_end') {
+      if (iteration.kind === 'complete' || iteration.kind === 'error_end') {
         return;
       }
 
       toolRetryCount = iteration.toolFailureHappened ? toolRetryCount + 1 : 0;
-      if (toolRetryCount >= 3) {
+      if (toolRetryCount >= this.MAX_TOOL_RETRY) {
         const turnEnd: MatrixAgentEventTurnEnd = {
           type: 'turn_end',
           payload: {
@@ -213,7 +216,7 @@ export class AgentLoopService {
             detail: 'Tool retry limit reached while recovering from repeated tool failures.',
           },
         };
-        this.appendLocalEvents(config, [turnEnd]);
+        this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
         await this.persistBatch(config, persistedEventCount, [turnEnd], originalConversation);
         return;
       }
@@ -226,10 +229,11 @@ export class AgentLoopService {
         detail: 'Agent loop stopped after reaching the maximum turn limit.',
       },
     };
-    this.appendLocalEvents(config, [turnEnd]);
+    this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
     await this.persistBatch(config, persistedEventCount, [turnEnd], originalConversation);
   }
 
+  //** 单次循环逻辑
   private async runSingleResponse(
     config: AgentLoopRunConfig,
     conversation: MatrixAgentConversation,
@@ -239,6 +243,7 @@ export class AgentLoopService {
     const parserState: ParserState = {
       pendingText: '',
       activeTag: null,
+      // 当前 tag 内的内容 buffer
       activeBuffer: '',
       activeTempEventIndex: null,
       sawToolCall: false,
@@ -249,8 +254,9 @@ export class AgentLoopService {
 
     const messages = this.buildModelMessages(conversation, enabledTools);
 
-    for await (const chunk of this.streamModelMessages(config, messages)) {
+    for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
       parserState.pendingText += chunk;
+      // 每次收到新内容都尝试消费一次 parser state
       persistedEventCount = await this.consumeParserState(config, parserState, persistedEventCount);
     }
 
@@ -269,7 +275,7 @@ export class AgentLoopService {
         type: 'turn_end',
         payload: { reason: 'completed' },
       };
-      this.appendLocalEvents(config, [turnEnd]);
+      this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
       persistedEventCount = await this.persistBatch(config, persistedEventCount, [
         { type: 'final', payload: { content: parserState.finalClosedContent } },
         turnEnd,
@@ -284,18 +290,19 @@ export class AgentLoopService {
         detail: 'Model response ended without <final> or <tool_call>.',
       },
     };
-    this.appendLocalEvents(config, [missingFinalEnd]);
+    this.agentService.appendLocalEvents(config.conversationSignal, [missingFinalEnd]);
     persistedEventCount = await this.persistBatch(config, persistedEventCount, [missingFinalEnd], conversation);
     return { kind: 'error_end', persistedEventCount, toolFailureHappened: false };
   }
 
-  private async *streamModelMessages(config: AgentLoopRunConfig, messages: AgentLoopMessage[]): AsyncGenerator<string, void, void> {
-    for await (const chunk of this.agentService.streamMessages(config.courseId as any, config.assignId as any, config.userId, messages)) {
-      if (chunk) {
-        yield chunk;
-      }
-    }
-  }
+  // private async *streamModelMessages(config: AgentLoopRunConfig, messages: AgentLoopMessage[]): AsyncGenerator<string, void, void> {
+  //   return yield* this.agentService.streamMessages(config.courseId as any, config.assignId as any, config.userId, messages);
+  //   //   for await (const chunk of this.agentService.streamMessages(config.courseId as any, config.assignId as any, config.userId, messages)) {
+  //   //     if (chunk) {
+  //   //       yield chunk;
+  //   //     }
+  //   //   }
+  // }
 
   private async consumeParserState(
     config: AgentLoopRunConfig,
@@ -307,6 +314,7 @@ export class AgentLoopService {
         return persistedEventCount;
       }
 
+      // 匹配 XML 开始
       if (state.activeTag === null) {
         const tagMatch = state.pendingText.match(/<(think|tool_call|final)>/);
         if (!tagMatch || tagMatch.index === undefined) {
@@ -331,6 +339,7 @@ export class AgentLoopService {
         continue;
       }
 
+      // 如果已有 xml 标签
       state.activeBuffer += state.pendingText;
       state.pendingText = '';
       const closingTag = `</${state.activeTag}>`;
@@ -349,6 +358,7 @@ export class AgentLoopService {
         return persistedEventCount;
       }
 
+      // 如果已有 xml 标签
       const finalizedContent = state.activeBuffer.slice(0, closingIndex);
       const remainder = state.activeBuffer.slice(closingIndex + closingTag.length);
       const activeTag = state.activeTag;
@@ -409,7 +419,7 @@ export class AgentLoopService {
         });
       }
 
-      this.appendLocalEvents(config, trailingEvents);
+      this.agentService.appendLocalEvents(config.conversationSignal, trailingEvents);
       return this.persistBatch(config, persistedEventCount, trailingEvents);
     }
 
@@ -428,14 +438,14 @@ export class AgentLoopService {
         },
       };
       if (state.finalClosedContent) {
-        this.appendLocalEvents(config, [endEvent]);
+        this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
         return this.persistBatch(config, persistedEventCount, [
           { type: 'final', payload: { content: state.finalClosedContent } },
           endEvent,
         ]);
       }
 
-      this.appendLocalEvents(config, [endEvent]);
+      this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
       return this.persistBatch(config, persistedEventCount, [endEvent]);
     }
 
@@ -457,7 +467,7 @@ export class AgentLoopService {
           detail: 'Unexpected trailing text after tool execution response.',
         },
       };
-      this.appendLocalEvents(config, [endEvent]);
+      this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
       return this.persistBatch(config, persistedEventCount, [endEvent]);
     }
 
@@ -481,7 +491,7 @@ export class AgentLoopService {
           output: parsed.detail,
         },
       };
-      this.appendLocalEvents(config, [toolResultEvent]);
+      this.agentService.appendLocalEvents(config.conversationSignal, [toolResultEvent]);
       return this.persistBatch(config, persistedEventCount, [toolResultEvent]);
     }
 
@@ -495,7 +505,7 @@ export class AgentLoopService {
       },
     };
 
-    this.appendLocalEvents(config, [toolCallEvent]);
+    this.agentService.appendLocalEvents(config.conversationSignal, [toolCallEvent]);
     persistedEventCount = await this.persistBatch(config, persistedEventCount, [toolCallEvent]);
 
     const toolResult = await this.executeTool(config, parsed.toolName, parsed.input);
@@ -511,7 +521,7 @@ export class AgentLoopService {
         output: toolResult.output,
       },
     };
-    this.appendLocalEvents(config, [toolResultEvent]);
+    this.agentService.appendLocalEvents(config.conversationSignal, [toolResultEvent]);
     return this.persistBatch(config, persistedEventCount, [toolResultEvent]);
   }
 
@@ -560,25 +570,7 @@ export class AgentLoopService {
     return `call-${this.toolCallCounter}`;
   }
 
-  private appendLocalEvents(config: AgentLoopRunConfig, events: MatrixAgentEvent[]): void {
-    const conversation = config.getConversation();
-    if (!conversation) return;
-    config.setConversation(this.agentService.appendLocalEvents(conversation, events));
-  }
-
-  private appendLocalEventAndGetIndex(config: AgentLoopRunConfig, event: MatrixAgentEvent): number | null {
-    const conversation = config.getConversation();
-    if (!conversation) return null;
-    const result = this.agentService.appendLocalEventAndGetIndex(conversation, event);
-    config.setConversation(result.conversation);
-    return result.index;
-  }
-
-  private replaceLocalEventAt(config: AgentLoopRunConfig, index: number, event: MatrixAgentEvent): void {
-    const conversation = config.getConversation();
-    if (!conversation) return;
-    config.setConversation(this.agentService.replaceLocalEventAt(conversation, index, event));
-  }
+  //~~ localEvent 操作 已经完整迁移到 agent.service
 
   private upsertLocalTempTextEvent(
     config: AgentLoopRunConfig,
@@ -586,10 +578,10 @@ export class AgentLoopService {
     type: 'think' | 'final',
     content: string,
   ): number | null {
-    const conversation = config.getConversation();
+    const conversation = config.conversationSignal();
     if (!conversation) return null;
     const result = this.agentService.upsertLocalTempTextEvent(conversation, currentIndex, type, content);
-    config.setConversation(result.conversation);
+    config.conversationSignal.set(result.conversation);
     return result.index;
   }
 
@@ -615,14 +607,14 @@ export class AgentLoopService {
     fallbackConversation?: MatrixAgentConversation,
   ): Promise<number> {
     const statusCode = await firstValueFrom(this.agentService.appendEvents$(config.courseId as any, config.assignId as any, config.userId, {
-      conversationId: config.getConversation()?.conversationId ?? fallbackConversation?.conversationId ?? '',
+      conversationId: config.conversationSignal()?.conversationId ?? fallbackConversation?.conversationId ?? '',
       expectedEventCount,
       events,
     }));
 
     if (!statusCode || statusCode < 200 || statusCode >= 300) {
       if (fallbackConversation) {
-        config.setConversation(fallbackConversation);
+        config.conversationSignal.set(fallbackConversation);
       }
       throw new Error(`Persisting events failed with status ${statusCode ?? 'unknown'}.`);
     }

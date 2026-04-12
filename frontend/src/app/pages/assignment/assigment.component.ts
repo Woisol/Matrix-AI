@@ -255,8 +255,7 @@ export class AssignmentComponent implements OnDestroy {
       assignId: this.assignId,
       userId: this._agentUserId,
       userMessageContent: event.payload.content,
-      getConversation: () => this.currentConversationInfo(),
-      setConversation: (conversation) => this.currentConversationInfo.set(conversation),
+      conversationSignal: this.currentConversationInfo,
       assignData: this.assignData(),
       analysis: this.analysis(),
       getEditorContent: (): string => this.codeEditor?.getModel()?.getValue()

@@ -620,10 +620,10 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   editingConversationId: ConversationId | null = null;
   editingTitleDraft = '';
   // callIdCounter = (() => { for (let i = 0; ; i++) { yield `${this.currentConversation?.conversationId}-${i}` } })();
-  callIdCounter = 0;
-  nextCallId() {
-    return this.callIdCounter++;
-  }
+  // callIdCounter = 0;
+  // nextCallId() {
+  //   return this.callIdCounter++;
+  // }
 
   // 按 user_​message 分割事件流，方便按轮展示
   _displayEvents: WritableSignal<DisplayEvent[]> = signal([]);

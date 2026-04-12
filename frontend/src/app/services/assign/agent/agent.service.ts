@@ -1,4 +1,4 @@
-import { inject, Injectable } from "@angular/core";
+import { inject, Injectable, WritableSignal } from "@angular/core";
 import { HttpResponse } from "@angular/common/http";
 import { catchError, map, Observable, of, OperatorFunction } from "rxjs";
 
@@ -137,7 +137,18 @@ export class AgentService {
     );
   }
 
-  appendLocalEvents(conversation: MatrixAgentConversation, events: MatrixAgentEvent[]): MatrixAgentConversation {
+  appendLocalEvents(currentConversation: WritableSignal<MatrixAgentConversation | null | undefined>, events: MatrixAgentEvent[]): void {
+    const conversation = currentConversation();
+    if (!conversation) return;
+    currentConversation.set({
+      ...conversation,
+      updatedAt: new Date().toISOString(),
+      events: [...conversation.events, ...events],
+    });
+  }
+
+  appendLocalEvents1(conversation: MatrixAgentConversation, events: MatrixAgentEvent[]): MatrixAgentConversation {
+    // if (!conversation) return null;
     return {
       ...conversation,
       updatedAt: new Date().toISOString(),
@@ -160,7 +171,7 @@ export class AgentService {
   }
 
   appendLocalEventAndGetIndex(conversation: MatrixAgentConversation, event: MatrixAgentEvent): { conversation: MatrixAgentConversation, index: number } {
-    const nextConversation = this.appendLocalEvents(conversation, [event]);
+    const nextConversation = this.appendLocalEvents1(conversation, [event]);
     return {
       conversation: nextConversation,
       index: nextConversation.events.length - 1,

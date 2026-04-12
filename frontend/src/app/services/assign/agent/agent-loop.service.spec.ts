@@ -1,20 +1,26 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { signal, WritableSignal } from '@angular/core';
 
 import { AssignData } from '../../../api/type/assigment';
 import { MatrixAgentConversation, MatrixAgentEvent } from '../../../api/type/agent';
 import { AgentService } from './agent.service';
 import { AgentLoopService } from './agent-loop.service';
+import { SYSTEM_PROMPT } from './agent.constant';
 
 describe('AgentLoopService', () => {
   const agentServiceStub = {
     appendEvents$: jasmine.createSpy('appendEvents$').and.returnValue(of(200)),
     streamMessages: jasmine.createSpy('streamMessages'),
-    appendLocalEvents: jasmine.createSpy('appendLocalEvents').and.callFake((conversation: MatrixAgentConversation, events: MatrixAgentEvent[]) => ({
-      ...conversation,
-      updatedAt: 'updated',
-      events: [...conversation.events, ...events],
-    })),
+    appendLocalEvents: jasmine.createSpy('appendLocalEvents').and.callFake((conversationSignal: WritableSignal<MatrixAgentConversation | null | undefined>, events: MatrixAgentEvent[]) => {
+      const conversation = conversationSignal();
+      if (!conversation) return;
+      conversationSignal.set({
+        ...conversation,
+        updatedAt: 'updated',
+        events: [...conversation.events, ...events],
+      });
+    }),
     replaceLocalEventAt: jasmine.createSpy('replaceLocalEventAt').and.callFake((conversation: MatrixAgentConversation, index: number, event: MatrixAgentEvent) => {
       const nextEvents = [...conversation.events];
       nextEvents[index] = event;
@@ -102,7 +108,7 @@ describe('AgentLoopService', () => {
   it('builds system prompt with xml protocol and enabled tools', () => {
     const service = TestBed.inject(AgentLoopService);
 
-    const prompt = service.buildSystemPrompt(['read_editor', 'read_problem_info']);
+    const prompt = SYSTEM_PROMPT(['read_editor', 'read_problem_info']);
 
     expect(prompt).toContain('<think>');
     expect(prompt).toContain('<tool_call>');
@@ -115,15 +121,14 @@ describe('AgentLoopService', () => {
   it('runs a simple final-only turn and persists user/think/final events', async () => {
     agentServiceStub.streamMessages.and.returnValue(asyncChunks(['<think>先分析一下</think><final>最终答案</final>']));
     const service = TestBed.inject(AgentLoopService);
-    let conversation = createConversation();
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
     await service.runUserTurn({
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
       userId: 'Matrix AI',
       userMessageContent: '你好',
-      getConversation: () => conversation,
-      setConversation: (next) => { conversation = next; },
+      conversationSignal,
       assignData: createAssignData(),
       analysis: undefined,
       getEditorContent: () => 'int main() { return 0; }',
@@ -149,7 +154,7 @@ describe('AgentLoopService', () => {
         { type: 'turn_end', payload: { reason: 'completed' } },
       ],
     });
-    expect(conversation.events).toEqual([
+    expect(conversationSignal()?.events).toEqual([
       { type: 'user_message', payload: { content: '你好' } },
       { type: 'think', payload: { content: '先分析一下' } },
       { type: 'final', payload: { content: '最终答案' } },
@@ -164,15 +169,14 @@ describe('AgentLoopService', () => {
     );
 
     const service = TestBed.inject(AgentLoopService);
-    let conversation = createConversation();
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
     await service.runUserTurn({
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
       userId: 'Matrix AI',
       userMessageContent: '帮我分析代码',
-      getConversation: () => conversation,
-      setConversation: (next) => { conversation = next; },
+      conversationSignal,
       assignData: createAssignData(),
       analysis: undefined,
       getEditorContent: () => 'int main() { return 0; }',
@@ -202,21 +206,20 @@ describe('AgentLoopService', () => {
         { type: 'turn_end', payload: { reason: 'completed' } },
       ],
     });
-    expect(conversation.events.at(-2)).toEqual({ type: 'final', payload: { content: '根据代码内容给出的答案' } });
+    expect(conversationSignal()?.events.at(-2)).toEqual({ type: 'final', payload: { content: '根据代码内容给出的答案' } });
   });
 
   it('salvages plain text outside tags into a final answer', async () => {
     agentServiceStub.streamMessages.and.returnValue(asyncChunks(['模型有点不听话但还是给出了答案']));
     const service = TestBed.inject(AgentLoopService);
-    let conversation = createConversation();
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
     await service.runUserTurn({
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
       userId: 'Matrix AI',
       userMessageContent: '直接回答',
-      getConversation: () => conversation,
-      setConversation: (next) => { conversation = next; },
+      conversationSignal,
       assignData: createAssignData(),
       analysis: undefined,
       getEditorContent: () => 'int main() { return 0; }',

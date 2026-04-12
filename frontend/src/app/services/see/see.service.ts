@@ -17,6 +17,7 @@ export interface SSEStreamResult {
 @Injectable({ providedIn: 'root' })
 export class SSEService {
   private zone = inject(NgZone);
+  // private logger = inject()
   /**
    * 创建SSE连接并返回Observable
    * @param url SSE端点URL
