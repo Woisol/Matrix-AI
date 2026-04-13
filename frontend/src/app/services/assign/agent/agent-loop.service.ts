@@ -14,10 +14,12 @@ import { AgentService } from "./agent.service";
 import { SYSTEM_PROMPT } from "./agent.constant";
 import { parseAgentLoopPass } from "./agent-loop-pass-parser";
 import { AgentLoopPersistCursor } from "./agent-loop-persist-cursor";
-import { AgentLoopRunConfig, AgentLoopMessage, AgentLoopToolName, ToolExecutionResult } from "../../../api/type/agent-loop";
+import { AgentLoopRunConfig, AgentLoopMessage, ToolExecutionResult } from "../../../api/type/agent-loop";
 import { projectAgentLoopPassTail } from "./agent-loop-tail-projector";
+import { AgentLoopToolName, AgentLoopToolProvider } from "./agent-loop-tool-provider.service";
 
-export type { AgentLoopRunConfig, AgentLoopMessage, AgentLoopToolName } from "../../../api/type/agent-loop";
+export type { AgentLoopRunConfig, AgentLoopMessage } from "../../../api/type/agent-loop";
+export type { AgentLoopToolName } from "./agent-loop-tool-provider.service";
 
 type PassState = {
   rawText: string;
@@ -33,49 +35,10 @@ export class AgentLoopService {
   private readonly MAX_TOOL_RETRY = 3;
 
   private readonly agentService = inject(AgentService);
+  private readonly toolProvider = inject(AgentLoopToolProvider);
 
   //~~? 没有更新的逻辑重新开对话不就乱了吗 咳单个对话内罢了
   private toolCallCounter = 0;
-
-  /**
-   * 工具注册表，负责将工具名映射到实际的工具执行函数
-   * 只需要专注工具逻辑，不需要在这里重复判断工具是否启用
-   */
-  private readonly toolRegistry = new Map<AgentLoopToolName, (config: AgentLoopRunConfig, input: string[]) => Promise<ToolExecutionResult>>([
-    ['read_editor', async (config) => ({
-      success: true,
-      output: config.getEditorContent(),
-    })],
-    ['read_selection', async (config) => {
-      const selection = config.getSelectionContent();
-      return selection
-        ? { success: true, output: selection }
-        : { success: false, output: '褰撳墠娌℃湁閫変腑鐨勪唬鐮佺墖娈点€?' };
-    }],
-    ['read_problem_info', async (config) => {
-      if (!config.assignData) {
-        return { success: false, output: '褰撳墠鏃犳硶璇诲彇棰樼洰淇℃伅銆?' };
-      }
-
-      const description = config.assignData.description?.trim() || '鏆傛棤鎻忚堪';
-      return {
-        success: true,
-        output: `鏍囬: ${config.assignData.title}\n\n鎻忚堪:\n${description}`,
-      };
-    }],
-    ['read_problem_answer', async (config) => {
-      const resolution = config.analysis?.basic?.resolution;
-      if (!resolution?.content?.length) {
-        return { success: false, output: '褰撳墠娌℃湁鍙鍙栫殑鍙傝€冮瑙ｃ€?' };
-      }
-
-      const answerText = resolution.content
-        .map((tab) => `# ${tab.title}\n${tab.content}`)
-        .join('\n\n');
-
-      return { success: true, output: answerText };
-    }],
-  ]);
 
   /**
    * 在开头加上 system prompt & 翻译 event 为标准模型 message
@@ -137,7 +100,7 @@ export class AgentLoopService {
 
     const enabledTools = config.enabledTools?.length
       ? config.enabledTools
-      : Array.from(this.toolRegistry.keys());
+      : this.toolProvider.toolNames;
 
     const trimmedContent = config.userMessageContent.trim();
     if (!trimmedContent) {
@@ -323,7 +286,7 @@ export class AgentLoopService {
     toolName: AgentLoopToolName,
     input: string[],
   ): Promise<ToolExecutionResult> {
-    const handler = this.toolRegistry.get(toolName);
+    const handler = this.toolProvider.getHandler(toolName);
     if (!handler) {
       return { success: false, output: `Tool ${toolName} is not enabled or implemented.` };
     }

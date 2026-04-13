@@ -3,12 +3,6 @@ import type { WritableSignal } from "@angular/core";
 import type { Analysis, AssignData } from "./assigment";
 import type { MatrixAgentConversation } from "./agent";
 
-export type AgentLoopToolName =
-  | 'read_editor'
-  | 'read_selection'
-  | 'read_problem_info'
-  | 'read_problem_answer';
-
 export type AgentLoopMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;

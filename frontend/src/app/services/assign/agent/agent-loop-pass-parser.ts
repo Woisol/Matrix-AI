@@ -3,7 +3,7 @@ import type {
   MatrixAgentEventThink,
   MatrixAgentEventToolCall,
 } from "../../../api/type/agent";
-import type { AgentLoopToolName } from "../../../api/type/agent-loop";
+import { AgentLoopToolName } from "./agent-loop-tool-provider.service";
 
 type AgentXmlTag = 'think' | 'tool_call' | 'output';
 
