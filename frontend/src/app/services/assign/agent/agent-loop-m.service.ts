@@ -42,12 +42,12 @@ type ToolExecutionResult = {
 
 type LoopState = {
   _fullResponse: string;
-  curTagStack: AgentXmlTag[];
+  curTag: AgentXmlTag | null;
   pendingContent: string
 };
-const _initLoopState = {
+const _initLoopState: LoopState = {
   _fullResponse: '',
-  curTagStack: [],
+  curTag: null,
   pendingContent: '',
 };
 
@@ -164,12 +164,33 @@ export class AgentLoopService {
     }
 
     this.agentService.appendLocalEvents(config.conversationSignal, [{ type: 'user_message', payload: { content: config.userMessage } }]);
+    // 先 append 一个空的 output
+    this.agentService.appendLocalEvents(config.conversationSignal, [{ type: 'output', payload: { content: "" } }]);
 
     const messages = this.buildModelMessages(conversation, config.enabledTools ?? Array.from(this.toolRegistry.keys()));
 
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
       loopState._fullResponse += chunk;
       loopState.pendingContent += chunk;
+
+      // 直接吞掉 <output> 😡
+      const startingTagMatch = loopState.pendingContent.replaceAll(/<\/?output>/g, '').match(/(.*)<(think|tool_call)>(.*)/);
+      if (startingTagMatch) {
+        const preContent = startingTagMatch[1];
+        const tagName = startingTagMatch[2] as AgentXmlTag;
+        const afterContent = startingTagMatch[3];
+
+        if (preContent.trim()) {
+          this.agentService.updateLastLocalEvent(config.conversationSignal, {
+            type: 'output',
+            payload: { content: preContent },
+          });
+        }
+
+        if (tagName === 'think') {
+
+        }
+      }
 
 
     }

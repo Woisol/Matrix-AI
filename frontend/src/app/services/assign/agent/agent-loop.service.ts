@@ -48,15 +48,24 @@ type ToolExecutionResult = {
   output: string;
 };
 
-type ParserState = {
-  _fullResponse: string;
-  pendingText: string;
-  activeTag: AgentXmlTag | null;
-  activeBuffer: string;
-  activeTempEventIndex: number | null;
-  sawToolCall: boolean;
-  protocolErrorDetail: string | null;
-  toolFailureHappened: boolean;
+type PassDisplayEvent = MatrixAgentEventOutput | MatrixAgentEventThink | MatrixAgentEventToolCall;
+
+type ParsedDisplayBlock = {
+  event: PassDisplayEvent;
+  stable: boolean;
+};
+
+type PassSnapshot = {
+  displayEvents: PassDisplayEvent[];
+  stableCount: number;
+  toolCalls: MatrixAgentEventToolCall[];
+};
+
+type PassState = {
+  rawText: string;
+  localStartIndex: number;
+  persistedStableCount: number;
+  toolCallIds: string[];
 };
 
 @Injectable({ providedIn: 'root' })
@@ -169,7 +178,7 @@ export class AgentLoopService {
       return;
     }
 
-    const enabledTools: AgentLoopToolName[] = config.enabledTools?.length
+    const enabledTools = config.enabledTools?.length
       ? config.enabledTools
       : Array.from(this.toolRegistry.keys());
 
@@ -186,24 +195,28 @@ export class AgentLoopService {
     //** 核心循环
     this.agentService.appendLocalEvents(config.conversationSignal, [userEvent]);
 
-    let persistedEventCount = originalConversation.events.length;
-    persistedEventCount = await this.persistBatch(config, persistedEventCount, [userEvent], originalConversation);
+    let persistedEventCount = await this.persistEvents(
+      config,
+      originalConversation.events.length,
+      [userEvent],
+    );
 
     let turnStep = 0;
     let toolRetryCount = 0;
 
     while (turnStep < this.MAX_TURN_STEP) {
       turnStep += 1;
-      const currentConversation = config.conversationSignal();
-      if (!currentConversation) {
+
+      const conversation = config.conversationSignal();
+      if (!conversation) {
         console.error('Conversation not found. Aborting agent loop.');
         return;
       }
 
-      const iteration = await this.emitSingleRun(config, currentConversation, persistedEventCount, enabledTools);
+      const iteration = await this.runSinglePass(config, conversation, persistedEventCount, enabledTools);
       persistedEventCount = iteration.persistedEventCount;
 
-      if (iteration.kind === 'complete' || iteration.kind === 'error_end') {
+      if (iteration.kind === 'complete') {
         return;
       }
 
@@ -217,7 +230,7 @@ export class AgentLoopService {
           },
         };
         this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
-        await this.persistBatch(config, persistedEventCount, [turnEnd], originalConversation);
+        await this.persistEvents(config, persistedEventCount, [turnEnd]);
         return;
       }
     }
@@ -230,317 +243,283 @@ export class AgentLoopService {
       },
     };
     this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
-    await this.persistBatch(config, persistedEventCount, [turnEnd], originalConversation);
+    await this.persistEvents(config, persistedEventCount, [turnEnd]);
   }
 
-  //** 单次循环逻辑
-  private async emitSingleRun(
+  /*
+   ** 单次循环逻辑
+   */
+  private async runSinglePass(
     config: AgentLoopRunConfig,
     conversation: MatrixAgentConversation,
     persistedEventCount: number,
     enabledTools: AgentLoopToolName[],
-  ): Promise<{ kind: 'continue' | 'complete' | 'error_end'; persistedEventCount: number; toolFailureHappened: boolean }> {
-    const parserState: ParserState = {
-      _fullResponse: '',
-      // 新的 chunk 来了但还没来得及消费到 activeBuffer 里的内容，先放在 pendingText 里
-      pendingText: '',
-      activeTag: null,
-      // 当前 tag 内的内容 buffer
-      activeBuffer: '',
-      activeTempEventIndex: null,
-      sawToolCall: false,
-      protocolErrorDetail: null,
-      toolFailureHappened: false,
+  ): Promise<{ kind: 'continue' | 'complete'; persistedEventCount: number; toolFailureHappened: boolean }> {
+    const passState: PassState = {
+      rawText: '',
+      localStartIndex: conversation.events.length,
+      persistedStableCount: 0,
+      toolCallIds: [],
     };
 
     const messages = this.buildModelMessages(conversation, enabledTools);
 
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
-      parserState._fullResponse += chunk;
-      parserState.pendingText += chunk;
-      // 每次收到新内容都尝试消费一次 parser state
-      persistedEventCount = await this.consumeParserState(config, parserState, persistedEventCount);
+      passState.rawText += chunk;
+
+      const snapshot = this.buildPassSnapshot(passState.rawText, passState.toolCallIds, enabledTools, false);
+      passState.toolCallIds = snapshot.toolCalls.map((toolCall) => toolCall.payload.callId);
+
+      this.replaceLocalPassDisplay(config, passState.localStartIndex, snapshot.displayEvents);
+      persistedEventCount = await this.persistStablePrefix(config, passState, snapshot, persistedEventCount);
     }
 
-    persistedEventCount = await this.finishRun(config, parserState, persistedEventCount);
+    const finalSnapshot = this.buildPassSnapshot(passState.rawText, passState.toolCallIds, enabledTools, true);
+    this.replaceLocalPassDisplay(config, passState.localStartIndex, finalSnapshot.displayEvents);
+    persistedEventCount = await this.persistStablePrefix(config, passState, finalSnapshot, persistedEventCount);
 
-    console.log('Model full output ', parserState._fullResponse);
-
-    if (parserState.protocolErrorDetail) {
-      return { kind: 'error_end', persistedEventCount, toolFailureHappened: parserState.toolFailureHappened };
+    if (!finalSnapshot.toolCalls.length) {
+      const turnEnd: MatrixAgentEventTurnEnd = {
+        type: 'turn_end',
+        payload: { reason: 'completed' },
+      };
+      this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
+      persistedEventCount = await this.persistEvents(config, persistedEventCount, [turnEnd]);
+      return { kind: 'complete', persistedEventCount, toolFailureHappened: false };
     }
 
-    if (parserState.sawToolCall) {
-      return { kind: 'continue', persistedEventCount, toolFailureHappened: parserState.toolFailureHappened };
-    }
-
-    const turnEnd: MatrixAgentEventTurnEnd = {
-      type: 'turn_end',
-      payload: { reason: 'completed' },
+    const toolRun = await this.executeToolCalls(config, finalSnapshot.toolCalls, persistedEventCount);
+    return {
+      kind: 'continue',
+      persistedEventCount: toolRun.persistedEventCount,
+      toolFailureHappened: toolRun.toolFailureHappened,
     };
-    this.agentService.appendLocalEvents(config.conversationSignal, [turnEnd]);
-
-    persistedEventCount = await this.persistBatch(config, persistedEventCount, [turnEnd], conversation);
-    return { kind: 'complete', persistedEventCount, toolFailureHappened: false };
   }
 
-  // private async *streamModelMessages(config: AgentLoopRunConfig, messages: AgentLoopMessage[]): AsyncGenerator<string, void, void> {
-  //   return yield* this.agentService.streamMessages(config.courseId as any, config.assignId as any, config.userId, messages);
-  //   //   for await (const chunk of this.agentService.streamMessages(config.courseId as any, config.assignId as any, config.userId, messages)) {
-  //   //     if (chunk) {
-  //   //       yield chunk;
-  //   //     }
-  //   //   }
-  // }
+  private buildPassSnapshot(
+    rawText: string,
+    existingToolCallIds: string[],
+    enabledTools: AgentLoopToolName[],
+    finalize: boolean,
+  ): PassSnapshot {
+    const blocks: ParsedDisplayBlock[] = [];
+    const toolCalls: MatrixAgentEventToolCall[] = [];
+    let cursor = 0;
+    let toolIndex = 0;
 
-  /**
-   * 流中消费
-   * 每次收到模型输出的新内容时都尝试消费一次 parser state，来决定是否持久化事件、是否需要调用工具等
-   */
-  private async consumeParserState(
-    config: AgentLoopRunConfig,
-    state: ParserState,
-    persistedEventCount: number,
-  ): Promise<number> {
-    while (true) {
-      if (state.protocolErrorDetail) {
-        return persistedEventCount;
+    while (cursor < rawText.length) {
+      const nextTag = this.findNextOpeningTag(rawText, cursor);
+      if (!nextTag) {
+        this.pushOutputBlock(blocks, rawText.slice(cursor), finalize);
+        break;
       }
 
-      // 匹配 XML 开始
-      if (state.activeTag === null) {
-        const tagMatch = state.pendingText.match(/<(think|tool_call|output)>/);
-        if (!tagMatch || tagMatch.index === undefined) {
-          return persistedEventCount;
+      const closeTag = `</${nextTag.tag}>`;
+      const closeIndex = rawText.indexOf(closeTag, nextTag.index + nextTag.openTag.length);
+      if (closeIndex === -1) {
+        this.pushOutputBlock(blocks, rawText.slice(cursor), finalize);
+        break;
+      }
+
+      if (nextTag.index > cursor) {
+        this.pushOutputBlock(blocks, rawText.slice(cursor, nextTag.index), true);
+      }
+
+      const content = rawText.slice(nextTag.index + nextTag.openTag.length, closeIndex);
+      if (nextTag.tag === 'output') {
+        this.pushOutputBlock(blocks, content, true);
+      } else if (nextTag.tag === 'think') {
+        blocks.push({
+          event: {
+            type: 'think',
+            payload: { content },
+          },
+          stable: true,
+        });
+      } else {
+        const parsedToolCall = this.parseToolCallPayload(content, enabledTools);
+        if (parsedToolCall.ok) {
+          const callId = existingToolCallIds[toolIndex] ?? this.nextCallId();
+          const toolCallEvent: MatrixAgentEventToolCall = {
+            type: 'tool_call',
+            payload: {
+              callId,
+              toolName: parsedToolCall.toolName,
+              input: parsedToolCall.input,
+            },
+          };
+          blocks.push({ event: toolCallEvent, stable: true });
+          toolCalls.push(toolCallEvent);
+          toolIndex += 1;
+        } else {
+          const rawBlock = rawText.slice(nextTag.index, closeIndex + closeTag.length);
+          this.pushOutputBlock(blocks, rawBlock, true);
         }
-
-        const prefix = state.pendingText.slice(0, tagMatch.index);
-        if (prefix.trim()) {
-          this.appendPlainTextToOutput(config, state, prefix.trim());
-          state.pendingText = state.pendingText.slice(tagMatch.index);
-          return persistedEventCount;
-        }
-
-        state.activeTag = tagMatch[1] as AgentXmlTag;
-        state.activeBuffer = '';
-        state.activeTempEventIndex = null;
-        state.pendingText = state.pendingText.slice(tagMatch.index + tagMatch[0].length);
-        continue;
       }
 
-      // 如果已有 xml 标签
-      state.activeBuffer += state.pendingText;
-      state.pendingText = '';
-      const closingTag = `</${state.activeTag}>`;
-      const closingIndex = state.activeBuffer.indexOf(closingTag);
-
-      // 未闭合
-      if (closingIndex === -1) {
-        // think 和 output 块流式更新
-        if (state.activeTag === 'think' || state.activeTag === 'output') {
-          const partialContent = this.stripPartialClosingSuffix(state.activeBuffer, closingTag);
-          state.activeTempEventIndex = this.upsertLocalTempTextEvent(
-            config,
-            state.activeTempEventIndex,
-            state.activeTag === 'think' ? 'think' : 'output',
-            partialContent,
-          );
-        }
-        return persistedEventCount;
-      }
-
-      // 执行标签相应逻辑
-      const finalizedContent = state.activeBuffer.slice(0, closingIndex);
-      const remainder = state.activeBuffer.slice(closingIndex + closingTag.length);
-      const activeTag = state.activeTag;
-      const tempIndex = state.activeTempEventIndex;
-
-      state.activeTag = null;
-      state.activeBuffer = '';
-      state.activeTempEventIndex = null;
-      state.pendingText = remainder + state.pendingText;
-
-      // think 和 output 闭合后持久化，tool_call 则交给专门的 handler 调用与持久化
-      if (activeTag === 'think') {
-        state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, tempIndex, 'think', finalizedContent);
-        const thinkEvent: MatrixAgentEventThink = {
-          type: 'think',
-          payload: { content: finalizedContent },
-        };
-        persistedEventCount = await this.persistBatch(config, persistedEventCount, [thinkEvent]);
-      } else if (activeTag === 'output') {
-        state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, tempIndex, 'output', finalizedContent);
-        const outputEvent: MatrixAgentEventOutput = {
-          type: 'output',
-          payload: { content: finalizedContent },
-        };
-        persistedEventCount = await this.persistBatch(config, persistedEventCount, [outputEvent]);
-      } else if (activeTag === 'tool_call') {
-        state.sawToolCall = true;
-        persistedEventCount = await this.handleToolCallBlock(config, finalizedContent, persistedEventCount, state);
-      }
+      cursor = closeIndex + closeTag.length;
     }
+
+    return {
+      displayEvents: blocks.map((block) => block.event),
+      stableCount: finalize ? blocks.length : this.countStablePrefix(blocks),
+      toolCalls,
+    };
   }
 
-  /**
-   * 流末收尾\
-   * 主要处理 协议错误、未闭合标签、残留文本，并 append turn_end 事件
-   */
-  private async finishRun(
-    config: AgentLoopRunConfig,
-    state: ParserState,
-    persistedEventCount: number,
-  ): Promise<number> {
-    if (state.protocolErrorDetail) {
-      const endEvent: MatrixAgentEventTurnEnd = {
-        type: 'turn_end',
-        payload: {
-          reason: 'client_error',
-          detail: state.protocolErrorDetail,
-        },
-      };
-
-      this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
-      return this.persistBatch(config, persistedEventCount, [endEvent]);
+  private findNextOpeningTag(text: string, cursor: number): { tag: AgentXmlTag; index: number; openTag: string } | null {
+    const match = text.slice(cursor).match(/<(think|tool_call|output)>/);
+    if (!match || match.index === undefined) {
+      return null;
     }
 
-    // 未闭合标签
-    if (state.activeTag !== null) {
-      const salvageContent = this.stripPartialClosingSuffix(state.activeBuffer, `</${state.activeTag}>`).trim();
-      if (state.activeTag === 'output' && salvageContent) {
-        state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, state.activeTempEventIndex, 'output', salvageContent);
-        const outputEvent: MatrixAgentEventOutput = {
-          type: 'output',
-          payload: { content: salvageContent },
-        };
-        persistedEventCount = await this.persistBatch(config, persistedEventCount, [outputEvent]);
-      }
-
-      const endEvent: MatrixAgentEventTurnEnd = {
-        type: 'turn_end',
-        payload: {
-          reason: 'client_error',
-          detail: `Unclosed <${state.activeTag}> block in model response.`,
-        },
-      };
-      this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
-      return this.persistBatch(config, persistedEventCount, [endEvent]);
-    }
-
-    // 残留文本
-    if (state.pendingText.trim()) {
-      if (!state.sawToolCall) {
-        const salvageOutput = state.pendingText.trim();
-        this.appendPlainTextToOutput(config, state, salvageOutput);
-        const outputEvent: MatrixAgentEventOutput = {
-          type: 'output',
-          payload: { content: salvageOutput },
-        };
-        persistedEventCount = await this.persistBatch(config, persistedEventCount, [outputEvent]);
-        state.pendingText = '';
-        return persistedEventCount;
-      }
-
-      // const endEvent: MatrixAgentEventTurnEnd = {
-      //   type: 'turn_end',
-      //   payload: {
-      //     reason: 'client_error',
-      //     detail: 'Unexpected trailing text after tool execution response.',
-      //   },
-      // };
-      // this.agentService.appendLocalEvents(config.conversationSignal, [endEvent]);
-      // return this.persistBatch(config, persistedEventCount, [endEvent]);
-    }
-
-    return persistedEventCount;
+    return {
+      tag: match[1] as AgentXmlTag,
+      index: cursor + match.index,
+      openTag: match[0],
+    };
   }
 
-  private async handleToolCallBlock(
+  private pushOutputBlock(blocks: ParsedDisplayBlock[], content: string, stable: boolean): void {
+    if (!content) {
+      return;
+    }
+
+    blocks.push({
+      event: {
+        type: 'output',
+        payload: { content },
+      },
+      stable,
+    });
+  }
+
+  private countStablePrefix(blocks: ParsedDisplayBlock[]): number {
+    let stableCount = 0;
+    for (const block of blocks) {
+      if (!block.stable) {
+        break;
+      }
+      stableCount += 1;
+    }
+    return stableCount;
+  }
+
+  private replaceLocalPassDisplay(
     config: AgentLoopRunConfig,
-    blockContent: string,
+    startIndex: number,
+    events: PassDisplayEvent[],
+  ): void {
+    const conversation = config.conversationSignal();
+    if (!conversation) return;
+
+    config.conversationSignal.set({
+      ...conversation,
+      updatedAt: new Date().toISOString(),
+      events: [
+        ...conversation.events.slice(0, startIndex),
+        ...events,
+      ],
+    });
+  }
+
+  private async persistStablePrefix(
+    config: AgentLoopRunConfig,
+    passState: PassState,
+    snapshot: PassSnapshot,
     persistedEventCount: number,
-    state: ParserState,
   ): Promise<number> {
-    const parsed = this.parseToolCallPayload(blockContent);
-    if (!parsed.ok) {
-      state.protocolErrorDetail = parsed.detail;
+    if (snapshot.stableCount <= passState.persistedStableCount) {
       return persistedEventCount;
     }
 
-    const callId = this.nextCallId();
-    const toolCallEvent: MatrixAgentEventToolCall = {
-      type: 'tool_call',
-      payload: {
-        callId,
-        toolName: parsed.toolName,
-        input: parsed.input,
-      },
-    };
-
-    this.agentService.appendLocalEvents(config.conversationSignal, [toolCallEvent]);
-    persistedEventCount = await this.persistBatch(config, persistedEventCount, [toolCallEvent]);
-
-    const toolResult = await this.executeTool(config, parsed.toolName, parsed.input);
-    if (!toolResult.success) {
-      state.toolFailureHappened = true;
+    const newStableEvents = snapshot.displayEvents.slice(passState.persistedStableCount, snapshot.stableCount);
+    if (!newStableEvents.length) {
+      passState.persistedStableCount = snapshot.stableCount;
+      return persistedEventCount;
     }
 
-    const toolResultEvent: MatrixAgentEventToolResult = {
-      type: 'tool_result',
-      payload: {
-        callId,
-        success: toolResult.success,
-        output: toolResult.output,
-      },
-    };
-    this.agentService.appendLocalEvents(config.conversationSignal, [toolResultEvent]);
-    return this.persistBatch(config, persistedEventCount, [toolResultEvent]);
+    persistedEventCount = await this.persistEvents(config, persistedEventCount, newStableEvents);
+    passState.persistedStableCount = snapshot.stableCount;
+    return persistedEventCount;
   }
 
-  private parseToolCallPayload(content: string): { ok: true; toolName: AgentLoopToolName; input: string[] } | { ok: false; detail: string } {
+  private async executeToolCalls(
+    config: AgentLoopRunConfig,
+    toolCalls: MatrixAgentEventToolCall[],
+    persistedEventCount: number,
+  ): Promise<{ persistedEventCount: number; toolFailureHappened: boolean }> {
+    let toolFailureHappened = false;
+
+    for (const toolCall of toolCalls) {
+      const toolResult = await this.executeTool(
+        config,
+        toolCall.payload.toolName as AgentLoopToolName,
+        toolCall.payload.input,
+      );
+      if (!toolResult.success) {
+        toolFailureHappened = true;
+      }
+
+      const toolResultEvent: MatrixAgentEventToolResult = {
+        type: 'tool_result',
+        payload: {
+          callId: toolCall.payload.callId,
+          success: toolResult.success,
+          output: toolResult.output,
+        },
+      };
+
+      this.agentService.appendLocalEvents(config.conversationSignal, [toolResultEvent]);
+      persistedEventCount = await this.persistEvents(config, persistedEventCount, [toolResultEvent]);
+    }
+
+    return { persistedEventCount, toolFailureHappened };
+  }
+
+  private parseToolCallPayload(
+    content: string,
+    enabledTools: AgentLoopToolName[],
+  ): { ok: true; toolName: AgentLoopToolName; input: string[] } | { ok: false } {
     try {
       const parsed = JSON.parse(content);
       if (!parsed || typeof parsed !== 'object') {
-        return { ok: false, detail: 'tool_call JSON 必须是对象。' };
+        return { ok: false };
       }
 
       if (typeof parsed.toolName !== 'string' || !parsed.toolName.trim()) {
-        return { ok: false, detail: 'tool_call JSON 缺少合法的 toolName。' };
+        return { ok: false };
       }
 
-      if (!this.toolRegistry.has(parsed.toolName as AgentLoopToolName)) {
-        return { ok: false, detail: `工具 ${String(parsed.toolName)} 未启用或未实现。` };
+      const toolName = parsed.toolName as AgentLoopToolName;
+      if (!enabledTools.includes(toolName) || !this.toolRegistry.has(toolName)) {
+        return { ok: false };
       }
 
-      // if (!Array.isArray(parsed.input) || !parsed.input.every((item: unknown) => typeof item === 'string')) {
-      //   return { ok: false, detail: 'tool_call JSON 的 input 必须是 string[]。' };
-      // }
-
-      const input = Array.isArray(parsed.input) ? parsed.input.map(String) :
-        parsed.input instanceof String ? parsed.input.split(',，') : null;
-
-      if (!input) {
-        return { ok: false, detail: 'tool_call JSON 的 input 必须是 string[] 或中/英文逗号分隔的单行字符串。' };
+      if (!Array.isArray(parsed.input) || !parsed.input.every((item: unknown) => typeof item === 'string')) {
+        return { ok: false };
       }
 
       return {
         ok: true,
-        toolName: parsed.toolName as AgentLoopToolName,
-        input,
+        toolName,
+        input: parsed.input,
       };
-    } catch (error) {
-      return {
-        ok: false,
-        detail: `tool_call JSON 解析失败，请重新输出合法 JSON。错误: ${error instanceof Error ? error.message : String(error)}`,
-      };
+    } catch {
+      return { ok: false };
     }
   }
 
-  private async executeTool(config: AgentLoopRunConfig, toolName: AgentLoopToolName, input: string[]): Promise<ToolExecutionResult> {
+  private async executeTool(
+    config: AgentLoopRunConfig,
+    toolName: AgentLoopToolName,
+    input: string[],
+  ): Promise<ToolExecutionResult> {
     const handler = this.toolRegistry.get(toolName);
     if (!handler) {
-      return { success: false, output: `工具 ${toolName} 未启用或未实现。` };
+      return { success: false, output: `Tool ${toolName} is not enabled or implemented.` };
     }
+
     return handler(config, input);
   }
 
@@ -549,57 +528,48 @@ export class AgentLoopService {
     return `call-${this.toolCallCounter}`;
   }
 
-  //~~ localEvent 操作 已经完整迁移到 agent.service
-
-  private upsertLocalTempTextEvent(
-    config: AgentLoopRunConfig,
-    currentIndex: number | null,
-    type: 'think' | 'output',
-    content: string,
-  ): number | null {
-    const conversation = config.conversationSignal();
-    if (!conversation) return null;
-    const result = this.agentService.upsertLocalTempTextEvent(conversation, currentIndex, type, content);
-    config.conversationSignal.set(result.conversation);
-    return result.index;
-  }
-
-  private appendPlainTextToOutput(config: AgentLoopRunConfig, state: ParserState, text: string): void {
-    state.activeTempEventIndex = this.upsertLocalTempTextEvent(config, state.activeTempEventIndex, 'output', text);
-  }
-
-  private stripPartialClosingSuffix(content: string, closingTag: string): string {
-    for (let overlap = Math.min(content.length, closingTag.length - 1); overlap > 0; overlap -= 1) {
-      if (closingTag.startsWith(content.slice(-overlap))) {
-        return content.slice(0, -overlap);
-      }
-    }
-    return content;
-  }
-
   /**
    * 请求持久化到后端，在错误时回滚\
-   * TODO，应该重新请求后端，现在的 fallback 容易出错
+   * dTODO，应该重新请求后端，现在的 fallback 容易出错
    */
-  private async persistBatch(
+  private async persistEvents(
     config: AgentLoopRunConfig,
     expectedEventCount: number,
     events: MatrixAgentEvent[],
-    fallbackConversation?: MatrixAgentConversation,
   ): Promise<number> {
-    const statusCode = await firstValueFrom(this.agentService.appendEvents$(config.courseId as any, config.assignId as any, config.userId, {
-      conversationId: config.conversationSignal()?.conversationId ?? fallbackConversation?.conversationId ?? '',
-      expectedEventCount,
-      events,
-    }));
-
-    if (!statusCode || statusCode < 200 || statusCode >= 300) {
-      if (fallbackConversation) {
-        config.conversationSignal.set(fallbackConversation);
-      }
-      throw new Error(`Persisting events failed with status ${statusCode ?? 'unknown'}.`);
+    const conversationId = config.conversationSignal()?.conversationId;
+    if (!conversationId) {
+      throw new Error('Conversation not found while persisting events.');
     }
 
-    return expectedEventCount + events.length;
+    const result = await firstValueFrom(this.agentService.appendEventsWithResult$(
+      config.courseId,
+      config.assignId,
+      config.userId,
+      {
+        conversationId,
+        expectedEventCount,
+        events,
+      },
+    ));
+
+    if (result.ok) {
+      return expectedEventCount + events.length;
+    }
+
+    if (result.status === 409) {
+      const remoteConversation = await firstValueFrom(this.agentService.getConversation$(
+        config.courseId,
+        config.assignId,
+        conversationId,
+        config.userId,
+      ));
+      if (remoteConversation) {
+        config.conversationSignal.set(remoteConversation);
+      }
+      throw new Error(`Persist conflict: ${result.detail ?? 'expected_event_count mismatch'}`);
+    }
+
+    throw new Error(`Persisting events failed with status ${result.status}${result.detail ? `: ${result.detail}` : ''}.`);
   }
 }

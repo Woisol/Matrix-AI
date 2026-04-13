@@ -12,7 +12,7 @@ import {
   MatrixAgentEventThink,
   MatrixAgentOperationResponse,
 } from "../../../api/type/agent";
-import { ApiHttpService } from "../../../api/util/api-http.service";
+import { ApiError, ApiHttpService } from "../../../api/util/api-http.service";
 import { NotificationService } from "../../notification/notification.service";
 
 // 行吧，所以意思是传过来的原始数据类型建议直接放同文件毕竟只用一次
@@ -26,6 +26,10 @@ type RawMatrixAgentConversationSummary = {
 type RawMatrixAgentConversation = RawMatrixAgentConversationSummary & {
   events: MatrixAgentEvent[]
 }
+
+export type MatrixAgentAppendEventsResult =
+  | { ok: true; status: number }
+  | { ok: false; status: number; detail?: string }
 
 @Injectable({ providedIn: 'root' })
 export class AgentService {
@@ -137,6 +141,30 @@ export class AgentService {
     );
   }
 
+  appendEventsWithResult$(courseId: CourseId, assignId: AssignId, userId: string | undefined, request: MatrixAgentAppendEventsRequest): Observable<MatrixAgentAppendEventsResult> {
+    return this.api.post$<HttpResponse<MatrixAgentOperationResponse>>(
+      `/courses/${courseId}/assignments/${assignId}/agent/event`,
+      {
+        conversation_id: request.conversationId,
+        expected_event_count: request.expectedEventCount,
+        events: request.events,
+      },
+      { ...this.buildUserParams(userId), observe: 'response' },
+    ).pipe(
+      map((response) => ({ ok: true, status: response.status }) satisfies MatrixAgentAppendEventsResult),
+      catchError((error: ApiError | { status?: number, body?: { detail?: string } | string, message?: string }) => {
+        const detail = typeof error?.body === 'string'
+          ? error.body
+          : error?.body?.detail ?? error?.message;
+        return of({
+          ok: false,
+          status: error?.status ?? 0,
+          detail,
+        } satisfies MatrixAgentAppendEventsResult);
+      }),
+    );
+  }
+
   appendLocalEvents(currentConversation: WritableSignal<MatrixAgentConversation | null | undefined>, events: MatrixAgentEvent[]): void {
     const conversation = currentConversation();
     if (!conversation) return;
@@ -154,6 +182,18 @@ export class AgentService {
       updatedAt: new Date().toISOString(),
       events: [...conversation.events, ...events],
     };
+  }
+
+  updateLastLocalEvent(currentConversation: WritableSignal<MatrixAgentConversation | null | undefined>, event: MatrixAgentEvent): void {
+    const conversation = currentConversation();
+    if (!conversation) return;
+
+    if (!conversation.events.length) {
+      currentConversation.set(this.appendLocalEvents1(conversation, [event]));
+      return;
+    }
+
+    currentConversation.set(this.replaceLocalEventAt(conversation, conversation.events.length - 1, event));
   }
 
   replaceLocalEventAt(conversation: MatrixAgentConversation, index: number, event: MatrixAgentEvent): MatrixAgentConversation {

@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 import { signal } from '@angular/core';
 
 import { MatrixAgentConversation } from '../../../api/type/agent';
-import { ApiHttpService } from '../../../api/util/api-http.service';
+import { ApiError, ApiHttpService } from '../../../api/util/api-http.service';
 import { NotificationService } from '../../notification/notification.service';
 import { AgentService } from './agent.service';
 
@@ -179,6 +179,26 @@ describe('AgentService', () => {
     expect(result).toBe(200);
   });
 
+  it('returns structured append results so callers can detect conflicts', async () => {
+    apiStub.post$.and.returnValue(throwError(() => new ApiError('Conflict', 409, { detail: 'expected_event_count mismatch' })));
+
+    const service = TestBed.inject(AgentService);
+    const result = await firstValueFrom(service.appendEventsWithResult$('course-1', 'assign-1', 'user-1', {
+      conversationId: 'conv-1',
+      expectedEventCount: 2,
+      events: [
+        { type: 'think', payload: { content: 'first pass' } },
+      ],
+    }));
+
+    expect(result).toEqual({
+      ok: false,
+      status: 409,
+      detail: 'expected_event_count mismatch',
+    });
+    expect(notificationServiceStub.error).not.toHaveBeenCalled();
+  });
+
   it('streams model messages through the backend agent stream endpoint', async () => {
     const encoder = new TextEncoder();
     globalThis.fetch = jasmine.createSpy('fetch').and.resolveTo(
@@ -265,6 +285,29 @@ describe('AgentService', () => {
     expect(second.index).toBe(0);
     expect(second.conversation.events).toEqual([
       { type: 'think', payload: { content: '第二段' } },
+    ]);
+  });
+  it('updates the last local event in place', () => {
+    const service = TestBed.inject(AgentService);
+    const conversationSignal = signal<MatrixAgentConversation | null | undefined>({
+      conversationId: 'conv-1',
+      title: 'Draft conversation',
+      createdAt: '2026-04-11T10:00:00Z',
+      updatedAt: '2026-04-11T10:00:00Z',
+      events: [
+        { type: 'user_message', payload: { content: 'hello' } },
+        { type: 'output', payload: { content: 'draft' } },
+      ],
+    });
+
+    service.updateLastLocalEvent(conversationSignal, {
+      type: 'output',
+      payload: { content: 'final' },
+    });
+
+    expect(conversationSignal()?.events).toEqual([
+      { type: 'user_message', payload: { content: 'hello' } },
+      { type: 'output', payload: { content: 'final' } },
     ]);
   });
 });

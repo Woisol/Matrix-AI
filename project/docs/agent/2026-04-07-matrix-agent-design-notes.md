@@ -116,7 +116,7 @@ type MatrixAgentConversation = {
 10. 工具卡片默认只显示真实内部工具名、当前状态和一小段结果摘要。
 11. 工具卡片标题直接使用真实内部工具名，例如 `read_selection`、`write_editor`，不额外维护展示名映射。
 12. 工具卡片摘要默认取工具输出开头；如果没有输出，则退化为成功/失败状态文案。
-13. 如果一轮不存在 `assistant_final`，assistant 卡片底部仍然要显示系统态收尾文案，而不是伪装成 agent 自然语言回复。
+13. 如果一轮不存在 `output`，assistant 卡片底部仍然要显示系统态收尾文案，而不是伪装成 agent 自然语言回复。
 
 ## 7. Agent Loop 运行规则
 
@@ -153,7 +153,7 @@ type MatrixAgentConversation = {
    - 工具结果
    - 最终回复
 5. `think` 内容按阶段整体保存，不做逐 token 级别持久化。
-6. `think` 和 `assistant_final` 均允许在前端内存中流式展示，但落库时以阶段完成后的完整文本为准。
+6. `think` 和 `output` 均允许在前端内存中流式展示，但落库时以阶段完成后的完整文本为准。
 7. 工具调用参数由 runtime 负责解析和理解；当前 event 存储只保留极简可回放的参数留痕。
 
 ## 10. 事件流模型
@@ -170,7 +170,7 @@ type MatrixAgentConversation = {
 
 1. 两条 `user_message` 之间的所有非 user event，归为同一轮 agent 回复。
 2. 一轮内允许存在多个 `think`。
-3. 一轮内最多存在一个 `assistant_final`。
+3. 一轮内最多存在一个 `output`。
 4. 每轮必须以一个 `turn_end` 收尾。
 
 当前最小 event schema 暂定为：
@@ -206,7 +206,7 @@ type MatrixAgentEvent =
       }
     }
   | {
-      type: 'assistant_final'
+      type: 'output'
       payload: {
         content: string
       }
@@ -232,9 +232,9 @@ type MatrixAgentEvent =
 2. `tool_call` 允许没有对应的 `tool_result`。
 3. `tool_result.success` 作为前端判断卡片成功/失败态的统一字段。
 4. `tool_result.output` 当前统一压成单个字符串。
-5. `user_message`、`think`、`assistant_final` 当前都只保存 `content: string`。
-6. `max_turn_limit_reached` 与 `tool_retry_limit_reached` 这两类结束原因应尽量补一条 `assistant_final` 收尾。
-7. `page_unload`、`aborted`、`client_error`、`server_error` 不强求补 `assistant_final`。
+5. `user_message`、`think`、`output` 当前都只保存 `content: string`。
+6. `max_turn_limit_reached` 与 `tool_retry_limit_reached` 这两类结束原因应尽量补一条 `output` 收尾。
+7. `page_unload`、`aborted`、`client_error`、`server_error` 不强求补 `output`。
 
 ## 11. 运行态与持久化边界
 

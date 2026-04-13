@@ -5,14 +5,20 @@ import { signal, WritableSignal } from '@angular/core';
 import { AssignData } from '../../../api/type/assigment';
 import { MatrixAgentConversation, MatrixAgentEvent } from '../../../api/type/agent';
 import { AgentService } from './agent.service';
-import { AgentLoopService } from './agent-loop.service';
+import { AgentLoopService, AgentLoopToolName } from './agent-loop.service';
 import { SYSTEM_PROMPT } from './agent.constant';
+
+type AppendResult = { ok: true; status: number } | { ok: false; status: number; detail?: string };
 
 describe('AgentLoopService', () => {
   const agentServiceStub = {
-    appendEvents$: jasmine.createSpy('appendEvents$').and.returnValue(of(200)),
+    appendEventsWithResult$: jasmine.createSpy('appendEventsWithResult$').and.returnValue(of({ ok: true, status: 200 } satisfies AppendResult)),
+    getConversation$: jasmine.createSpy('getConversation$').and.returnValue(of(undefined)),
     streamMessages: jasmine.createSpy('streamMessages'),
-    appendLocalEvents: jasmine.createSpy('appendLocalEvents').and.callFake((conversationSignal: WritableSignal<MatrixAgentConversation | null | undefined>, events: MatrixAgentEvent[]) => {
+    appendLocalEvents: jasmine.createSpy('appendLocalEvents').and.callFake((
+      conversationSignal: WritableSignal<MatrixAgentConversation | null | undefined>,
+      events: MatrixAgentEvent[],
+    ) => {
       const conversation = conversationSignal();
       if (!conversation) return;
       conversationSignal.set({
@@ -21,54 +27,16 @@ describe('AgentLoopService', () => {
         events: [...conversation.events, ...events],
       });
     }),
-    replaceLocalEventAt: jasmine.createSpy('replaceLocalEventAt').and.callFake((conversation: MatrixAgentConversation, index: number, event: MatrixAgentEvent) => {
-      const nextEvents = [...conversation.events];
-      nextEvents[index] = event;
-      return {
-        ...conversation,
-        updatedAt: 'updated',
-        events: nextEvents,
-      };
-    }),
-    appendLocalEventAndGetIndex: jasmine.createSpy('appendLocalEventAndGetIndex').and.callFake((conversation: MatrixAgentConversation, event: MatrixAgentEvent) => {
-      const nextConversation = {
-        ...conversation,
-        updatedAt: 'updated',
-        events: [...conversation.events, event],
-      };
-      return { conversation: nextConversation, index: nextConversation.events.length - 1 };
-    }),
-    upsertLocalTempTextEvent: jasmine.createSpy('upsertLocalTempTextEvent').and.callFake((conversation: MatrixAgentConversation, currentIndex: number | null, type: 'think' | 'output', content: string) => {
-      const event = { type, payload: { content } } as MatrixAgentEvent;
-      if (currentIndex === null) {
-        const nextConversation = {
-          ...conversation,
-          updatedAt: 'updated',
-          events: [...conversation.events, event],
-        };
-        return { conversation: nextConversation, index: nextConversation.events.length - 1 };
-      }
-
-      const nextEvents = [...conversation.events];
-      nextEvents[currentIndex] = event;
-      return {
-        conversation: {
-          ...conversation,
-          updatedAt: 'updated',
-          events: nextEvents,
-        },
-        index: currentIndex,
-      };
-    }),
   };
 
   beforeEach(() => {
-    agentServiceStub.appendEvents$.calls.reset();
+    agentServiceStub.appendEventsWithResult$.calls.reset();
+    agentServiceStub.appendEventsWithResult$.and.returnValue(of({ ok: true, status: 200 } satisfies AppendResult));
+    agentServiceStub.getConversation$.calls.reset();
+    agentServiceStub.getConversation$.and.returnValue(of(undefined));
     agentServiceStub.streamMessages.calls.reset();
     agentServiceStub.appendLocalEvents.calls.reset();
-    agentServiceStub.replaceLocalEventAt.calls.reset();
-    agentServiceStub.appendLocalEventAndGetIndex.calls.reset();
-    agentServiceStub.upsertLocalTempTextEvent.calls.reset();
+
     TestBed.configureTestingModule({
       providers: [
         AgentLoopService,
@@ -77,10 +45,11 @@ describe('AgentLoopService', () => {
     });
   });
 
-  function asyncChunks(chunks: string[]) {
+  function asyncChunks(chunks: string[], onChunkConsumed?: (index: number) => void) {
     return (async function* () {
-      for (const chunk of chunks) {
-        yield chunk;
+      for (let index = 0; index < chunks.length; index += 1) {
+        yield chunks[index];
+        onChunkConsumed?.(index);
       }
     })();
   }
@@ -88,7 +57,7 @@ describe('AgentLoopService', () => {
   function createConversation(): MatrixAgentConversation {
     return {
       conversationId: 'conv-1',
-      title: '新的对话',
+      title: 'New conversation',
       createdAt: '2026-04-11T10:00:00Z',
       updatedAt: '2026-04-11T10:00:00Z',
       events: [],
@@ -98,16 +67,29 @@ describe('AgentLoopService', () => {
   function createAssignData(): AssignData {
     return {
       assignId: 'assign-1' as any,
-      title: '题目标题',
-      description: '题目描述',
+      title: 'Problem title',
+      description: 'Problem description',
       assignOriginalCode: [{ fileName: 'main.cpp', content: 'int main() { return 0; }' }],
       submit: undefined,
     };
   }
 
-  it('builds system prompt with xml protocol and enabled tools', () => {
-    const service = TestBed.inject(AgentLoopService);
+  function runConfig(conversationSignal: WritableSignal<MatrixAgentConversation | null>) {
+    return {
+      courseId: 'course-1' as any,
+      assignId: 'assign-1' as any,
+      userId: 'Matrix AI',
+      userMessageContent: 'help me',
+      conversationSignal,
+      assignData: createAssignData(),
+      analysis: undefined,
+      getEditorContent: () => 'int main() { return 0; }',
+      getSelectionContent: () => null,
+      enabledTools: ['read_editor', 'read_problem_info'] as AgentLoopToolName[],
+    };
+  }
 
+  it('builds system prompt with xml protocol and enabled tools', () => {
     const prompt = SYSTEM_PROMPT(['read_editor', 'read_problem_info']);
 
     expect(prompt).toContain('<think>');
@@ -118,177 +100,215 @@ describe('AgentLoopService', () => {
     expect(prompt).not.toContain('write_editor');
   });
 
-  it('runs a simple output-only turn and persists user/think/output events', async () => {
-    agentServiceStub.streamMessages.and.returnValue(asyncChunks(['<think>先分析一下</think><output>最终答案</output>']));
-    const service = TestBed.inject(AgentLoopService);
+  it('rewrites draft output into stable output and think blocks when think closes', async () => {
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
+    const snapshots: MatrixAgentEvent[][] = [];
 
-    await service.emitAgentLoop({
-      courseId: 'course-1' as any,
-      assignId: 'assign-1' as any,
-      userId: 'Matrix AI',
-      userMessageContent: '你好',
-      conversationSignal,
-      assignData: createAssignData(),
-      analysis: undefined,
-      getEditorContent: () => 'int main() { return 0; }',
-      getSelectionContent: () => null,
-      enabledTools: ['read_editor', 'read_problem_info'],
-    });
+    agentServiceStub.streamMessages.and.returnValue(asyncChunks(
+      ['plain<think>draft', '</think>tail'],
+      (index) => {
+        snapshots[index] = [...(conversationSignal()?.events ?? [])];
+      },
+    ));
 
-    expect(agentServiceStub.appendEvents$.calls.argsFor(0)[3]).toEqual({
+    const service = TestBed.inject(AgentLoopService);
+
+    await service.emitAgentLoop(runConfig(conversationSignal));
+
+    expect(snapshots[0]).toEqual([
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: 'plain<think>draft' } },
+    ]);
+    expect(snapshots[1]).toEqual([
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: 'plain' } },
+      { type: 'think', payload: { content: 'draft' } },
+      { type: 'output', payload: { content: 'tail' } },
+    ]);
+
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(0)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 0,
-      events: [{ type: 'user_message', payload: { content: '你好' } }],
+      events: [{ type: 'user_message', payload: { content: 'help me' } }],
     });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(1)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(1)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 1,
-      events: [{ type: 'think', payload: { content: '先分析一下' } }],
+      events: [
+        { type: 'output', payload: { content: 'plain' } },
+        { type: 'think', payload: { content: 'draft' } },
+      ],
     });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(2)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 2,
-      events: [{ type: 'output', payload: { content: '最终答案' } }],
-    });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(3)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(2)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 3,
+      events: [{ type: 'output', payload: { content: 'tail' } }],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(3)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 4,
       events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
     });
+
     expect(conversationSignal()?.events).toEqual([
-      { type: 'user_message', payload: { content: '你好' } },
-      { type: 'think', payload: { content: '先分析一下' } },
-      { type: 'output', payload: { content: '最终答案' } },
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: 'plain' } },
+      { type: 'think', payload: { content: 'draft' } },
+      { type: 'output', payload: { content: 'tail' } },
       { type: 'turn_end', payload: { reason: 'completed' } },
     ]);
   });
 
-  it('handles a read_editor tool call before producing an output answer', async () => {
+  it('keeps tool calls in place, delays tool execution until pass end, and appends tool results afterward', async () => {
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
+    const snapshots: MatrixAgentEvent[][] = [];
+
     agentServiceStub.streamMessages.and.returnValues(
-      asyncChunks(['<tool_call>{"toolName":"read_editor","input":[]}</tool_call>']),
-      asyncChunks(['<output>根据代码内容给出的答案</output>']),
+      asyncChunks(
+        [
+          'before<tool_call>{"toolName":"read_editor","input":[]}</tool_call>',
+          'after<tool_call>{"toolName":"read_problem_info","input":[]}</tool_call>end',
+        ],
+        (index) => {
+          snapshots[index] = [...(conversationSignal()?.events ?? [])];
+        },
+      ),
+      asyncChunks(['<output>done</output>']),
     );
 
     const service = TestBed.inject(AgentLoopService);
-    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
-    await service.emitAgentLoop({
-      courseId: 'course-1' as any,
-      assignId: 'assign-1' as any,
-      userId: 'Matrix AI',
-      userMessageContent: '帮我分析代码',
-      conversationSignal,
-      assignData: createAssignData(),
-      analysis: undefined,
-      getEditorContent: () => 'int main() { return 0; }',
-      getSelectionContent: () => null,
-      enabledTools: ['read_editor'],
+    await service.emitAgentLoop(runConfig(conversationSignal));
+
+    expect(snapshots[0]).toEqual([
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: 'before' } },
+      { type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: [] } },
+    ]);
+    expect(snapshots[1]).toEqual([
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: 'before' } },
+      { type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: [] } },
+      { type: 'output', payload: { content: 'after' } },
+      { type: 'tool_call', payload: { callId: 'call-2', toolName: 'read_problem_info', input: [] } },
+      { type: 'output', payload: { content: 'end' } },
+    ]);
+
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(0)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 0,
+      events: [{ type: 'user_message', payload: { content: 'help me' } }],
     });
-
-    expect(agentServiceStub.appendEvents$.calls.argsFor(1)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(1)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 1,
       events: [
+        { type: 'output', payload: { content: 'before' } },
         { type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: [] } },
       ],
     });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(2)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(2)[3]).toEqual({
       conversationId: 'conv-1',
-      expectedEventCount: 2,
+      expectedEventCount: 3,
       events: [
-        { type: 'tool_result', payload: { callId: 'call-1', success: true, output: 'int main() { return 0; }' } },
+        { type: 'output', payload: { content: 'after' } },
+        { type: 'tool_call', payload: { callId: 'call-2', toolName: 'read_problem_info', input: [] } },
       ],
     });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(3)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 3,
-      events: [{ type: 'output', payload: { content: '根据代码内容给出的答案' } }],
-    });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(4)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 4,
-      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
-    });
-    expect(conversationSignal()?.events.at(-2)).toEqual({ type: 'output', payload: { content: '根据代码内容给出的答案' } });
-  });
-
-  it('salvages plain text outside tags into an output answer', async () => {
-    agentServiceStub.streamMessages.and.returnValue(asyncChunks(['模型有点不听话但还是给出了答案']));
-    const service = TestBed.inject(AgentLoopService);
-    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
-
-    await service.emitAgentLoop({
-      courseId: 'course-1' as any,
-      assignId: 'assign-1' as any,
-      userId: 'Matrix AI',
-      userMessageContent: '直接回答',
-      conversationSignal,
-      assignData: createAssignData(),
-      analysis: undefined,
-      getEditorContent: () => 'int main() { return 0; }',
-      getSelectionContent: () => null,
-      enabledTools: ['read_editor'],
-    });
-
-    expect(agentServiceStub.appendEvents$.calls.argsFor(1)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 1,
-      events: [{ type: 'output', payload: { content: '模型有点不听话但还是给出了答案' } }],
-    });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(2)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 2,
-      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
-    });
-  });
-
-  it('allows output blocks to interleave with tool calls in one response', async () => {
-    agentServiceStub.streamMessages.and.returnValues(
-      asyncChunks(['<output>前置说明</output><tool_call>{"toolName":"read_editor","input":[]}</tool_call>']),
-      asyncChunks(['<output>补充说明</output>']),
-    );
-
-    const service = TestBed.inject(AgentLoopService);
-    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
-
-    await service.emitAgentLoop({
-      courseId: 'course-1' as any,
-      assignId: 'assign-1' as any,
-      userId: 'Matrix AI',
-      userMessageContent: '混合输出和工具',
-      conversationSignal,
-      assignData: createAssignData(),
-      analysis: undefined,
-      getEditorContent: () => 'int main() { return 0; }',
-      getSelectionContent: () => null,
-      enabledTools: ['read_editor'],
-    });
-
-    expect(agentServiceStub.appendEvents$.calls.argsFor(1)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 1,
-      events: [{ type: 'output', payload: { content: '前置说明' } }],
-    });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(2)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 2,
-      events: [{ type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: [] } }],
-    });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(3)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 3,
-      events: [{ type: 'tool_result', payload: { callId: 'call-1', success: true, output: 'int main() { return 0; }' } }],
-    });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(4)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 4,
-      events: [{ type: 'output', payload: { content: '补充说明' } }],
-    });
-    expect(agentServiceStub.appendEvents$.calls.argsFor(5)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(3)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 5,
+      events: [{ type: 'output', payload: { content: 'end' } }],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(4)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 6,
+      events: [{ type: 'tool_result', payload: { callId: 'call-1', success: true, output: 'int main() { return 0; }' } }],
+    });
+
+    const secondToolResult = agentServiceStub.appendEventsWithResult$.calls.argsFor(5)[3].events[0];
+    expect(secondToolResult.type).toBe('tool_result');
+    expect(secondToolResult.payload.callId).toBe('call-2');
+    expect(secondToolResult.payload.success).toBeTrue();
+    expect(secondToolResult.payload.output).toContain('Problem title');
+    expect(secondToolResult.payload.output).toContain('Problem description');
+
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(6)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 8,
+      events: [{ type: 'output', payload: { content: 'done' } }],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(7)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 9,
       events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
     });
+
+    expect(agentServiceStub.streamMessages.calls.count()).toBe(2);
+    expect(conversationSignal()?.events).toEqual([
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: 'before' } },
+      { type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: [] } },
+      { type: 'output', payload: { content: 'after' } },
+      { type: 'tool_call', payload: { callId: 'call-2', toolName: 'read_problem_info', input: [] } },
+      { type: 'output', payload: { content: 'end' } },
+      { type: 'tool_result', payload: { callId: 'call-1', success: true, output: 'int main() { return 0; }' } },
+      secondToolResult,
+      { type: 'output', payload: { content: 'done' } },
+      { type: 'turn_end', payload: { reason: 'completed' } },
+    ]);
+  });
+
+  it('downgrades malformed tool_call blocks into plain output', async () => {
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
+
+    agentServiceStub.streamMessages.and.returnValue(asyncChunks([
+      '<tool_call>{"toolName":"read_editor","input":}</tool_call>',
+    ]));
+
+    const service = TestBed.inject(AgentLoopService);
+
+    await service.emitAgentLoop(runConfig(conversationSignal));
+
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(1)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 1,
+      events: [{ type: 'output', payload: { content: '<tool_call>{"toolName":"read_editor","input":}</tool_call>' } }],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(2)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 2,
+      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
+    });
+    expect(conversationSignal()?.events).toEqual([
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: '<tool_call>{"toolName":"read_editor","input":}</tool_call>' } },
+      { type: 'turn_end', payload: { reason: 'completed' } },
+    ]);
+  });
+
+  it('reloads the conversation and aborts when persistence reports a conflict', async () => {
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
+    const remoteConversation: MatrixAgentConversation = {
+      ...createConversation(),
+      title: 'Reloaded conversation',
+      events: [{ type: 'user_message', payload: { content: 'remote update' } }],
+    };
+
+    agentServiceStub.appendEventsWithResult$.and.returnValues(
+      of({ ok: true, status: 200 } satisfies AppendResult),
+      of({ ok: false, status: 409, detail: 'expected_event_count mismatch' } satisfies AppendResult),
+    );
+    agentServiceStub.getConversation$.and.returnValue(of(remoteConversation));
+    agentServiceStub.streamMessages.and.returnValue(asyncChunks(['plain answer']));
+
+    const service = TestBed.inject(AgentLoopService);
+
+    await expectAsync(service.emitAgentLoop(runConfig(conversationSignal)))
+      .toBeRejectedWithError('Persist conflict: expected_event_count mismatch');
+
+    expect(agentServiceStub.getConversation$).toHaveBeenCalledWith('course-1', 'assign-1', 'conv-1', 'Matrix AI');
+    expect(agentServiceStub.streamMessages.calls.count()).toBe(1);
+    expect(conversationSignal()).toEqual(remoteConversation);
   });
 });
