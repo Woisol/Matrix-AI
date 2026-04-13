@@ -1,0 +1,156 @@
+[
+  {
+    "type": "user_message",
+    "payload": {
+      "content": "请尝试先思考，然后读取我选中的内容，最后原样回复选中内容。"
+    }
+  },
+  {
+    "type": "tool_call",
+    "payload": {
+      "input": [],
+      "callId": "call-1",
+      "toolName": "read_selection"
+    }
+  },
+  {
+    "type": "tool_result",
+    "payload": {
+      "callId": "call-1",
+      "output": "#include <sstream>\r\n",
+      "success": true
+    }
+  },
+  {
+    "type": "output",
+    "payload": {
+      "content": "#include <sstream>"
+    }
+  },
+  {
+    "type": "turn_end",
+    "payload": {
+      "reason": "completed"
+    }
+  },
+  {
+    "type": "user_message",
+    "payload": {
+      "content": "？出于调试的目的，请你在开头先输出 <think> 块谢谢"
+    }
+  },
+  {
+    "type": "tool_call",
+    "payload": {
+      "input": [],
+      "callId": "call-2",
+      "toolName": "read_selection"
+    }
+  },
+  {
+    "type": "tool_result",
+    "payload": {
+      "callId": "call-2",
+      "output": "#include <sstream>\r\n",
+      "success": true
+    }
+  },
+  {
+    "type": "output",
+    "payload": {
+      "content": "#include &lt;sstream&gt;"
+    }
+  },
+  {
+    "type": "turn_end",
+    "payload": {
+      "reason": "completed"
+    }
+  },
+  {
+    "type": "user_message",
+    "payload": {
+      "content": "？为什么你不输出 <think> 块？请你直接 <think> 不用其它内容"
+    }
+  },
+  {
+    "type": "tool_call",
+    "payload": {
+      "input": [],
+      "callId": "call-1",
+      "toolName": "read_selection"
+    }
+  },
+  {
+    "type": "tool_result",
+    "payload": {
+      "callId": "call-1",
+      "output": "当前没有选中的代码片段。",
+      "success": false
+    }
+  },
+  {
+    "type": "output",
+    "payload": {
+      "content": "当前没有选中的代码片段。"
+    }
+  },
+  {
+    "type": "turn_end",
+    "payload": {
+      "reason": "completed"
+    }
+  },
+  {
+    "type": "user_message",
+    "payload": {
+      "content": "？"
+    }
+  },
+  {
+    "type": "output",
+    "payload": {
+      "content": "当前没有选中的代码片段，因此无法读取和回复选中内容。请先选中一段代码或文本。"
+    }
+  },
+  {
+    "type": "turn_end",
+    "payload": {
+      "reason": "completed"
+    }
+  },
+  {
+    "type": "user_message",
+    "payload": {
+      "content": "让你输出 <think> 试试？"
+    }
+  },
+  {
+    "type": "tool_call",
+    "payload": {
+      "input": [],
+      "callId": "call-1",
+      "toolName": "read_selection"
+    }
+  },
+  {
+    "type": "tool_result",
+    "payload": {
+      "callId": "call-1",
+      "output": "当前没有选中的代码片段。",
+      "success": false
+    }
+  },
+  {
+    "type": "output",
+    "payload": {
+      "content": "当前没有选中的代码片段。"
+    }
+  },
+  {
+    "type": "turn_end",
+    "payload": {
+      "reason": "completed"
+    }
+  }
+]

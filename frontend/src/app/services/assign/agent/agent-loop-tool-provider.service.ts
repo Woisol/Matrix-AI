@@ -14,24 +14,26 @@ export type AgentLoopToolName =
   | 'playground'
   | 'web_search'
   | 'web_read';
+export type AgentLoopToolNameDisplay = Exclude<AgentLoopToolName, 'get_tool_hint' | 'read_selection' | 'write_editor_suggestion'>;
+
 
 
 @Injectable({ providedIn: 'root' })
 export class AgentLoopToolProvider {
   constructor() {
     const store = localStorage.getItem('agent_loop_enabled_tools');
-    let enabledTools: AgentLoopToolName[] = [];
+    let enabledTools: AgentLoopToolNameDisplay[] = [];
     if (store) {
       try {
-        const parsed = JSON.parse(store) as AgentLoopToolName[];
-        enabledTools = parsed.filter((tool): tool is AgentLoopToolName =>
+        const parsed = JSON.parse(store) as AgentLoopToolNameDisplay[];
+        enabledTools = parsed.filter((tool): tool is AgentLoopToolNameDisplay =>
           this.availableToolNames.includes(tool)
         );
       } catch {
         console.warn('Failed to parse enabled tools from localStorage, using default.');
       }
     } else {
-      enabledTools = this.availableToolNames; // 默认全开
+      enabledTools = this.availableToolsDisplay; // 默认全开
     }
     // 不然在 if 和 else 都设置也无法消除 构造函数未赋值的报错😅
     this._enabledTools = enabledTools;
@@ -46,7 +48,7 @@ export class AgentLoopToolProvider {
     ['get_tool_hint', async (_, input) => {
       const [toolName] = input;
       if (!toolName) {
-        return { success: true, output: 'All possible tools: ' + this.enabledTools.map(name => `${name} (${this.toolHinters[name]})`).join(', ') };
+        return { success: true, output: 'All possible tools: ' + this.enabledToolsDisplay.map(name => `${name} (${this.toolHinters[name]})`).join(', ') };
       }
       if (!this.availableToolNames.includes(toolName as AgentLoopToolName))
         return { success: false, output: 'Tool not enabled or not found for get_tool_hint.' };
@@ -123,17 +125,36 @@ export class AgentLoopToolProvider {
   };
 
 
-  _enabledTools: AgentLoopToolName[];
+  _enabledTools: AgentLoopToolNameDisplay[];
 
+  /**
+   * available 是定义的所有工具
+   */
   get availableToolNames(): AgentLoopToolName[] {
     return Array.from(this.toolRegistry.keys());
   }
 
-  get enabledTools(): AgentLoopToolName[] {
+  get availableToolsDisplay(): AgentLoopToolNameDisplay[] {
+    // 究极耦合😅😅😅
+    return this.availableToolNames.filter(name => name !== 'get_tool_hint' && name !== 'read_selection' && name !== 'write_editor_suggestion') as AgentLoopToolNameDisplay[];
+  }
+
+  /**
+   * 面向前端的工具列表，折叠了被合并管理的工具
+   * enabled 是启用的工具
+   */
+  get enabledToolsDisplay(): AgentLoopToolNameDisplay[] {
     return this._enabledTools;
   }
 
-  set enabledTools(tools: AgentLoopToolName[]) {
+  get enabledTools(): AgentLoopToolName[] {
+    const enabledTools: AgentLoopToolName[] = this._enabledTools;
+    if (enabledTools.includes('read_editor')) enabledTools.push('read_selection');
+    if (enabledTools.includes('write_editor')) enabledTools.push('write_editor_suggestion');
+    return enabledTools;
+  }
+
+  set enabledToolsDisplay(tools: AgentLoopToolNameDisplay[]) {
     this._enabledTools = tools;
     localStorage.setItem('agent_loop_enabled_tools', JSON.stringify(tools));
   }
