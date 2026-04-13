@@ -100,7 +100,7 @@ export class AgentLoopService {
 
     const enabledTools = config.enabledTools?.length
       ? config.enabledTools
-      : this.toolProvider.toolNames;
+      : this.toolProvider.availableToolNames;
 
     const trimmedContent = config.userMessageContent.trim();
     if (!trimmedContent) {

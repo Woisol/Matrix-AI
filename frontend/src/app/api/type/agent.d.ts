@@ -44,7 +44,7 @@ export type MatrixAgentEventToolResult = {
   payload: {
     callId: string
     success: boolean
-    output: string
+    output?: string
   }
 }
 export type MatrixAgentEventOutput = {

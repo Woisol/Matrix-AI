@@ -261,6 +261,7 @@ export class AssignmentComponent implements OnDestroy {
       getEditorContent: (): string => this.codeEditor?.getModel()?.getValue()
         ?? this.codeFile().content
         ?? '',
+
       getSelectionContent: (): string | null => {
         const editor = this.codeEditor;
         const model = editor?.getModel();
@@ -268,8 +269,9 @@ export class AssignmentComponent implements OnDestroy {
         if (!editor || !model || !selection || selection.isEmpty()) {
           return null;
         }
-        return model.getValueInRange(selection);
+        return `select content: ${model.getValueInRange(selection)}\n\n\nrange: ${selection.toString()}`; // [21,1 -> 22,1]
       },
+      writeEditorContent: this.handleAnalysisEditRequest
     }).catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.notify.error(`Agent loop 运行失败: ${message}`);
