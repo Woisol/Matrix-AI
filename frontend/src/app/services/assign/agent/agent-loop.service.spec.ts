@@ -117,7 +117,8 @@ describe('AgentLoopService', () => {
 
     expect(snapshots[0]).toEqual([
       { type: 'user_message', payload: { content: 'help me' } },
-      { type: 'output', payload: { content: 'plain<think>draft' } },
+      { type: 'output', payload: { content: 'plain' } },
+      { type: 'think', payload: { content: 'draft' } },
     ]);
     expect(snapshots[1]).toEqual([
       { type: 'user_message', payload: { content: 'help me' } },
@@ -134,15 +135,15 @@ describe('AgentLoopService', () => {
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(1)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 1,
-      events: [
-        { type: 'output', payload: { content: 'plain' } },
-        { type: 'think', payload: { content: 'draft' } },
-      ],
+      events: [{ type: 'output', payload: { content: 'plain' } }],
     });
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(2)[3]).toEqual({
       conversationId: 'conv-1',
-      expectedEventCount: 3,
-      events: [{ type: 'output', payload: { content: 'tail' } }],
+      expectedEventCount: 2,
+      events: [
+        { type: 'think', payload: { content: 'draft' } },
+        { type: 'output', payload: { content: 'tail' } },
+      ],
     });
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(3)[3]).toEqual({
       conversationId: 'conv-1',
@@ -213,32 +214,28 @@ describe('AgentLoopService', () => {
       events: [
         { type: 'output', payload: { content: 'after' } },
         { type: 'tool_call', payload: { callId: 'call-2', toolName: 'read_problem_info', input: [] } },
+        { type: 'output', payload: { content: 'end' } },
       ],
     });
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(3)[3]).toEqual({
-      conversationId: 'conv-1',
-      expectedEventCount: 5,
-      events: [{ type: 'output', payload: { content: 'end' } }],
-    });
-    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(4)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 6,
       events: [{ type: 'tool_result', payload: { callId: 'call-1', success: true, output: 'int main() { return 0; }' } }],
     });
 
-    const secondToolResult = agentServiceStub.appendEventsWithResult$.calls.argsFor(5)[3].events[0];
+    const secondToolResult = agentServiceStub.appendEventsWithResult$.calls.argsFor(4)[3].events[0];
     expect(secondToolResult.type).toBe('tool_result');
     expect(secondToolResult.payload.callId).toBe('call-2');
     expect(secondToolResult.payload.success).toBeTrue();
     expect(secondToolResult.payload.output).toContain('Problem title');
     expect(secondToolResult.payload.output).toContain('Problem description');
 
-    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(6)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(5)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 8,
       events: [{ type: 'output', payload: { content: 'done' } }],
     });
-    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(7)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(6)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 9,
       events: [{ type: 'turn_end', payload: { reason: 'completed' } }],

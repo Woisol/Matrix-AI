@@ -1,74 +1,27 @@
-import { inject, Injectable, WritableSignal } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
 import { firstValueFrom } from "rxjs";
 
-import { Analysis, AssignData } from "../../../api/type/assigment";
 import {
   MatrixAgentConversation,
   MatrixAgentEvent,
-  MatrixAgentEventOutput,
-  MatrixAgentEventThink,
   MatrixAgentEventToolCall,
   MatrixAgentEventToolResult,
   MatrixAgentEventTurnEnd,
   MatrixAgentEventUserMessage,
 } from "../../../api/type/agent";
+import { escapeXml } from "../../../api/util/format";
 import { AgentService } from "./agent.service";
 import { SYSTEM_PROMPT } from "./agent.constant";
-import { escapeXml } from "../../../api/util/format";
+import { parseAgentLoopPass } from "./agent-loop-pass-parser";
+import { AgentLoopPersistCursor } from "./agent-loop-persist-cursor";
+import { AgentLoopRunConfig, AgentLoopMessage, AgentLoopToolName, ToolExecutionResult } from "../../../api/type/agent-loop";
+import { projectAgentLoopPassTail } from "./agent-loop-tail-projector";
 
-export type AgentLoopToolName =
-  | 'read_editor'
-  | 'read_selection'
-  | 'read_problem_info'
-  | 'read_problem_answer';
-
-export type AgentLoopMessage = {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
-  tool_call_id?: string;
-};
-
-export type AgentLoopRunConfig = {
-  courseId: string;
-  assignId: string;
-  userId: string;
-  userMessageContent: string;
-  conversationSignal: WritableSignal<MatrixAgentConversation | null | undefined>;
-  assignData?: AssignData | undefined;
-  analysis?: Analysis | undefined;
-  getEditorContent: () => string;
-  getSelectionContent: () => string | null;
-  enabledTools?: AgentLoopToolName[];
-};
-
-type AgentXmlTag = 'think' | 'tool_call' | 'output';
-
-type ToolExecutionResult = {
-  success: boolean;
-  output: string;
-};
-
-type PassDisplayEvent = MatrixAgentEventOutput | MatrixAgentEventThink | MatrixAgentEventToolCall;
-
-/**
- * 在 event 的基础上包装一个 stable 字段，只有已经明确闭合的内容才会 stable 并允许持久化
- */
-type ParsedDisplayBlock = {
-  event: PassDisplayEvent;
-  stable: boolean;
-};
-
-type PassSnapshot = {
-  displayEvents: PassDisplayEvent[];
-  stableCount: number;
-  toolCalls: MatrixAgentEventToolCall[];
-};
+export type { AgentLoopRunConfig, AgentLoopMessage, AgentLoopToolName } from "../../../api/type/agent-loop";
 
 type PassState = {
-  _fullResponse: string;
   rawText: string;
   localStartIndex: number;
-  persistedStableCount: number;
   toolCallIds: string[];
 };
 
@@ -97,23 +50,23 @@ export class AgentLoopService {
       const selection = config.getSelectionContent();
       return selection
         ? { success: true, output: selection }
-        : { success: false, output: '当前没有选中的代码片段。' };
+        : { success: false, output: '褰撳墠娌℃湁閫変腑鐨勪唬鐮佺墖娈点€?' };
     }],
     ['read_problem_info', async (config) => {
       if (!config.assignData) {
-        return { success: false, output: '当前无法读取题目信息。' };
+        return { success: false, output: '褰撳墠鏃犳硶璇诲彇棰樼洰淇℃伅銆?' };
       }
 
-      const description = config.assignData.description?.trim() || '暂无描述';
+      const description = config.assignData.description?.trim() || '鏆傛棤鎻忚堪';
       return {
         success: true,
-        output: `标题: ${config.assignData.title}\n\n描述:\n${description}`,
+        output: `鏍囬: ${config.assignData.title}\n\n鎻忚堪:\n${description}`,
       };
     }],
     ['read_problem_answer', async (config) => {
       const resolution = config.analysis?.basic?.resolution;
       if (!resolution?.content?.length) {
-        return { success: false, output: '当前没有可读取的参考题解。' };
+        return { success: false, output: '褰撳墠娌℃湁鍙鍙栫殑鍙傝€冮瑙ｃ€?' };
       }
 
       const answerText = resolution.content
@@ -213,7 +166,7 @@ export class AgentLoopService {
 
       const conversation = config.conversationSignal();
       if (!conversation) {
-        console.error('Conversation not found within single pass. Aborting agent loop.');
+        console.error('Conversation not found while running the loop.');
         return;
       }
 
@@ -260,32 +213,45 @@ export class AgentLoopService {
     enabledTools: AgentLoopToolName[],
   ): Promise<{ kind: 'continue' | 'complete'; persistedEventCount: number; toolFailureHappened: boolean }> {
     const passState: PassState = {
-      _fullResponse: '',
       rawText: '',
       localStartIndex: conversation.events.length,
-      persistedStableCount: 0,
       toolCallIds: [],
     };
+    const persistCursor = new AgentLoopPersistCursor(
+      persistedEventCount,
+      (expectedEventCount, events) => this.persistEvents(config, expectedEventCount, events),
+    );
 
     const messages = this.buildModelMessages(conversation, enabledTools);
 
     // 流式 & 解析
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
-      passState._fullResponse += chunk;
       passState.rawText += chunk;
 
-      const snapshot = this.buildPassSnapshot(passState.rawText, passState.toolCallIds, enabledTools, false);
+      const snapshot = parseAgentLoopPass({
+        rawText: passState.rawText,
+        existingToolCallIds: passState.toolCallIds,
+        enabledTools,
+        finalize: false,
+        nextCallId: () => this.nextCallId(),
+      });
       passState.toolCallIds = snapshot.toolCalls.map((toolCall) => toolCall.payload.callId);
 
-      this.replaceLocalPassDisplay(config, passState.localStartIndex, snapshot.displayEvents);
-      persistedEventCount = await this.persistStablePrefix(config, passState, snapshot, persistedEventCount);
+      // 传入 localStartIndex 而非 push，只更新本次对话的 tail 事件
+      this.projectPassTail(config, passState.localStartIndex, snapshot.displayEvents);
+      await persistCursor.persistStablePrefix(snapshot.displayEvents, snapshot.stableCount);
     }
 
-    console.log('Full response for this pass:', passState._fullResponse);
+    const finalSnapshot = parseAgentLoopPass({
+      rawText: passState.rawText,
+      existingToolCallIds: passState.toolCallIds,
+      enabledTools,
+      finalize: true,
+      nextCallId: () => this.nextCallId(),
+    });
 
-    const finalSnapshot = this.buildPassSnapshot(passState.rawText, passState.toolCallIds, enabledTools, true);
-    this.replaceLocalPassDisplay(config, passState.localStartIndex, finalSnapshot.displayEvents);
-    persistedEventCount = await this.persistStablePrefix(config, passState, finalSnapshot, persistedEventCount);
+    this.projectPassTail(config, passState.localStartIndex, finalSnapshot.displayEvents);
+    persistedEventCount = await persistCursor.persistStablePrefix(finalSnapshot.displayEvents, finalSnapshot.stableCount);
 
 
     // 无工具调用，结束本轮
@@ -308,163 +274,15 @@ export class AgentLoopService {
     };
   }
 
-  /**
-   * 核心解析方法，将模型输出的 raw text 解析为前端可展示的事件列表，并提取工具调用信息
-   */
-  private buildPassSnapshot(
-    rawText: string,
-    existingToolCallIds: string[],
-    enabledTools: AgentLoopToolName[],
-    finalize: boolean,
-  ): PassSnapshot {
-    const blocks: ParsedDisplayBlock[] = [];
-    const toolCalls: MatrixAgentEventToolCall[] = [];
-    let cursor = 0;
-    let toolIndex = 0;
-    let curTag: AgentXmlTag | null = null;
-    let curTagStartIndex = -1;
-    let curTagContentStartIndex = -1;
-
-    while (cursor < rawText.length) {
-      const nextTag = this.findNextOpeningTag(rawText, cursor);
-      if (!nextTag) {
-        this.pushOutputBlock(blocks, rawText.slice(cursor), finalize);
-        break;
-      }
-
-      const closeTag = `</${nextTag.tag}>`;
-      const closeIndex = rawText.indexOf(closeTag, nextTag.index + nextTag.openTag.length);
-      if (closeIndex === -1) {
-        // 说明有 开标签 但没有 闭标签，直接 push 为 output
-        this.pushOutputBlock(blocks, rawText.slice(cursor), finalize);
-        break;
-      }
-
-      // push 标签前的文本为 output
-      if (nextTag.index > cursor) {
-        this.pushOutputBlock(blocks, rawText.slice(cursor, nextTag.index), true);
-      }
-
-      const tagContent = rawText.slice(nextTag.index + nextTag.openTag.length, closeIndex);
-      if (nextTag.tag === 'output') {
-        this.pushOutputBlock(blocks, tagContent, true);
-      } else if (nextTag.tag === 'think') {
-        blocks.push({
-          event: {
-            type: 'think',
-            payload: { content: tagContent },
-          },
-          stable: true,
-        });
-      } else {
-        const parsedToolCall = this.parseToolCallPayload(tagContent, enabledTools);
-        if (parsedToolCall.ok) {
-          const callId = existingToolCallIds[toolIndex] ?? this.nextCallId();
-          const toolCallEvent: MatrixAgentEventToolCall = {
-            type: 'tool_call',
-            payload: {
-              callId,
-              toolName: parsedToolCall.toolName,
-              input: parsedToolCall.input,
-            },
-          };
-          blocks.push({ event: toolCallEvent, stable: true });
-          toolCalls.push(toolCallEvent);
-          toolIndex += 1;
-        } else {
-          const rawBlock = rawText.slice(nextTag.index, closeIndex + closeTag.length);
-          this.pushOutputBlock(blocks, rawBlock, true);
-        }
-      }
-
-      cursor = closeIndex + closeTag.length;
-    }
-
-    return {
-      displayEvents: blocks.map((block) => block.event),
-      stableCount: finalize ? blocks.length : this.countStablePrefix(blocks),
-      toolCalls,
-    };
-  }
-
-  /**
-   * 找 /<(think|tool_call|output)>/
-   */
-  private findNextOpeningTag(text: string, cursor: number): { tag: AgentXmlTag; index: number; openTag: string } | null {
-    const match = text.slice(cursor).match(/<(think|tool_call|output)>/);
-    if (!match || match.index === undefined) {
-      return null;
-    }
-
-    return {
-      tag: match[1] as AgentXmlTag,
-      index: cursor + match.index,
-      openTag: match[0],
-    };
-  }
-
-  private pushOutputBlock(blocks: ParsedDisplayBlock[], content: string, stable: boolean): void {
-    if (!content) {
-      return;
-    }
-
-    blocks.push({
-      event: {
-        type: 'output',
-        payload: { content },
-      },
-      stable,
-    });
-  }
-
-  private countStablePrefix(blocks: ParsedDisplayBlock[]): number {
-    let stableCount = 0;
-    for (const block of blocks) {
-      if (!block.stable) {
-        break;
-      }
-      stableCount += 1;
-    }
-    return stableCount;
-  }
-
-  private replaceLocalPassDisplay(
+  private projectPassTail(
     config: AgentLoopRunConfig,
     startIndex: number,
-    events: PassDisplayEvent[],
+    events: MatrixAgentEvent[],
   ): void {
     const conversation = config.conversationSignal();
     if (!conversation) return;
 
-    config.conversationSignal.set({
-      ...conversation,
-      updatedAt: new Date().toISOString(),
-      events: [
-        ...conversation.events.slice(0, startIndex),
-        ...events,
-      ],
-    });
-  }
-
-  private async persistStablePrefix(
-    config: AgentLoopRunConfig,
-    passState: PassState,
-    snapshot: PassSnapshot,
-    persistedEventCount: number,
-  ): Promise<number> {
-    if (snapshot.stableCount <= passState.persistedStableCount) {
-      return persistedEventCount;
-    }
-
-    const newStableEvents = snapshot.displayEvents.slice(passState.persistedStableCount, snapshot.stableCount);
-    if (!newStableEvents.length) {
-      passState.persistedStableCount = snapshot.stableCount;
-      return persistedEventCount;
-    }
-
-    persistedEventCount = await this.persistEvents(config, persistedEventCount, newStableEvents);
-    passState.persistedStableCount = snapshot.stableCount;
-    return persistedEventCount;
+    config.conversationSignal.set(projectAgentLoopPassTail(conversation, startIndex, events));
   }
 
   private async executeToolCalls(
@@ -498,39 +316,6 @@ export class AgentLoopService {
     }
 
     return { persistedEventCount, toolFailureHappened };
-  }
-
-  private parseToolCallPayload(
-    content: string,
-    enabledTools: AgentLoopToolName[],
-  ): { ok: true; toolName: AgentLoopToolName; input: string[] } | { ok: false } {
-    try {
-      const parsed = JSON.parse(content);
-      if (!parsed || typeof parsed !== 'object') {
-        return { ok: false };
-      }
-
-      if (typeof parsed.toolName !== 'string' || !parsed.toolName.trim()) {
-        return { ok: false };
-      }
-
-      const toolName = parsed.toolName as AgentLoopToolName;
-      if (!enabledTools.includes(toolName) || !this.toolRegistry.has(toolName)) {
-        return { ok: false };
-      }
-
-      if (!Array.isArray(parsed.input) || !parsed.input.every((item: unknown) => typeof item === 'string')) {
-        return { ok: false };
-      }
-
-      return {
-        ok: true,
-        toolName,
-        input: parsed.input,
-      };
-    } catch {
-      return { ok: false };
-    }
   }
 
   private async executeTool(
