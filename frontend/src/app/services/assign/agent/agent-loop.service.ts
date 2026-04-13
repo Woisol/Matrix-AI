@@ -50,6 +50,9 @@ type ToolExecutionResult = {
 
 type PassDisplayEvent = MatrixAgentEventOutput | MatrixAgentEventThink | MatrixAgentEventToolCall;
 
+/**
+ * 在 event 的基础上包装一个 stable 字段，只有已经明确闭合的内容才会 stable 并允许持久化
+ */
 type ParsedDisplayBlock = {
   event: PassDisplayEvent;
   stable: boolean;
@@ -62,6 +65,7 @@ type PassSnapshot = {
 };
 
 type PassState = {
+  _fullResponse: string;
   rawText: string;
   localStartIndex: number;
   persistedStableCount: number;
@@ -209,7 +213,7 @@ export class AgentLoopService {
 
       const conversation = config.conversationSignal();
       if (!conversation) {
-        console.error('Conversation not found. Aborting agent loop.');
+        console.error('Conversation not found within single pass. Aborting agent loop.');
         return;
       }
 
@@ -256,6 +260,7 @@ export class AgentLoopService {
     enabledTools: AgentLoopToolName[],
   ): Promise<{ kind: 'continue' | 'complete'; persistedEventCount: number; toolFailureHappened: boolean }> {
     const passState: PassState = {
+      _fullResponse: '',
       rawText: '',
       localStartIndex: conversation.events.length,
       persistedStableCount: 0,
@@ -264,7 +269,9 @@ export class AgentLoopService {
 
     const messages = this.buildModelMessages(conversation, enabledTools);
 
+    // 流式 & 解析
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
+      passState._fullResponse += chunk;
       passState.rawText += chunk;
 
       const snapshot = this.buildPassSnapshot(passState.rawText, passState.toolCallIds, enabledTools, false);
@@ -274,10 +281,14 @@ export class AgentLoopService {
       persistedEventCount = await this.persistStablePrefix(config, passState, snapshot, persistedEventCount);
     }
 
+    console.log('Full response for this pass:', passState._fullResponse);
+
     const finalSnapshot = this.buildPassSnapshot(passState.rawText, passState.toolCallIds, enabledTools, true);
     this.replaceLocalPassDisplay(config, passState.localStartIndex, finalSnapshot.displayEvents);
     persistedEventCount = await this.persistStablePrefix(config, passState, finalSnapshot, persistedEventCount);
 
+
+    // 无工具调用，结束本轮
     if (!finalSnapshot.toolCalls.length) {
       const turnEnd: MatrixAgentEventTurnEnd = {
         type: 'turn_end',
@@ -288,6 +299,7 @@ export class AgentLoopService {
       return { kind: 'complete', persistedEventCount, toolFailureHappened: false };
     }
 
+    // 有工具调用
     const toolRun = await this.executeToolCalls(config, finalSnapshot.toolCalls, persistedEventCount);
     return {
       kind: 'continue',
@@ -296,6 +308,9 @@ export class AgentLoopService {
     };
   }
 
+  /**
+   * 核心解析方法，将模型输出的 raw text 解析为前端可展示的事件列表，并提取工具调用信息
+   */
   private buildPassSnapshot(
     rawText: string,
     existingToolCallIds: string[],
@@ -306,6 +321,9 @@ export class AgentLoopService {
     const toolCalls: MatrixAgentEventToolCall[] = [];
     let cursor = 0;
     let toolIndex = 0;
+    let curTag: AgentXmlTag | null = null;
+    let curTagStartIndex = -1;
+    let curTagContentStartIndex = -1;
 
     while (cursor < rawText.length) {
       const nextTag = this.findNextOpeningTag(rawText, cursor);
@@ -317,27 +335,29 @@ export class AgentLoopService {
       const closeTag = `</${nextTag.tag}>`;
       const closeIndex = rawText.indexOf(closeTag, nextTag.index + nextTag.openTag.length);
       if (closeIndex === -1) {
+        // 说明有 开标签 但没有 闭标签，直接 push 为 output
         this.pushOutputBlock(blocks, rawText.slice(cursor), finalize);
         break;
       }
 
+      // push 标签前的文本为 output
       if (nextTag.index > cursor) {
         this.pushOutputBlock(blocks, rawText.slice(cursor, nextTag.index), true);
       }
 
-      const content = rawText.slice(nextTag.index + nextTag.openTag.length, closeIndex);
+      const tagContent = rawText.slice(nextTag.index + nextTag.openTag.length, closeIndex);
       if (nextTag.tag === 'output') {
-        this.pushOutputBlock(blocks, content, true);
+        this.pushOutputBlock(blocks, tagContent, true);
       } else if (nextTag.tag === 'think') {
         blocks.push({
           event: {
             type: 'think',
-            payload: { content },
+            payload: { content: tagContent },
           },
           stable: true,
         });
       } else {
-        const parsedToolCall = this.parseToolCallPayload(content, enabledTools);
+        const parsedToolCall = this.parseToolCallPayload(tagContent, enabledTools);
         if (parsedToolCall.ok) {
           const callId = existingToolCallIds[toolIndex] ?? this.nextCallId();
           const toolCallEvent: MatrixAgentEventToolCall = {
@@ -367,6 +387,9 @@ export class AgentLoopService {
     };
   }
 
+  /**
+   * 找 /<(think|tool_call|output)>/
+   */
   private findNextOpeningTag(text: string, cursor: number): { tag: AgentXmlTag; index: number; openTag: string } | null {
     const match = text.slice(cursor).match(/<(think|tool_call|output)>/);
     if (!match || match.index === undefined) {
