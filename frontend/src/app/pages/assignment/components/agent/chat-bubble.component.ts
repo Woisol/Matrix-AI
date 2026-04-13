@@ -22,7 +22,7 @@ export type DisplayEvent =
       @for (event of dEvent.events; track $index) {
         @if (event.type === 'think' && shouldRenderThinkBlock($index)) {
             <details class="think-block animated-details">
-              <summary class="think-summary">think</summary>
+              <summary class="think-summary sticky">think</summary>
               <div class="think-content">
                 @for (content of getThinkContents($index); track $index) {
                   <markdown class="markdown-patched" [data]="content"></markdown>
@@ -32,7 +32,7 @@ export type DisplayEvent =
         } @else if (event.type === 'tool_call') {
             <details class="bubble-card tool-card">
               <summary class="tool-summary">
-                <div class="tool-card-header">
+                <div class="tool-card-header sticky">
                   <code class="tool-title"> {{event.payload.toolName}}({{ event.payload.input.join(', ') }})</code>
                   <span
                     class="tool-status"
@@ -52,7 +52,7 @@ export type DisplayEvent =
           <!-- 孤儿 tool_result 渲染 -->
           <details class="bubble-card tool-card orphan-result">
             <summary class="tool-summary">
-              <div class="tool-card-header">
+              <div class="tool-card-header sticky">
                 <code class="tool-title">tool_result<span style="color: #d08585;font-size:9px;">(tool_call missing)</span></code>
                 <span
                   class="tool-status"
@@ -118,6 +118,7 @@ export type DisplayEvent =
       font-size: 13px;
       color: #6b7280;
       list-style: none;
+      background: var(--color-bg);
     }
 
     /*！ 好用！ */
@@ -137,6 +138,12 @@ export type DisplayEvent =
       &[open] >summary::before {
         transform: rotate(90deg);
       }
+    }
+
+    .sticky{
+      position: sticky;
+      top: -12px;
+      z-index: 10;
     }
 
     .think-content {
@@ -185,6 +192,7 @@ export type DisplayEvent =
       align-items: center;
       justify-content: space-between;
       flex-wrap: nowrap;
+      background: var(--color-surface);
     }
 
     .tool-summary {
