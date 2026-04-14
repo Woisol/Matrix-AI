@@ -95,14 +95,14 @@ export class AgentLoopToolProvider {
         if (!content) {
           return { success: false, output: 'Erasing entire editor content is not allowed.' };
         }
-        config.writeEditorContent({ target, language: '', text: content, tabTitle: '' });
+        config.writeEditorContent({ target, text: content });
       }
       else if (target === 'range') {
         const [startLineNumber, startColumn, endLineNumber, endColumn] = position.map(Number);
         if (!startLineNumber || !startColumn || !endLineNumber || !endColumn) {
           return { success: false, output: 'Invalid or missing position parameters for range write.' };
         }
-        config.writeEditorContent({ target, language: '', text: content, tabTitle: '', range: { startLineNumber, startColumn, endLineNumber, endColumn } });
+        config.writeEditorContent({ target, text: content, range: { startLineNumber, startColumn, endLineNumber, endColumn } });
       }
       else {
         return { success: false, output: 'Invalid target for write_editor tool. Must be "full-editor" or "range".' };

@@ -16,6 +16,7 @@ export type MatrixAnalysisEditRequest =
   | {
     target: 'full-editor';
     language: string;
+    range?: never;
     text: string;
     tabTitle: string;
   };

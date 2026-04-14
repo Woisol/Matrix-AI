@@ -367,7 +367,7 @@ export class AssignmentComponent implements OnDestroy {
   /**
    * “应用到编辑器”核心方法
    */
-  handleAnalysisEditRequest = (request: MatrixAnalysisEditRequest) => {
+  handleAnalysisEditRequest = (request: Pick<MatrixAnalysisEditRequest, 'target' | 'range' | 'text'>) => {
     if (!this.codeEditor) {
       this.notify.error("编辑器还没有准备好，请稍后再试。", "应用失败");
       return;
@@ -382,7 +382,7 @@ export class AssignmentComponent implements OnDestroy {
     const editTargetRange = request.target === 'full-editor'
       ? getFullEditorRange(model)
       : (() => {
-        const validationResult = validateMatrixAnalysisRange(model, request.range);
+        const validationResult = validateMatrixAnalysisRange(model, request.range!);
         if (!validationResult.ok) {
           this.notify.error(validationResult.reason, "应用失败");
           return null;
@@ -436,7 +436,7 @@ export class AssignmentComponent implements OnDestroy {
     this.codeEditor.revealRangeInCenter(selection);
     this.codeEditor.focus();
     this.notify.success(
-      `已把「${request.tabTitle}」中的修改应用到编辑器，可使用 Ctrl+Z 撤回。`,
+      `成功应用到编辑器，可使用 Ctrl+Z 撤回。`,
       "应用成功",
     );
   }

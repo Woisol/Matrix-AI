@@ -23,7 +23,7 @@ export type AgentLoopRunConfig = {
    * 除了返回选择内容，还返回选择的位置信息
    */
   getSelectionContent: () => string | null;
-  writeEditorContent: (request: MatrixAnalysisEditRequest) => void;
+  writeEditorContent: (request: Pick<MatrixAnalysisEditRequest, 'target' | 'text' | 'range'>) => void;
   // writeEditorSuggestion?: (request: MatrixAnalysisEditRequest) => void;
   enabledTools?: AgentLoopToolName[];
 };
