@@ -1,11 +1,11 @@
 import { Component, inject, signal, WritableSignal, OnDestroy } from "@angular/core";
 import { NzSplitterModule } from "ng-zorro-antd/splitter";
 import { CourseInfoTabComponent } from "./components/course-info-tab.component";
-import { Analysis, AssignData, CodeFileInfo, Submit } from "../../api/type/assigment";
-import { CodeEditorComponent } from "./components/code-editor.component";
+import { Analysis, AssignData, CodeFileInfo, CodeLanguage, Submit } from "../../api/type/assigment";
+import { CodeEditorComponent, EditorLanguage } from "./components/code-editor.component";
 import { AssignId, CourseId } from "../../api/type/general";
 import { AssignService } from "../../services/assign/assign.service";
-import { Subscription } from "rxjs";
+import { firstValueFrom, Subscription } from "rxjs";
 import { ActivatedRoute } from "@angular/router";
 import { NotificationService } from "../../services/notification/notification.service";
 import * as monaco from "monaco-editor";
@@ -271,7 +271,16 @@ export class AssignmentComponent implements OnDestroy {
         }
         return `select content: ${model.getValueInRange(selection)}\n\n\nrange: ${selection.toString()}`; // [21,1 -> 22,1]
       },
-      writeEditorContent: this.handleAnalysisEditRequest
+      writeEditorContent: this.handleAnalysisEditRequest,
+      playground: async (input: string, codeInfo: CodeFileInfo, language: CodeLanguage = 'c_cpp') => {
+        // toPromise deprecated，用 firstValueFrom 代替
+        return await firstValueFrom(this.assignService.testRequest$(codeInfo, input, language));
+        // undefined 为错误，留到工具内处理(💩)
+        // if (result === undefined) {
+        //   return `Playground execution failed, could be server or network error.`;
+        // }
+        // return result;
+      }
     }).catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.notify.error(`Agent loop 运行失败: ${message}`);

@@ -25,6 +25,8 @@ export type AgentLoopRunConfig = {
   getSelectionContent: () => string | null;
   writeEditorContent: (request: Pick<MatrixAnalysisEditRequest, 'target' | 'text' | 'range'>) => void;
   // writeEditorSuggestion?: (request: MatrixAnalysisEditRequest) => void;
+  // getModels?: () => monaco;
+  playground: (input: string, codeInfo: CodeFileInfo, language?: CodeLanguage) => Promise<string>;
   enabledTools?: AgentLoopToolName[];
 };
 

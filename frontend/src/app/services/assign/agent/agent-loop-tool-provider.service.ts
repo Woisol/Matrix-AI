@@ -1,6 +1,7 @@
 import { Injectable } from "@angular/core";
 import { AgentLoopRunConfig } from "./agent-loop.service";
 import { ToolExecutionResult } from "../../../api/type/agent-loop";
+import { CodeFileInfo } from "../../../api/type/assigment";
 
 // 引入 zod 能自动检验，但还是算了
 export type AgentLoopToolName =
@@ -108,6 +109,21 @@ export class AgentLoopToolProvider {
         return { success: false, output: 'Invalid target for write_editor tool. Must be "full-editor" or "range".' };
       }
       return { success: true, output: 'Content written to editor successfully.' };
+    }],
+    ['playground', async (config, _input) => {
+      const [input = '', shortCode] = _input;
+      let codeInfo: CodeFileInfo;
+      // if (shortCode) {
+      //   codeInfo = { fileName: 'short_code.cpp', content: shortCode };
+      // } else {
+      //   codeInfo = config.getModels()
+      // }
+      codeInfo = { fileName: 'short_code.cpp', content: shortCode ?? config.getEditorContent() };
+      const result = await config.playground(input, codeInfo);
+      if (result === undefined) {
+        return { success: false, output: `Playground execution failed, could be server or network error.` };
+      }
+      return { success: true, output: result };
     }]
   ]);
 
@@ -119,7 +135,7 @@ export class AgentLoopToolProvider {
     read_problem_answer: '读取题目答案',
     write_editor: '在指定的位置写入编辑器内容，格式：write_editor(target: \'full- editor\' | \'range\', content: string, startLine?: number, startColumn?: number, endLine?: number, endColumn?: number)，例如使用 write_editor(\'range\', \'new content\', 10, 1, 12, 1) 可以替换第10行第1列到第12行第1列的内容为 new content',
     write_editor_suggestion: '提供编辑器内容修改建议，但不直接修改，格式同 write_editor',
-    playground: '暂未实现',
+    playground: '调用沙箱测试运行代码并获得执行结果。格式：playground(input: string, shortCode?: string)，不提供 code 则使用当前编辑器中的内容，一般建议如此。如果需要测试简短代码，参考格式 playground(\'1\', \'#include <iostream>\\nusing namespace std;\\nint main() {\\n    return 0;\\n}\'',
     web_search: '暂未实现',
     web_read: '暂未实现',
   };
