@@ -5,13 +5,20 @@ from collections.abc import AsyncGenerator
 from fastapi import HTTPException
 from app.controller.ai import torExceptions
 from app.models.agent import AIAgent, AIAgentConservation
-from app.models.assignment import Assignment
+from app.models.assignment import Assignment, AssignmentCode
 from app.schemas.agent import AIAgentEvent
 from app.models.ai import AI
 
 
 class AIAgentController:
     """AI Agent 相关接口"""
+
+    @classmethod
+    async def _get_assignment_or_404(cls, assignment_id: str) -> Assignment:
+        try:
+            return await Assignment.get(id=assignment_id)
+        except torExceptions.DoesNotExist:
+            raise HTTPException(status_code=404, detail="请求了不存在的作业 ID")
 
     @classmethod
     def _serialize_conversation_summary(cls, conversation: AIAgentConservation | dict):
@@ -41,17 +48,14 @@ class AIAgentController:
         }
 
     @classmethod
-    async def create_conversation(cls, assign_id: str, user_id: str):
+    async def create_conversation(cls, assignment_id: str, user_id: str):
         """创建新的对话记录"""
         #~~ 验证 user_id 授权状态，这里暂时只检查用户是否存在，应该通过 middleware 实现
-        try:
-            _assign:Assignment = await Assignment.get(id=assign_id)
-        except torExceptions.DoesNotExist:
-            raise HTTPException(status_code=404, detail="请求了不存在的作业 ID")
+        assignment = await cls._get_assignment_or_404(assignment_id)
 
         conversation = await AIAgentConservation.create(
             id=str(uuid.uuid4()),
-            assign_id=assign_id,
+            assignment=assignment,
             user_id=user_id,
             title="新的对话",
             events=[]
@@ -59,17 +63,21 @@ class AIAgentController:
         return cls._serialize_conversation(conversation)
 
     @classmethod
-    async def list_conversations(cls, assign_id: str, user_id: str):
+    async def list_conversations(cls, assignment_id: str, user_id: str):
         """列出用户在该作业下的所有对话记录"""
-        conversations = await AIAgentConservation.filter(assign_id=assign_id, user_id=user_id, deleted_at=None).order_by("-updated_at").values("id", "title", "created_at", "updated_at")
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        conversations = await assignment.agent_conversations.filter(
+            user_id=user_id,
+            deleted_at=None,
+        ).order_by("-updated_at").values("id", "title", "created_at", "updated_at")
         return [cls._serialize_conversation_summary(conversation) for conversation in conversations]
 
     @classmethod
-    async def get_conversation(cls, conversation_id: str, assign_id: str, user_id: str):
+    async def get_conversation(cls, conversation_id: str, assignment_id: str, user_id: str):
         """获取单个会话详情"""
-        conversation = await AIAgentConservation.filter(
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        conversation = await assignment.agent_conversations.filter(
             id=conversation_id,
-            assign_id=assign_id,
             user_id=user_id,
             deleted_at=None,
         ).first()
@@ -79,9 +87,14 @@ class AIAgentController:
         return cls._serialize_conversation(conversation)
 
     @classmethod
-    async def delete_conversation(cls, conversation_id: str, assign_id: str, user_id: str):
+    async def delete_conversation(cls, conversation_id: str, assignment_id: str, user_id: str):
         """删除对话记录（软删除）"""
-        conversation = await AIAgentConservation.filter(id=conversation_id, assign_id=assign_id, user_id=user_id, deleted_at=None).first()
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        conversation = await assignment.agent_conversations.filter(
+            id=conversation_id,
+            user_id=user_id,
+            deleted_at=None,
+        ).first()
         if not conversation:
             raise HTTPException(status_code=404, detail="对话记录不存在")
         conversation.deleted_at = datetime.now(timezone.utc)
@@ -89,11 +102,11 @@ class AIAgentController:
         return
 
     @classmethod
-    async def update_conversation_title(cls, conversation_id: str, assign_id: str, user_id: str, title: str):
+    async def update_conversation_title(cls, conversation_id: str, assignment_id: str, user_id: str, title: str):
         """更新会话标题"""
-        conversation = await AIAgentConservation.filter(
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        conversation = await assignment.agent_conversations.filter(
             id=conversation_id,
-            assign_id=assign_id,
             user_id=user_id,
             deleted_at=None,
         ).first()
@@ -108,13 +121,18 @@ class AIAgentController:
     async def append_events(
         cls,
         conversation_id: str,
-        assign_id: str,
+        assignment_id: str,
         user_id: str,
         expected_event_count: int,
         events: list[AIAgentEvent],
     ):
         """按批次追加事件，仅负责持久化，不在后端执行 agent loop。"""
-        conversation = await AIAgentConservation.filter(id=conversation_id, assign_id=assign_id, user_id=user_id, deleted_at=None).first()
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        conversation = await assignment.agent_conversations.filter(
+            id=conversation_id,
+            user_id=user_id,
+            deleted_at=None,
+        ).first()
         if not conversation:
             raise HTTPException(status_code=404, detail="对话记录不存在")
 
@@ -128,17 +146,35 @@ class AIAgentController:
             raise HTTPException(status_code=500, detail=f"新增事件失败: {str(e)}")
 
     @classmethod
+    async def create_checkpoint(cls, assignment_id: str, original_code: str):
+        """创建对话回溯点"""
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        checkpoint = await assignment.agent_checkpoints.create(
+            id=str(uuid.uuid4()),
+            original_code=original_code,
+        )
+        return checkpoint.id
+
+    @classmethod
+    async def get_checkpoint(cls, checkpoint_id: str, assignment_id: str):
+        """获取对话回溯点详情"""
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        checkpoint = await assignment.agent_checkpoints.filter(id=checkpoint_id).first()
+        if not checkpoint:
+            raise HTTPException(status_code=404, detail="回溯点不存在")
+
+        return checkpoint.original_code
+        # JSON
+
+    @classmethod
     async def stream_messages(
         cls,
-        assign_id: str,
+        assignment_id: str,
         user_id: str,
         messages: list[dict],
     ) -> AsyncGenerator[str, None]:
         """直接代理模型流式输出，供前端 loop 自主编排。"""
-        try:
-            await Assignment.get(id=assign_id)
-        except torExceptions.DoesNotExist:
-            raise HTTPException(status_code=404, detail="请求了不存在的作业 ID")
+        await cls._get_assignment_or_404(assignment_id)
 
         async def _stream() -> AsyncGenerator[str, None]:
             async for chunk in AI.get_response_stream(messages):

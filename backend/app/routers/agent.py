@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from app.controller.agent import AIAgentController
 from app.schemas.agent import (
     AIAgentAppendEventsRequest,
+    AIAgentCheckpointCreateRequest,
     AIAgentConversation,
     AIAgentConversationSummary,
     AIAgentStreamRequest,
@@ -21,7 +22,7 @@ async def create_conversation(
     user_id: str = Header("", alias="user_id"),
 ):
     """创建新的对话记录"""
-    return await AIAgentController.create_conversation(assign_id, user_id)
+    return await AIAgentController.create_conversation(assignment_id=assign_id, user_id=user_id)
 
 
 @agent_route.get("/courses/{course_id}/assignments/{assign_id}/agent/conversations", response_model=list[AIAgentConversationSummary])
@@ -31,7 +32,7 @@ async def list_conversations(
     user_id: str = Header("", alias="user_id"),
 ):
     """列出用户在该作业下的所有对话记录"""
-    return await AIAgentController.list_conversations(assign_id, user_id)
+    return await AIAgentController.list_conversations(assignment_id=assign_id, user_id=user_id)
 
 
 @agent_route.get("/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}", response_model=AIAgentConversation)
@@ -42,7 +43,11 @@ async def get_conversation(
     user_id: str = Header("", alias="user_id"),
 ):
     """获取单个对话详情"""
-    return await AIAgentController.get_conversation(conversation_id, assign_id, user_id)
+    return await AIAgentController.get_conversation(
+        conversation_id=conversation_id,
+        assignment_id=assign_id,
+        user_id=user_id,
+    )
 
 
 @agent_route.patch("/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}/title")
@@ -54,7 +59,12 @@ async def update_conversation_title(
     user_id: str = Header("", alias="user_id"),
 ):
     """更新对话标题"""
-    return await AIAgentController.update_conversation_title(conversation_id, assign_id, user_id, request.title)
+    return await AIAgentController.update_conversation_title(
+        conversation_id=conversation_id,
+        assignment_id=assign_id,
+        user_id=user_id,
+        title=request.title,
+    )
 
 
 @agent_route.delete("/courses/{course_id}/assignments/{assign_id}/agent/conversations/{conversation_id}")
@@ -65,7 +75,11 @@ async def delete_conversation(
     user_id: str = Header("", alias="user_id"),
 ):
     """删除对话记录（软删除）"""
-    return await AIAgentController.delete_conversation(conversation_id, assign_id, user_id)
+    return await AIAgentController.delete_conversation(
+        conversation_id=conversation_id,
+        assignment_id=assign_id,
+        user_id=user_id,
+    )
 
 
 @agent_route.post("/courses/{course_id}/assignments/{assign_id}/agent/event")
@@ -77,12 +91,46 @@ async def append_agent_events(
 ):
     """按批次追加事件到指定会话。"""
     return await AIAgentController.append_events(
-        request.conversation_id,
-        assign_id,
-        user_id,
-        request.expected_event_count,
-        request.events,
+        conversation_id=request.conversation_id,
+        assignment_id=assign_id,
+        user_id=user_id,
+        expected_event_count=request.expected_event_count,
+        events=request.events,
     )
+
+
+@agent_route.post(
+    "/courses/{course_id}/assignments/{assign_id}/agent/checkpoints",
+    response_model=str,
+)
+async def create_checkpoint(
+    course_id: str,
+    assign_id: str,
+    request: AIAgentCheckpointCreateRequest,
+):
+    """创建对话回溯点。"""
+    return await AIAgentController.create_checkpoint(
+        assignment_id=assign_id,
+        original_code=request.original_code,
+    )
+
+
+@agent_route.get(
+    "/courses/{course_id}/assignments/{assign_id}/agent/checkpoints/{checkpoint_id}",
+    response_model=str,
+)
+async def get_checkpoint(
+    course_id: str,
+    assign_id: str,
+    checkpoint_id: str,
+):
+    """获取对话回溯点详情。"""
+    return await AIAgentController.get_checkpoint(
+        checkpoint_id=checkpoint_id,
+        assignment_id=assign_id,
+    )
+
+
 @agent_route.post("/courses/{course_id}/assignments/{assign_id}/agent/stream")
 async def stream_messages(
     course_id: str,
@@ -92,8 +140,8 @@ async def stream_messages(
 ):
     """直接按消息列表代理模型流式输出。"""
     stream = await AIAgentController.stream_messages(
-        assign_id,
-        user_id,
-        [message.model_dump(exclude_none=True) for message in request.messages],
+        assignment_id=assign_id,
+        user_id=user_id,
+        messages=[message.model_dump(exclude_none=True) for message in request.messages],
     )
     return StreamingResponse(stream, media_type="text/plain; charset=utf-8")

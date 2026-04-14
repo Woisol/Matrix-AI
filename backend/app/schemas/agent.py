@@ -52,3 +52,15 @@ class AIAgentModelMessage(BaseModel):
 
 class AIAgentStreamRequest(BaseModel):
     messages: List[AIAgentModelMessage] = Field(..., min_length=1, description="模型请求消息列表")
+
+
+class AIAgentCheckpointCreateRequest(BaseModel):
+    original_code: str = Field(..., min_length=2, description="回溯点代码文件列表（JSON 字符串）")
+
+
+class AIAgentCheckpointCreateResponse(BaseModel):
+    checkpoint_id: str = Field(..., description="回溯点 ID")
+
+
+class AIAgentCheckpointDetailResponse(BaseModel):
+    original_code: str = Field(..., description="回溯点代码文件列表（JSON 字符串）")

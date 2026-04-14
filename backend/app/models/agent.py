@@ -1,29 +1,62 @@
 from collections.abc import AsyncIterable
+
 from tortoise import fields
 from tortoise.models import Model
 
 from app.models.ai import AI
 from app.schemas.agent import AIAgentEvent, AIAgentEventType
 
+
 class AIAgentConservation(Model):
     """AI Agent 对话记录模型"""
-    id = fields.CharField(max_length=50, pk=True, description="对话记录ID，")
-    assign_id = fields.CharField(max_length=50, description="关联的作业ID")
-    user_id = fields.CharField(max_length=50, description="用户ID")
+
+    id = fields.CharField(max_length=50, primary_key=True, description="对话记录 ID")
+    assignment = fields.ForeignKeyField(
+        "models.Assignment",
+        # related_name 只是为了方便从 Assignment 反向查询相关对话记录，例如 assignment.agent_conversations，不会在数据库层面创建关联字段
+        related_name="agent_conversations",
+        on_delete=fields.OnDelete.CASCADE,
+        description="关联的作业",
+    )
+    user_id = fields.CharField(max_length=50, description="用户 ID")
     title = fields.CharField(max_length=200, description="会话标题")
     deleted_at = fields.DatetimeField(null=True, description="删除时间")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
-    events = fields.JSONField(description="对话内容，包含用户输入和AI回复的列表")
+    events = fields.JSONField(description="对话内容，包含用户输入和 AI 回复的列表")
 
     class Meta:
         table = "ai_agent_conversations"
         table_description = "AI Agent 对话记录表"
         indexes = [
-            ("assign_id",),  # 按作业ID查询对话记录
+            ("assignment_id",),
+            ("user_id",),
         ]
+
+
+class AIAgentConservationCheckpoint(Model):
+    """AI Agent 对话回溯点模型"""
+
+    id = fields.CharField(max_length=50, primary_key=True, description="回溯记录 ID")
+    assignment = fields.ForeignKeyField(
+        "models.Assignment",
+        related_name="agent_checkpoints",
+        on_delete=fields.OnDelete.CASCADE,
+        description="关联的作业",
+    )
+    original_code = fields.CharField(max_length=10000, description="回溯点代码文件列表")
+
+    class Meta:
+        table = "ai_agent_conversation_checkpoints"
+        table_description = "AI Agent 对话回溯点表"
+        indexes = [
+            ("assignment_id",),
+        ]
+
+
 class AIAgent:
     """AI Agent 实现，主要负责转发模型数据以及持久化"""
+
     @classmethod
     async def append_events(
         cls,
@@ -34,16 +67,16 @@ class AIAgent:
         """将一批事件顺序追加到会话中，并校验前端预期事件数。"""
         current_events = list(conversation.events or [])
         if len(current_events) != expected_event_count:
-            raise ValueError(f"expected_event_count mismatch: expected {expected_event_count}, got {len(current_events)}")
+            raise ValueError(
+                f"expected_event_count mismatch: expected {expected_event_count}, got {len(current_events)}"
+            )
 
-        # JSONField 里只存可序列化字典，避免后续读取时对象/字典混用。
         current_events.extend(event.model_dump() for event in events)
         conversation.events = current_events
         try:
             await conversation.save()
-        except Exception as e:
-            raise Exception("保存事件失败：" + str(e))
-        return
+        except Exception as exc:
+            raise Exception("保存事件失败：" + str(exc)) from exc
 
     @classmethod
     def _normalize_event(cls, event: AIAgentEvent | dict) -> tuple[str, dict]:
@@ -66,7 +99,7 @@ class AIAgent:
 
     @classmethod
     async def request_ai_from_event_stream(cls, events: list[AIAgentEvent] | list[dict]) -> AsyncIterable[str]:
-        """接收前端新 event 请求，转发到实际模型并持久化存储"""
+        """接收前端事件列表，转换为模型消息并转发给 AI。"""
         messages = []
         for event in events:
             event_type, payload = cls._normalize_event(event)
@@ -75,13 +108,11 @@ class AIAgent:
             match event_type:
                 case AIAgentEventType.USER_MESSAGE.value:
                     messages.append({"role": "user", "content": content})
-                case AIAgentEventType.THINK.value | AIAgentEventType.OUTPUT.value:
+                case AIAgentEventType.THINK.value | AIAgentEventType.OUTPUT.value | "final":
                     messages.append({"role": "assistant", "content": content})
                 case AIAgentEventType.TOOL_CALL.value:
                     messages.append({"role": "user", "content": cls._tool_call_to_message_content(payload)})
                 case AIAgentEventType.TOOL_RESULT.value:
-                    # OpenAI tool 角色通常要求 tool_call_id；缺失时降级为 user 内容避免请求报错。
-                    # 怪不得 5.4 一直说要有个 callId 原来是官方 SDK 的 tool 角色要求
                     tool_call_id = payload.get("callId")
                     output = str(payload.get("output", ""))
                     if tool_call_id:
@@ -92,4 +123,3 @@ class AIAgent:
                     continue
 
         return AI.get_response_stream(messages)
-
