@@ -12,7 +12,7 @@ export type AgentLoopToolName =
   | 'read_problem_info'
   | 'read_problem_answer'
   | 'write_editor'
-  | 'write_editor_suggestion'
+  // | 'write_editor_suggestion'
   | 'playground'
   | 'web_search'
   | 'web_read';
@@ -84,14 +84,14 @@ export class AgentLoopToolProvider {
       showInDisplay: true,
       toggleable: true,
       implemented: true,
-      mappedTools: ['write_editor_suggestion'],
+      // mappedTools: ['write_editor_suggestion'],
     },
-    write_editor_suggestion: {
-      hint: '提供编辑器内容修改建议，但不直接修改，格式同 write_editor',
-      showInDisplay: false,
-      toggleable: false,
-      implemented: false,
-    },
+    // write_editor_suggestion: {
+    //   hint: '提供编辑器内容修改建议，但不直接修改，格式同 write_editor',
+    //   showInDisplay: false,
+    //   toggleable: false,
+    //   implemented: false,
+    // },
     playground: {
       hint: '调用沙箱测试运行代码并获得执行结果。格式：playground(input: string, shortCode?: string)',
       showInDisplay: true,
@@ -229,7 +229,7 @@ export class AgentLoopToolProvider {
     if (this.enabledTools.length === 0) {
       return 'No tools enabled currently.';
     }
-    return 'Enabled tools: ' + this.enabledToolsDisplay.map((name) => `${name}: ${this.toolDefinitions[name].hint}`).join(', ');
+    return 'Enabled tools: ' + this.enabledTools.map((name) => `${name}: ${this.toolDefinitions[name].hint}`).join(', ');
   }
 
   _enabledTools: AgentLoopToolNameDisplay[];
@@ -266,6 +266,15 @@ export class AgentLoopToolProvider {
 
   expandEnabledTools(enabledDisplayTools: AgentLoopToolNameDisplay[]): AgentLoopToolName[] {
     const expandedTools = new Set<AgentLoopToolName>();
+
+    Object.entries(this.toolDefinitions)
+      .filter(([_, def]) => !def.showInDisplay)
+      .map(([name]) => name as AgentLoopToolName)
+      .forEach((toolName) => {
+        expandedTools.add(toolName);
+      });
+    // 炫技失败😅😅😅
+    // |> expandedTools.add()
 
     for (const toolName of this.normalizeEnabledDisplayTools(enabledDisplayTools)) {
       expandedTools.add(toolName);
