@@ -107,8 +107,8 @@ describe('CourseInfoTabComponent', () => {
     const emitted: Array<string> = [];
     component.toggleAgentTool.subscribe((toolName) => emitted.push(toolName));
 
-    expect(component.isAgentToolEnabled('read_editor')).toBeTrue();
-    expect(component.isAgentToolEnabled('web_search')).toBeFalse();
+    expect(component.isAgentToolEnabled('read_editor', {} as Event)).toBeTrue();
+    expect(component.isAgentToolEnabled('web_search', {} as Event)).toBeFalse();
 
     component.toggleAgentToolItem(menuItems[0], {
       preventDefault: () => undefined,

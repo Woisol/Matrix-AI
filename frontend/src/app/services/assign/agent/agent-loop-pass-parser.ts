@@ -2,15 +2,17 @@ import type {
   MatrixAgentEventOutput,
   MatrixAgentEventThink,
   MatrixAgentEventToolCall,
+  MatrixAgentEventToolResult,
 } from "../../../api/type/agent";
-import { AgentLoopToolName } from "./agent-loop-tool-provider.service";
+import type { AgentLoopToolName } from "./agent-loop-tool-provider.service";
 
 type AgentXmlTag = 'think' | 'tool_call' | 'output';
 
 export type AgentLoopPassDisplayEvent =
   | MatrixAgentEventOutput
   | MatrixAgentEventThink
-  | MatrixAgentEventToolCall;
+  | MatrixAgentEventToolCall
+  | MatrixAgentEventToolResult;
 
 /**
 * 在 event 的基础上包装一个 stable 字段，只有已经明确闭合的内容才会 stable 并允许持久化
@@ -23,8 +25,13 @@ type ParsedDisplayBlock = {
 export type AgentLoopPassSnapshot = {
   displayEvents: AgentLoopPassDisplayEvent[];
   stableCount: number;
+  toolBlockIds: string[];
   toolCalls: MatrixAgentEventToolCall[];
+  toolErrors: MatrixAgentEventToolResult[];
 };
+
+const INVALID_TOOL_CALL_MESSAGE =
+  'Invalid tool_call payload. Use JSON {"toolName":"...","input":["..."]} or comma-separated "toolName, arg1, arg2".';
 /**
  * 核心解析方法，将模型输出的 raw text 解析为前端可展示的事件列表，并提取工具调用信息
  */
@@ -35,9 +42,11 @@ export function parseAgentLoopPass(args: {
   finalize: boolean;
   nextCallId: () => string;
 }): AgentLoopPassSnapshot {
-  const { rawText, existingToolCallIds, enabledTools, finalize, nextCallId } = args;
+  const { rawText, existingToolCallIds, finalize, nextCallId } = args;
   const blocks: ParsedDisplayBlock[] = [];
+  const toolBlockIds: string[] = [];
   const toolCalls: MatrixAgentEventToolCall[] = [];
+  const toolErrors: MatrixAgentEventToolResult[] = [];
   let cursor = 0;
   let toolIndex = 0;
   let curTag: AgentXmlTag | null = null;
@@ -46,9 +55,9 @@ export function parseAgentLoopPass(args: {
 
   while (cursor < rawText.length) {
     if (curTag === null) {
-      const nextTag = findNextOpeningTag(rawText, cursor);
+      const nextTag = findNextOpeningTag(rawText, cursor, finalize);
       if (!nextTag) {
-        pushOutputBlock(blocks, rawText.slice(cursor), true);
+        pushOutputBlock(blocks, rawText.slice(cursor), finalize);
         break;
       }
       // push 标签前的文本为 output
@@ -91,14 +100,17 @@ export function parseAgentLoopPass(args: {
       blocks.push({
         event: {
           type: 'think',
-          payload: { content: tagContent },
+        payload: { content: tagContent },
         },
         stable: true,
       });
     } else {
-      const parsedToolCall = parseToolCallPayload(tagContent, enabledTools);
+      const callId = existingToolCallIds[toolIndex] ?? nextCallId();
+      toolBlockIds.push(callId);
+      toolIndex += 1;
+
+      const parsedToolCall = parseToolCallPayload(tagContent);
       if (parsedToolCall.ok) {
-        const callId = existingToolCallIds[toolIndex] ?? nextCallId();
         const toolCallEvent: MatrixAgentEventToolCall = {
           type: 'tool_call',
           payload: {
@@ -109,10 +121,17 @@ export function parseAgentLoopPass(args: {
         };
         blocks.push({ event: toolCallEvent, stable: true });
         toolCalls.push(toolCallEvent);
-        toolIndex += 1;
       } else {
-        const rawBlock = rawText.slice(curTagStartIndex, closeIndex + closeTag.length);
-        pushOutputBlock(blocks, rawBlock, true);
+        const toolError: MatrixAgentEventToolResult = {
+          type: 'tool_result',
+          payload: {
+            callId,
+            success: false,
+            output: INVALID_TOOL_CALL_MESSAGE,
+          },
+        };
+        blocks.push({ event: toolError, stable: true });
+        toolErrors.push(toolError);
       }
     }
 
@@ -125,23 +144,38 @@ export function parseAgentLoopPass(args: {
   return {
     displayEvents: blocks.map((block) => block.event),
     stableCount: finalize ? blocks.length : countStablePrefix(blocks),
+    toolBlockIds,
     toolCalls,
+    toolErrors,
   };
 }
 /**
  * 找 /<(think|tool_call|output)>/
  */
-function findNextOpeningTag(text: string, cursor: number): { tag: AgentXmlTag; index: number; openTag: string } | null {
-  const match = text.slice(cursor).match(/<(think|tool_call|output)>/);
-  if (!match || match.index === undefined) {
-    return null;
+function findNextOpeningTag(
+  text: string,
+  cursor: number,
+  finalize: boolean,
+): { tag: AgentXmlTag; index: number; openTag: string } | null {
+  const tagPattern = /<(think|tool_call|output)>/g;
+  tagPattern.lastIndex = cursor;
+
+  let match: RegExpExecArray | null;
+  while ((match = tagPattern.exec(text)) !== null) {
+    const tag = match[1] as AgentXmlTag;
+    const index = match.index;
+    const openTag = match[0];
+
+    if (tag !== 'tool_call') {
+      return { tag, index, openTag };
+    }
+
+    if (finalize || text.indexOf('</tool_call>', index + openTag.length) !== -1) {
+      return { tag, index, openTag };
+    }
   }
 
-  return {
-    tag: match[1] as AgentXmlTag,
-    index: cursor + match.index,
-    openTag: match[0],
-  };
+  return null;
 }
 
 function pushOutputBlock(blocks: ParsedDisplayBlock[], content: string, stable: boolean): void {
@@ -171,8 +205,7 @@ function countStablePrefix(blocks: ParsedDisplayBlock[]): number {
 
 function parseToolCallPayload(
   content: string,
-  enabledTools: AgentLoopToolName[],
-): { ok: true; toolName: AgentLoopToolName; input: string[] } | { ok: false } {
+): { ok: true; toolName: string; input: string[] } | { ok: false } {
   try {
     const parsed = JSON.parse(content);
     if (!parsed || typeof parsed !== 'object') {
@@ -183,21 +216,35 @@ function parseToolCallPayload(
       return { ok: false };
     }
 
-    const toolName = parsed.toolName as AgentLoopToolName;
-    if (!enabledTools.includes(toolName)) {
-      return { ok: false };
-    }
-
     if (!Array.isArray(parsed.input) || !parsed.input.every((item: unknown) => typeof item === 'string')) {
       return { ok: false };
     }
 
     return {
       ok: true,
-      toolName,
+      toolName: parsed.toolName.trim(),
       input: parsed.input,
     };
   } catch {
-    return { ok: false };
+    const commaSeparated = parseCommaSeparatedToolCall(content);
+    return commaSeparated ?? { ok: false };
   }
+}
+
+function parseCommaSeparatedToolCall(content: string): { ok: true; toolName: string; input: string[] } | null {
+  const parts = content.split(/[，,]/).map((part) => part.trim());
+  if (!parts.length) {
+    return null;
+  }
+
+  const [toolName, ...input] = parts;
+  if (!toolName || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(toolName)) {
+    return null;
+  }
+
+  return {
+    ok: true,
+    toolName,
+    input,
+  };
 }

@@ -17,17 +17,19 @@ describe('AgentLoopToolProvider', () => {
 
     expect(provider.enabledToolsDisplay).toEqual(['read_editor', 'write_editor']);
     expect(provider.enabledTools).toEqual([
-      'read_editor',
+      'change_title',
+      'get_tool_hint',
       'read_selection',
+      'read_editor',
       'write_editor',
-      'write_editor_suggestion',
     ]);
     expect(provider.enabledToolsDisplay).toEqual(['read_editor', 'write_editor']);
     expect(provider.enabledTools).toEqual([
-      'read_editor',
+      'change_title',
+      'get_tool_hint',
       'read_selection',
+      'read_editor',
       'write_editor',
-      'write_editor_suggestion',
     ]);
   });
 

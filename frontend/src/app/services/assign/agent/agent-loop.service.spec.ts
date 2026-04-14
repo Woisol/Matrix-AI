@@ -83,6 +83,7 @@ describe('AgentLoopService', () => {
       conversationSignal,
       assignData: createAssignData(),
       analysis: undefined,
+      updateConversationTitle: () => undefined,
       getEditorContent: () => 'int main() { return 0; }',
       getSelectionContent: () => null,
       writeEditorContent: () => undefined,
@@ -92,7 +93,7 @@ describe('AgentLoopService', () => {
   }
 
   it('builds system prompt with xml protocol and enabled tools', () => {
-    const prompt = SYSTEM_PROMPT(['read_editor', 'read_problem_info']);
+    const prompt = SYSTEM_PROMPT('read_editor, read_problem_info');
 
     expect(prompt).toContain('<think>');
     expect(prompt).toContain('<tool_call>');
@@ -144,10 +145,16 @@ describe('AgentLoopService', () => {
       expectedEventCount: 2,
       events: [
         { type: 'think', payload: { content: 'draft' } },
-        { type: 'output', payload: { content: 'tail' } },
       ],
     });
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(3)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 3,
+      events: [
+        { type: 'output', payload: { content: 'tail' } },
+      ],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(4)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 4,
       events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
@@ -158,6 +165,33 @@ describe('AgentLoopService', () => {
       { type: 'output', payload: { content: 'plain' } },
       { type: 'think', payload: { content: 'draft' } },
       { type: 'output', payload: { content: 'tail' } },
+      { type: 'turn_end', payload: { reason: 'completed' } },
+    ]);
+  });
+
+  it('persists the full plain-text response after the pass finishes even when the text streamed in multiple chunks', async () => {
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
+
+    agentServiceStub.streamMessages.and.returnValue(asyncChunks(['plain ', 'text']));
+
+    const service = TestBed.inject(AgentLoopService);
+
+    await service.emitAgentLoop(runConfig(conversationSignal));
+
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(1)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 1,
+      events: [{ type: 'output', payload: { content: 'plain text' } }],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(2)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 2,
+      events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
+    });
+
+    expect(conversationSignal()?.events).toEqual([
+      { type: 'user_message', payload: { content: 'help me' } },
+      { type: 'output', payload: { content: 'plain text' } },
       { type: 'turn_end', payload: { reason: 'completed' } },
     ]);
   });
@@ -216,28 +250,34 @@ describe('AgentLoopService', () => {
       events: [
         { type: 'output', payload: { content: 'after' } },
         { type: 'tool_call', payload: { callId: 'call-2', toolName: 'read_problem_info', input: [] } },
-        { type: 'output', payload: { content: 'end' } },
       ],
     });
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(3)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 5,
+      events: [
+        { type: 'output', payload: { content: 'end' } },
+      ],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(4)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 6,
       events: [{ type: 'tool_result', payload: { callId: 'call-1', success: true, output: 'int main() { return 0; }' } }],
     });
 
-    const secondToolResult = agentServiceStub.appendEventsWithResult$.calls.argsFor(4)[3].events[0];
+    const secondToolResult = agentServiceStub.appendEventsWithResult$.calls.argsFor(5)[3].events[0];
     expect(secondToolResult.type).toBe('tool_result');
     expect(secondToolResult.payload.callId).toBe('call-2');
     expect(secondToolResult.payload.success).toBeTrue();
     expect(secondToolResult.payload.output).toContain('Problem title');
     expect(secondToolResult.payload.output).toContain('Problem description');
 
-    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(5)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(6)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 8,
       events: [{ type: 'output', payload: { content: 'done' } }],
     });
-    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(6)[3]).toEqual({
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(7)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 9,
       events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
@@ -258,12 +298,13 @@ describe('AgentLoopService', () => {
     ]);
   });
 
-  it('downgrades malformed tool_call blocks into plain output', async () => {
+  it('feeds malformed closed tool_call blocks back as tool errors so the model can self-correct', async () => {
     const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
 
-    agentServiceStub.streamMessages.and.returnValue(asyncChunks([
-      '<tool_call>{"toolName":"read_editor","input":}</tool_call>',
-    ]));
+    agentServiceStub.streamMessages.and.returnValues(
+      asyncChunks(['<tool_call>{"toolName":"read_editor","input":}</tool_call>']),
+      asyncChunks(['<output>fixed answer</output>']),
+    );
 
     const service = TestBed.inject(AgentLoopService);
 
@@ -272,16 +313,36 @@ describe('AgentLoopService', () => {
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(1)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 1,
-      events: [{ type: 'output', payload: { content: '<tool_call>{"toolName":"read_editor","input":}</tool_call>' } }],
+      events: [{
+        type: 'tool_result',
+        payload: {
+          callId: 'call-1',
+          success: false,
+          output: 'Invalid tool_call payload. Use JSON {"toolName":"...","input":["..."]} or comma-separated "toolName, arg1, arg2".',
+        },
+      }],
     });
     expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(2)[3]).toEqual({
       conversationId: 'conv-1',
       expectedEventCount: 2,
+      events: [{ type: 'output', payload: { content: 'fixed answer' } }],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(3)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 3,
       events: [{ type: 'turn_end', payload: { reason: 'completed' } }],
     });
     expect(conversationSignal()?.events).toEqual([
       { type: 'user_message', payload: { content: 'help me' } },
-      { type: 'output', payload: { content: '<tool_call>{"toolName":"read_editor","input":}</tool_call>' } },
+      {
+        type: 'tool_result',
+        payload: {
+          callId: 'call-1',
+          success: false,
+          output: 'Invalid tool_call payload. Use JSON {"toolName":"...","input":["..."]} or comma-separated "toolName, arg1, arg2".',
+        },
+      },
+      { type: 'output', payload: { content: 'fixed answer' } },
       { type: 'turn_end', payload: { reason: 'completed' } },
     ]);
   });

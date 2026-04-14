@@ -24,7 +24,7 @@ export type { AgentLoopToolName } from "./agent-loop-tool-provider.service";
 type PassState = {
   rawText: string;
   localStartIndex: number;
-  toolCallIds: string[];
+  toolBlockIds: string[];
 };
 
 @Injectable({ providedIn: 'root' })
@@ -174,7 +174,7 @@ export class AgentLoopService {
     const passState: PassState = {
       rawText: '',
       localStartIndex: conversation.events.length,
-      toolCallIds: [],
+      toolBlockIds: [],
     };
     const persistCursor = new AgentLoopPersistCursor(
       persistedEventCount,
@@ -190,12 +190,12 @@ export class AgentLoopService {
 
       const snapshot = parseAgentLoopPass({
         rawText: passState.rawText,
-        existingToolCallIds: passState.toolCallIds,
+        existingToolCallIds: passState.toolBlockIds,
         enabledTools,
         finalize: false,
         nextCallId: () => this.nextCallId(),
       });
-      passState.toolCallIds = snapshot.toolCalls.map((toolCall) => toolCall.payload.callId);
+      passState.toolBlockIds = snapshot.toolBlockIds;
 
       // 传入 localStartIndex 而非 push，只更新本次对话的 tail 事件
       this.projectPassTail(config, passState.localStartIndex, snapshot.displayEvents);
@@ -204,7 +204,7 @@ export class AgentLoopService {
 
     const finalSnapshot = parseAgentLoopPass({
       rawText: passState.rawText,
-      existingToolCallIds: passState.toolCallIds,
+      existingToolCallIds: passState.toolBlockIds,
       enabledTools,
       finalize: true,
       nextCallId: () => this.nextCallId(),
@@ -214,8 +214,8 @@ export class AgentLoopService {
     persistedEventCount = await persistCursor.persistStablePrefix(finalSnapshot.displayEvents, finalSnapshot.stableCount);
 
 
-    // 无工具调用，结束本轮
-    if (!finalSnapshot.toolCalls.length) {
+    // 无工具调用且无协议错误，结束本轮
+    if (!finalSnapshot.toolCalls.length && !finalSnapshot.toolErrors.length) {
       const turnEnd: MatrixAgentEventTurnEnd = {
         type: 'turn_end',
         payload: { reason: 'completed' },
@@ -230,7 +230,7 @@ export class AgentLoopService {
     return {
       kind: 'continue',
       persistedEventCount: toolRun.persistedEventCount,
-      toolFailureHappened: toolRun.toolFailureHappened,
+      toolFailureHappened: finalSnapshot.toolErrors.length > 0 || toolRun.toolFailureHappened,
     };
   }
 
