@@ -10,6 +10,7 @@ When calling a tool, the body of <tool_call> must be valid JSON with exact shape
 Do not invent fields, do not omit the input array, and do not wrap the JSON in markdown.
 Never invent tool names outside the enabled tool list.
 Enabled tools: ${enabledToolsPrompt}.
+You may use change_title(newTitle) tool to change the conversation title at the beginning of the conversation or when you feel a topic shift happens.
 If a tool_result reports an error, inspect it carefully and either correct the tool call or continue with plain text if no tool is needed.
 If you can answer directly without tools, use plain text.
 `

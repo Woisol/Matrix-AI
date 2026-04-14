@@ -18,6 +18,7 @@ export type AgentLoopRunConfig = {
   conversationSignal: WritableSignal<MatrixAgentConversation | null | undefined>;
   assignData?: AssignData | undefined;
   analysis?: Analysis | undefined;
+  updateConversationTitle: (title: string) => void;
   getEditorContent: () => string;
   /**
    * 除了返回选择内容，还返回选择的位置信息

@@ -208,6 +208,10 @@ export class AssignmentComponent implements OnDestroy {
 
   updateConversationTitle(conversationId: ConversationId, title: string) {
     if (!this.courseId || !this.assignId) return;
+    if (!conversationId) {
+      console.error("Unable to update conversation title: conversationId is missing");
+      return;
+    }
     const nextTitle = title.trim();
     if (!nextTitle) return;
 
@@ -270,7 +274,7 @@ export class AssignmentComponent implements OnDestroy {
     this.agentToolProvider.enabledToolsDisplay = orderedTools;
   }
 
-  // 核心事件
+  //** Agent Loop 核心启动事件
   pushNewAgentEvent(event: MatrixAgentEvent) {
     const currentConversation = this.currentConversationInfo();
     if (!this.courseId || !this.assignId || !currentConversation) {
@@ -289,6 +293,7 @@ export class AssignmentComponent implements OnDestroy {
     const enabledToolsSnapshot = this.agentToolProvider.expandEnabledTools(this.enabledAgentTools());
     this.agentLoopRunning.set(true);
 
+    //** loop config
     void this.agentLoopService.emitAgentLoop({
       courseId: this.courseId,
       assignId: this.assignId,
@@ -297,6 +302,7 @@ export class AssignmentComponent implements OnDestroy {
       conversationSignal: this.currentConversationInfo,
       assignData: this.assignData(),
       analysis: this.analysis(),
+      updateConversationTitle: (title) => this.updateConversationTitle(this.currentConversationInfo()?.conversationId ?? '', title),
       getEditorContent: (): string => this.codeEditor?.getModel()?.getValue()
         ?? this.codeFile().content
         ?? '',

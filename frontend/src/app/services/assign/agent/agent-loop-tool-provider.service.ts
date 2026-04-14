@@ -5,6 +5,7 @@ import { CodeFileInfo } from "../../../api/type/assigment";
 
 // 引入 zod 能自动检验，但还是算了
 export type AgentLoopToolName =
+  | 'change_title'
   | 'get_tool_hint'
   | 'read_editor'
   | 'read_selection'
@@ -41,6 +42,12 @@ export class AgentLoopToolProvider {
    * 定义层：统一描述工具的展示、提示、可切换性与映射关系
    */
   private readonly toolDefinitions: Record<AgentLoopToolName, AgentLoopToolDefinition> = {
+    change_title: {
+      hint: '修改当前对话标题，格式：change_title(newTitle: string)',
+      showInDisplay: false,
+      toggleable: false,
+      implemented: true,
+    },
     get_tool_hint: {
       hint: '获取工具使用提示，输入参数为工具名可以获取指定工具的提示，不输入参数可以获取所有启用工具的提示',
       showInDisplay: false,
@@ -126,6 +133,14 @@ export class AgentLoopToolProvider {
    * 只需要专注工具逻辑，不需要在这里重复判断工具是否启用
    */
   private readonly toolRegistry = new Map<AgentLoopToolName, (config: AgentLoopRunConfig, input: string[]) => Promise<ToolExecutionResult>>([
+    ['change_title', async (config, input) => {
+      const [newTitle] = input;
+      if (!newTitle) {
+        return { success: false, output: 'New title is required for change_title tool.' };
+      }
+      config.updateConversationTitle(newTitle);
+      return { success: true, output: `Title changed to "${newTitle}"` };
+    }],
     ['get_tool_hint', async (_, input) => {
       const [toolName] = input;
       if (!toolName) {
