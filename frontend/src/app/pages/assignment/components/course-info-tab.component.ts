@@ -249,7 +249,7 @@ import type { AgentLoopToolMenuItem, AgentLoopToolNameDisplay } from "../../../s
                           aria-label="切换工具"
                         />
                       </span>
-                      <small class="agent-tool-hint">{{tool.hint}}</small>
+                      <!-- <small class="agent-tool-hint">{{tool.hint}}</small> -->
                     </li>
                   }
                   @if (!agentToolMenuItems.length) {

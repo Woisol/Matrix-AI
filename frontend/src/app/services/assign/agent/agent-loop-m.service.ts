@@ -110,7 +110,8 @@ export class AgentLoopService {
     const messages: AgentLoopMessage[] = [
       {
         role: 'system',
-        content: SYSTEM_PROMPT(enabledTools),
+        content: 'removed',
+        // content: SYSTEM_PROMPT(this.toolProvider.enabledToolsPrompt),
       },
     ];
 

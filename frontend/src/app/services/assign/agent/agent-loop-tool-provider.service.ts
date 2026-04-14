@@ -210,6 +210,12 @@ export class AgentLoopToolProvider {
     }]
   ]);
 
+  get enabledToolsPrompt(): string {
+    if (this.enabledTools.length === 0) {
+      return 'No tools enabled currently.';
+    }
+    return 'Enabled tools: ' + this.enabledToolsDisplay.map((name) => `${name}: ${this.toolDefinitions[name].hint}`).join(', ');
+  }
 
   _enabledTools: AgentLoopToolNameDisplay[];
 

@@ -43,11 +43,11 @@ export class AgentLoopService {
   /**
    * 在开头加上 system prompt & 翻译 event 为标准模型 message
    */
-  buildModelMessages(conversation: MatrixAgentConversation, enabledTools: AgentLoopToolName[]): AgentLoopMessage[] {
+  buildModelMessages(conversation: MatrixAgentConversation, enabledToolsPrompt: string): AgentLoopMessage[] {
     const messages: AgentLoopMessage[] = [
       {
         role: 'system',
-        content: SYSTEM_PROMPT(enabledTools),
+        content: SYSTEM_PROMPT(enabledToolsPrompt),
       },
     ];
 
@@ -181,7 +181,8 @@ export class AgentLoopService {
       (expectedEventCount, events) => this.persistEvents(config, expectedEventCount, events),
     );
 
-    const messages = this.buildModelMessages(conversation, enabledTools);
+    //TODO 担心有没有对话中途修改 tool 的情况……
+    const messages = this.buildModelMessages(conversation, this.toolProvider.enabledToolsPrompt);
 
     // 流式 & 解析
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
