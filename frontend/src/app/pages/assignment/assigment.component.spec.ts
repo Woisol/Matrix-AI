@@ -10,6 +10,7 @@ import { CodeEditorComponent } from './components/code-editor.component';
 import { AssignService } from '../../services/assign/assign.service';
 import { AgentService } from '../../services/assign/agent/agent.service';
 import { AgentLoopService } from '../../services/assign/agent/agent-loop.service';
+import { AgentLoopToolMenuItem } from '../../services/assign/agent/agent-loop-tool-provider.service';
 import { NotificationService } from '../../services/notification/notification.service';
 import { Analysis, AssignData, CodeFileInfo } from '../../api/type/assigment';
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from './components/matrix-analyse.utils';
@@ -28,12 +29,16 @@ class MockCourseInfoTabComponent {
   @Input() conversationHistory: MatrixAgentConversationSummary[] = [];
   @Input() currentConversation: MatrixAgentConversation | null = null;
   @Input() selectedTabIndex = signal(0);
+  @Input() agentToolMenuItems: AgentLoopToolMenuItem[] = [];
+  @Input() enabledAgentTools: Array<string> = [];
+  @Input() agentLoopRunning = false;
   @Output() createNewConversation = new EventEmitter<void>();
   @Output() loadConversationInfo = new EventEmitter<string>();
   @Output() refreshConversationHistory = new EventEmitter<void>();
   @Output() patchConversationTitle = new EventEmitter<{ conversationId: string; title: string }>();
   @Output() deleteConversation = new EventEmitter<string>();
   @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEvent>();
+  @Output() toggleAgentTool = new EventEmitter<string>();
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
 }
@@ -181,8 +186,6 @@ describe('AssignmentComponent', () => {
 
     component.handleAnalysisEditRequest({
       target: 'range',
-      language: 'cpp',
-      tabTitle: 'Code Analysis',
       text: 'abc',
       range: {
         startLineNumber: 1,

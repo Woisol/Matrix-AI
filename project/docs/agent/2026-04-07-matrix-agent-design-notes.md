@@ -85,6 +85,12 @@ type MatrixAgentConversation = {
    - `read_selection`
 3. `set_conversation_title` 属于内部工具，不出现在工具开关列表中。
 4. `checkpoint` 不显式作为工具暴露，而是由 `write_editor` 自动处理。
+5. 前端实现按四层拆分：
+  - 工具定义层：维护工具元信息（展示名、提示、是否实现、是否可切换）
+  - 展示层：只管理用户可见工具菜单
+  - 能力映射层：将展示工具展开到内部原子工具（如 `read_editor -> read_selection`）
+  - 执行层：只负责工具处理函数注册与分发
+6. 未实现工具（当前如 `web_search`、`web_read`）在工具菜单中展示为禁用态并标注“开发中”，不会进入本轮 runtime 工具快照。
 
 ## 5. 写编辑器与回退机制
 
@@ -131,6 +137,7 @@ type MatrixAgentConversation = {
    - 连续失败阈值
 5. 任一阈值触发时，agent 自动停止，并输出“做到哪了 / 卡在哪 / 建议下一步”的总结。
 6. 工具失败时，UI 只忠实展示失败结果，不额外提供系统级策略建议，是否重试或换策略由 agent 自行决定。
+7. 每轮开始时锁定一份 `enabledTools` 快照；运行中修改工具开关只影响下一轮，不影响当前轮。
 
 ## 8. 会话运行态约束
 

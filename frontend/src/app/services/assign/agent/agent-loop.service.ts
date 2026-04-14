@@ -98,10 +98,6 @@ export class AgentLoopService {
       return;
     }
 
-    const enabledTools = config.enabledTools?.length
-      ? config.enabledTools
-      : this.toolProvider.enabledTools;
-
     const trimmedContent = config.userMessageContent.trim();
     if (!trimmedContent) {
       return;
@@ -133,7 +129,7 @@ export class AgentLoopService {
         return;
       }
 
-      const iteration = await this.runSinglePass(config, conversation, persistedEventCount, enabledTools);
+      const iteration = await this.runSinglePass(config, conversation, persistedEventCount, this.toolProvider.enabledTools);
       persistedEventCount = iteration.persistedEventCount;
 
       if (iteration.kind === 'complete') {

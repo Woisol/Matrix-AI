@@ -2,6 +2,7 @@ import { NgForm } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { CourseInfoTabComponent } from './course-info-tab.component';
+import { AgentLoopToolMenuItem } from '../../../services/assign/agent/agent-loop-tool-provider.service';
 
 describe('CourseInfoTabComponent', () => {
   function createComponent() {
@@ -91,5 +92,34 @@ describe('CourseInfoTabComponent', () => {
     component.onAgentSubmit({ resetForm: () => undefined } as unknown as NgForm);
 
     expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it('exposes checkbox state and emits toggle requests from the menu', () => {
+    const component = createComponent();
+    const menuItems: AgentLoopToolMenuItem[] = [
+      { name: 'read_editor', hint: '读取编辑器全文内容', toggleable: true, implemented: true },
+      { name: 'web_search', hint: '暂未实现', toggleable: false, implemented: false },
+    ];
+
+    component.agentToolMenuItems = menuItems;
+    component.enabledAgentTools = ['read_editor'];
+
+    const emitted: Array<string> = [];
+    component.toggleAgentTool.subscribe((toolName) => emitted.push(toolName));
+
+    expect(component.isAgentToolEnabled('read_editor')).toBeTrue();
+    expect(component.isAgentToolEnabled('web_search')).toBeFalse();
+
+    component.toggleAgentToolItem(menuItems[0], {
+      preventDefault: () => undefined,
+      stopPropagation: () => undefined,
+    } as Event);
+
+    component.toggleAgentToolItem(menuItems[1], {
+      preventDefault: () => undefined,
+      stopPropagation: () => undefined,
+    } as Event);
+
+    expect(emitted).toEqual(['read_editor']);
   });
 });

@@ -85,6 +85,8 @@ describe('AgentLoopService', () => {
       analysis: undefined,
       getEditorContent: () => 'int main() { return 0; }',
       getSelectionContent: () => null,
+      writeEditorContent: () => undefined,
+      playground: async () => 'playground result',
       enabledTools: ['read_editor', 'read_problem_info'] as AgentLoopToolName[],
     };
   }

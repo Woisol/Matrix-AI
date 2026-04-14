@@ -10,6 +10,7 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./matrix-a
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { NzDropDownModule } from "ng-zorro-antd/dropdown";
+import { NzCheckboxModule } from "ng-zorro-antd/checkbox";
 import { NzMenuModule } from "ng-zorro-antd/menu";
 import { SubmitScoreComponent } from "./submit-score.component";
 import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../../api/type/agent";
@@ -20,11 +21,12 @@ import { FormsModule, NgForm } from "@angular/forms";
 import { CdkTextareaAutosize } from "@angular/cdk/text-field";
 import { AgentChatBubbleComponent } from "./agent/chat-bubble.component";
 import type { DisplayEvent } from "./agent/chat-bubble.component";
+import type { AgentLoopToolMenuItem, AgentLoopToolNameDisplay } from "../../../services/assign/agent/agent-loop-tool-provider.service";
 
 
 @Component({
   selector: "course-info-tab",
-  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzMenuModule, SubmitScoreComponent, NzInputModule, NzFormModule, FormsModule, CdkTextareaAutosize, AgentChatBubbleComponent],
+  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzCheckboxModule, NzMenuModule, SubmitScoreComponent, NzInputModule, NzFormModule, FormsModule, CdkTextareaAutosize, AgentChatBubbleComponent],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -218,16 +220,45 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
                 cdkAutosizeMaxRows="6"
               ></textarea>
               <menu class="agent-action-buttons">
-                <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'">工具列表</button>
+                <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'" [nzClickHide]="false">工具列表</button>
                 <button class="secondary" >BYOK</button>
-                <button class="secondary send-action" type="submit"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
+                <button class="secondary send-action" type="submit" [disabled]="agentLoopRunning"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
               </menu>
               <nz-dropdown-menu #agentActionMenu="nzDropdownMenu">
-                <ul nz-menu>
-                  <li nz-menu-item>工具1</li>
-                  <li nz-menu-item>工具2</li>
-                  <li nz-menu-item>工具3</li>
+                <ul nz-menu class="agent-tool-menu">
+                  @for (tool of agentToolMenuItems; track tool.name) {
+                    <li
+                      nz-menu-item
+                      [nzDisabled]="!tool.toggleable"
+                      (click)="toggleAgentToolItem(tool, $event)"
+                    >
+                      <span class="agent-tool-item">
+                        <span class="agent-tool-main">
+                          <!-- <nz-icon [nzType]="enabledAgentTools.includes(tool.name) ? 'check-square' : 'border'" nzTheme="outline"></nz-icon> -->
+                          {{tool.name}}
+                          <!-- Array 不存在，没招了 <span>{{Array.from(agentToolMenuItems.keys())}}</span> -->
+                        </span>
+                        @if (!tool.implemented) {
+                          <span class="agent-tool-badge">开发中</span>
+                        }
+                        <input
+                          class="agent-tool-checkbox"
+                          type="checkbox"
+                          [checked]="enabledAgentTools.includes(tool.name)"
+                          [disabled]="!tool.toggleable"
+                          aria-label="切换工具"
+                        />
+                      </span>
+                      <small class="agent-tool-hint">{{tool.hint}}</small>
+                    </li>
+                  }
+                  @if (!agentToolMenuItems.length) {
+                    <li nz-menu-item nzDisabled>暂无可配置工具</li>
+                  }
                 </ul>
+                @if (agentLoopRunning) {
+                  <p class="agent-tool-runtime-note">运行中修改仅对下一轮消息生效</p>
+                }
               </nz-dropdown-menu>
             </form>
           </section>
@@ -584,6 +615,65 @@ import type { DisplayEvent } from "./agent/chat-bubble.component";
     }
   }
 
+  .agent-tool-menu{
+    max-width: 360px;
+  }
+
+  ::ng-deep .agent-tool-menu .ant-menu-title-content{
+    width: 100%;
+  }
+
+  .agent-tool-item{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .agent-tool-main{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .agent-tool-badge{
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--color-primary-light-xl);
+    color: var(--color-secondary);
+    font-size: 11px;
+    line-height: 18px;
+    flex: 0 0 auto;
+  }
+
+  .agent-tool-checkbox{
+    flex: 0 0 auto;
+    margin-left: auto;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+  }
+
+  .agent-tool-hint{
+    display: block;
+    max-width: 200px;
+    margin-top: 2px;
+    color: var(--color-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    /*line-clamp: 2;
+    text-overflow: ellipsis;
+    overflow: hidden;*/
+  }
+
+  .agent-tool-runtime-note{
+    margin: 8px 12px;
+    color: var(--color-secondary);
+    font-size: 12px;
+  }
+
   `],
   // styleUrl
 })
@@ -607,6 +697,10 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   // @Input() pushNewAgentEvent = (event: MatrixAgentEvent) => { };
   @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEvent>();
   // @Output() pushNewAgentEvent = new EventEmitter<MatrixAgentEventUserMessage>();
+  @Input() agentToolMenuItems: AgentLoopToolMenuItem[] = [];
+  @Input() enabledAgentTools: AgentLoopToolNameDisplay[] = [];
+  @Input() agentLoopRunning = false;
+  @Output() toggleAgentTool = new EventEmitter<AgentLoopToolNameDisplay>();
 
   @Input() selectedTabIndex = signal(0);
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
@@ -740,6 +834,9 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   progressScoreFormat = (percent: number) => `${percent}分`;
 
   onAgentSubmit(form: NgForm) {
+    if (this.agentLoopRunning) {
+      return;
+    }
     const content = this.userInput.trim();
     if (!content) {
       return;
@@ -759,5 +856,20 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
       event.preventDefault();
       this.onAgentSubmit(form);
     }
+  }
+
+  toggleAgentToolItem(tool: AgentLoopToolMenuItem, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!tool.toggleable) {
+      return;
+    }
+    this.toggleAgentTool.emit(tool.name);
+  }
+
+  isAgentToolEnabled(toolName: AgentLoopToolNameDisplay, event: Event): boolean {
+    // 应该用 [nzClickHide]
+    // event.stopPropagation();
+    return this.enabledAgentTools.includes(toolName);
   }
 }

@@ -14,6 +14,7 @@ import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRa
 import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../api/type/agent";
 import { AgentService } from "../../services/assign/agent/agent.service";
 import { AgentLoopService } from "../../services/assign/agent/agent-loop.service";
+import { AgentLoopToolProvider, type AgentLoopToolNameDisplay } from "../../services/assign/agent/agent-loop-tool-provider.service";
 
 @Component({
   selector: "app-assignment",
@@ -30,12 +31,16 @@ import { AgentLoopService } from "../../services/assign/agent/agent-loop.service
           [onAnalysisAiGenRequest]="loadAnalysisAiGen"
           [conversationHistory]="conversationsHistory()"
           [currentConversation]="currentConversationInfo()"
+          [agentToolMenuItems]="agentToolMenuItems"
+          [enabledAgentTools]="enabledAgentTools()"
+          [agentLoopRunning]="agentLoopRunning()"
           (createNewConversation)="createAgentConversation()"
           (loadConversationInfo)="loadAgentConversationInfo($event)"
           (refreshConversationHistory)="loadAgentConversationsHistory()"
           (patchConversationTitle)="updateConversationTitle($event.conversationId, $event.title)"
           (deleteConversation)="deleteConversation($event)"
           (pushNewAgentEvent)="pushNewAgentEvent($event)"
+          (toggleAgentTool)="toggleAgentTool($event)"
 
           [selectedTabIndex]="selectedTabIndex"
           (focusRequestRangeOnEditor)="focusRequestRangeOnEditor($event)"
@@ -76,6 +81,7 @@ export class AssignmentComponent implements OnDestroy {
   private assignService = inject(AssignService);
   private agentService = inject(AgentService)
   private agentLoopService = inject(AgentLoopService)
+  private agentToolProvider = inject(AgentLoopToolProvider)
 
   courseId: CourseId | undefined;
   assignId: AssignId | undefined;
@@ -92,6 +98,9 @@ export class AssignmentComponent implements OnDestroy {
   // TODO remove test data
   currentConversationInfo = signal<MatrixAgentConversation | null>(null);
   conversationsHistory = signal<MatrixAgentConversationSummary[]>([]);
+  agentLoopRunning = signal(false);
+  enabledAgentTools = signal<AgentLoopToolNameDisplay[]>(this.agentToolProvider.enabledToolsDisplay);
+  agentToolMenuItems = this.agentToolProvider.toolMenuItems;
 
 
   private subs: Subscription[] = [];
@@ -239,6 +248,28 @@ export class AssignmentComponent implements OnDestroy {
     this.subs.push(sub);
   }
 
+  toggleAgentTool(toolName: AgentLoopToolNameDisplay) {
+    if (!this.agentToolProvider.isToolToggleable(toolName)) {
+      return;
+    }
+
+    const current = this.enabledAgentTools();
+    const nextSet = new Set(current);
+
+    if (nextSet.has(toolName)) {
+      nextSet.delete(toolName);
+    } else {
+      nextSet.add(toolName);
+    }
+
+    const orderedTools = this.agentToolMenuItems
+      .map((item) => item.name)
+      .filter((name) => nextSet.has(name));
+
+    this.enabledAgentTools.set(orderedTools);
+    this.agentToolProvider.enabledToolsDisplay = orderedTools;
+  }
+
   // 核心事件
   pushNewAgentEvent(event: MatrixAgentEvent) {
     const currentConversation = this.currentConversationInfo();
@@ -249,6 +280,14 @@ export class AssignmentComponent implements OnDestroy {
     if (event.type !== 'user_message') {
       return;
     }
+
+    if (this.agentLoopRunning()) {
+      console.error("当前轮次未完成，无法发送下一条消息");
+      return;
+    }
+
+    const enabledToolsSnapshot = this.agentToolProvider.expandEnabledTools(this.enabledAgentTools());
+    this.agentLoopRunning.set(true);
 
     void this.agentLoopService.emitAgentLoop({
       courseId: this.courseId,
@@ -280,10 +319,13 @@ export class AssignmentComponent implements OnDestroy {
         //   return `Playground execution failed, could be server or network error.`;
         // }
         // return result;
-      }
+      },
+      enabledTools: enabledToolsSnapshot,
     }).catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.notify.error(`Agent loop 运行失败: ${message}`);
+    }).finally(() => {
+      this.agentLoopRunning.set(false);
     });
   }
 
