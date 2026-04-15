@@ -17,6 +17,8 @@ import {
 } from "../../../api/type/agent";
 import { ApiError, ApiHttpService } from "../../../api/util/api-http.service";
 import { NotificationService } from "../../notification/notification.service";
+import { AgentLoopMessage } from "./agent-loop.service";
+import { AgentByokConfig, AgentStreamService } from "./agent-stream.service";
 
 // 行吧，所以意思是传过来的原始数据类型建议直接放同文件毕竟只用一次
 type RawMatrixAgentConversationSummary = {
@@ -39,6 +41,7 @@ export class AgentService {
   constructor(private api: ApiHttpService) { }
 
   notify = inject(NotificationService)
+  private streamService = inject(AgentStreamService)
 
   private buildUserParams(userId?: string) {
     return userId ? { headers: { user_id: userId } } : undefined;
@@ -75,6 +78,18 @@ export class AgentService {
       this.notify.error(msg);
       return of(undefined as T | undefined);
     });
+  }
+
+  saveByokConfig(config: AgentByokConfig): boolean {
+    return this.streamService.saveByokConfig(config);
+  }
+
+  getByokConfig(): AgentByokConfig | null {
+    return this.streamService.getByokConfig();
+  }
+
+  clearByokConfig(): void {
+    this.streamService.clearByokConfig();
   }
 
   listConversations$(courseId: CourseId, assignId: AssignId, userId?: string): Observable<MatrixAgentConversationSummary[] | undefined> {
@@ -291,35 +306,7 @@ export class AgentService {
     };
   }
 
-  async *streamMessages(courseId: CourseId, assignId: AssignId, userId: string, messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }>): AsyncGenerator<string, void, void> {
-    const response = await fetch(`/api/courses/${courseId}/assignments/${assignId}/agent/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        user_id: userId,
-      },
-      body: JSON.stringify({ messages }),
-    });
-
-    if (!response.ok || !response.body) {
-      throw new Error(`Model stream request failed with status ${response.status}.`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const text = decoder.decode(value, { stream: true });
-      if (text) {
-        yield text;
-      }
-    }
-
-    const rest = decoder.decode();
-    if (rest) {
-      yield rest;
-    }
+  async *streamMessages(courseId: CourseId, assignId: AssignId, userId: string, messages: AgentLoopMessage[]): AsyncGenerator<string, void, void> {
+    yield* this.streamService.streamMessages(courseId, assignId, userId, messages);
   }
 }

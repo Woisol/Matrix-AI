@@ -22,6 +22,7 @@ import { CdkTextareaAutosize } from "@angular/cdk/text-field";
 import { AgentChatBubbleComponent } from "./agent/chat-bubble.component";
 import type { DisplayEvent } from "./agent/chat-bubble.component";
 import type { AgentLoopToolMenuItem, AgentLoopToolNameDisplay } from "../../../services/assign/agent/agent-loop-tool-provider.service";
+import type { AgentByokConfig } from "../../../services/assign/agent/agent-stream.service";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-applyable-markdown.component";
 import { buildConversationExportText } from "../../../api/util/export";
 
@@ -229,7 +230,7 @@ import { buildConversationExportText } from "../../../api/util/export";
               ></textarea>
               <menu class="agent-action-buttons">
                 <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'" [nzClickHide]="false">工具列表</button>
-                <button class="secondary" >BYOK</button>
+                <button class="secondary" nz-dropdown [nzDropdownMenu]="byokMenu" nzTrigger="click" [nzPlacement]="'topLeft'" [nzClickHide]="false" (nzVisibleChange)="handleByokDropdownVisibleChange($event)" type="button">BYOK</button>
                 <button class="secondary" (click)="exportCurrentConversation()" [disabled]="!this.currentConversation"><span nz-icon nzType="export" nzTheme="outline"></span></button>
                 <button class="secondary send-action" type="submit" [disabled]="agentLoopRunning"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
               </menu>
@@ -268,6 +269,36 @@ import { buildConversationExportText } from "../../../api/util/export";
                 @if (agentLoopRunning) {
                   <p class="agent-tool-runtime-note">运行中修改仅对下一轮消息生效</p>
                 }
+              </nz-dropdown-menu>
+              <nz-dropdown-menu #byokMenu="nzDropdownMenu">
+                <section class="byok-menu" (click)="$event.stopPropagation()">
+                  <h5>Bring Your Own Key 设置</h5>
+                  <input
+                    nz-input
+                    type="text"
+                    [(ngModel)]="byokBaseUrlDraft"
+                    [ngModelOptions]="{ standalone: true }"
+                    placeholder="Base URL，例如 https://api.openai.com（/v1/competition 自动补充）"
+                  />
+                  <input
+                    nz-input
+                    type="text"
+                    [(ngModel)]="byokModelDraft"
+                    [ngModelOptions]="{ standalone: true }"
+                    placeholder="Model，例如 gpt-5.3-codex"
+                  />
+                  <input
+                    nz-input
+                    type="password"
+                    [(ngModel)]="byokApiKeyDraft"
+                    [ngModelOptions]="{ standalone: true }"
+                    placeholder="API Key"
+                  />
+                  <menu class="byok-actions">
+                    <button class="secondary" type="button" (click)="useMatrixModel()">使用 Matrix 提供模型</button>
+                    <button type="button" (click)="saveByok()">保存</button>
+                  </menu>
+                </section>
               </nz-dropdown-menu>
             </form>
           </section>
@@ -700,6 +731,29 @@ import { buildConversationExportText } from "../../../api/util/export";
     font-size: 12px;
   }
 
+  .byok-menu{
+    width: 320px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--color-bg);
+
+    h5{
+      margin: 0;
+      font-size: 12px;
+      color: var(--color-secondary);
+    }
+  }
+
+  .byok-actions{
+    padding: 0;
+    margin-top: 4px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
   .export-preview-con{
     max-height: 60vh;
     overflow: auto;
@@ -745,7 +799,11 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() agentToolMenuItems: AgentLoopToolMenuItem[] = [];
   @Input() enabledAgentTools: AgentLoopToolNameDisplay[] = [];
   @Input() agentLoopRunning = false;
+  @Input() byokConfig: AgentByokConfig | null = null;
   @Output() toggleAgentTool = new EventEmitter<AgentLoopToolNameDisplay>();
+  @Output() saveByokConfig = new EventEmitter<AgentByokConfig>();
+  @Output() clearByokConfig = new EventEmitter<void>();
+  @Output() refreshByokConfig = new EventEmitter<void>();
 
   @Input() selectedTabIndex = signal(0);
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
@@ -761,6 +819,9 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   exportPreviewVisible = false;
   exportPreviewContent = '';
   exportFileName = 'agent-conversation-export.txt';
+  byokBaseUrlDraft = '';
+  byokModelDraft = 'qwen3-max';
+  byokApiKeyDraft = '';
   editingConversationId: ConversationId | null = null;
   editingTitleDraft = '';
   // callIdCounter = (() => { for (let i = 0; ; i++) { yield `${this.currentConversation?.conversationId}-${i}` } })();
@@ -785,6 +846,11 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
       const conv = changes['currentConversation'].currentValue;
       this._displayEvents.set(conv ? this._splitEventsForDisplay(conv.events) : []);
       this.scrollChatToBottomNextTick('smooth');
+    }
+    if (changes['byokConfig']) {
+      this.byokBaseUrlDraft = this.byokConfig?.baseUrl ?? '';
+      this.byokModelDraft = this.byokConfig?.model ?? 'qwen3-max';
+      this.byokApiKeyDraft = this.byokConfig?.apiKey ?? '';
     }
   }
 
@@ -925,6 +991,29 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
       return;
     }
     this.toggleAgentTool.emit(tool.name);
+  }
+
+  saveByok(): void {
+    this.saveByokConfig.emit({
+      baseUrl: this.byokBaseUrlDraft.trim(),
+      model: this.byokModelDraft.trim(),
+      apiKey: this.byokApiKeyDraft.trim(),
+    });
+  }
+
+  useMatrixModel(): void {
+    this.byokBaseUrlDraft = '';
+    this.byokModelDraft = 'qwen3-max';
+    this.byokApiKeyDraft = '';
+    this.clearByokConfig.emit();
+  }
+
+  handleByokDropdownVisibleChange(visible: boolean): void {
+    if (!visible) {
+
+      return;
+    }
+    this.refreshByokConfig.emit();
   }
 
   isAgentToolEnabled(toolName: AgentLoopToolNameDisplay, event: Event): boolean {

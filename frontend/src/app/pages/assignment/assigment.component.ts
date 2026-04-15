@@ -13,6 +13,7 @@ import * as monaco from "monaco-editor";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
 import { CheckpointId, ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent, MatrixAgentToolResultOutput } from "../../api/type/agent";
 import { AgentService } from "../../services/assign/agent/agent.service";
+import type { AgentByokConfig } from "../../services/assign/agent/agent-stream.service";
 import { AgentLoopService } from "../../services/assign/agent/agent-loop.service";
 import { AgentLoopToolProvider, type AgentLoopToolNameDisplay } from "../../services/assign/agent/agent-loop-tool-provider.service";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/code-applyable-markdown.component";
@@ -36,6 +37,7 @@ import { ToolExecutionResult } from "../../api/type/agent-loop";
           [agentToolMenuItems]="agentToolMenuItems"
           [enabledAgentTools]="enabledAgentTools()"
           [agentLoopRunning]="agentLoopRunning()"
+          [byokConfig]="byokConfig()"
           (createNewConversation)="createAgentConversation()"
           (loadConversationInfo)="loadAgentConversationInfo($event)"
           (refreshConversationHistory)="loadAgentConversationsHistory()"
@@ -43,6 +45,9 @@ import { ToolExecutionResult } from "../../api/type/agent-loop";
           (deleteConversation)="deleteConversation($event)"
           (pushNewAgentEvent)="pushNewAgentEvent($event)"
           (toggleAgentTool)="toggleAgentTool($event)"
+          (saveByokConfig)="handleSaveByokConfig($event)"
+          (clearByokConfig)="handleClearByokConfig()"
+          (refreshByokConfig)="refreshByokConfig()"
 
           [selectedTabIndex]="selectedTabIndex"
           (focusRequestRangeOnEditor)="focusRequestRangeOnEditor($event)"
@@ -106,6 +111,7 @@ export class AssignmentComponent implements OnDestroy {
   agentLoopRunning = signal(false);
   enabledAgentTools = signal<AgentLoopToolNameDisplay[]>(this.agentToolProvider.enabledToolsDisplay);
   agentToolMenuItems = this.agentToolProvider.toolMenuItems;
+  byokConfig = signal<AgentByokConfig | null>(this.agentService.getByokConfig());
 
 
   private subs: Subscription[] = [];
@@ -280,6 +286,26 @@ export class AssignmentComponent implements OnDestroy {
 
     this.enabledAgentTools.set(orderedTools);
     this.agentToolProvider.enabledToolsDisplay = orderedTools;
+  }
+
+  handleSaveByokConfig(config: AgentByokConfig): void {
+    const saved = this.agentService.saveByokConfig(config);
+    if (!saved) {
+      this.notify.warning("请填写有效的 Base URL 和 API Key。", "BYOK 配置无效");
+      return;
+    }
+    this.byokConfig.set(this.agentService.getByokConfig());
+    this.notify.success("已保存 BYOK 配置。后续对话将优先走 BYOK 直连。", "BYOK 已保存");
+  }
+
+  handleClearByokConfig(): void {
+    this.agentService.clearByokConfig();
+    this.byokConfig.set(null);
+    this.notify.info("已切换回 Matrix 提供模型。", "BYOK 已关闭");
+  }
+
+  refreshByokConfig(): void {
+    this.byokConfig.set(this.agentService.getByokConfig());
   }
 
   handleRewindConversationRequest = (userEventIndex: number) => {
