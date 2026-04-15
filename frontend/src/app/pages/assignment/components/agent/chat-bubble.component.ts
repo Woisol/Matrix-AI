@@ -393,7 +393,13 @@ export class AgentAssistantMessageComponent {
   // }
 
   getToolResultOutput(callId: string): string {
-    return String(this.toolResultsByCallId.get(callId)?.payload.output ?? '');
+    const output = this.toolResultsByCallId.get(callId)?.payload.output;
+    if (!output) return '';
+    if (typeof output === 'string') return output;
+    if (typeof output.message === 'string' && output.message.trim().length > 0) {
+      return output.message;
+    }
+    return JSON.stringify(output, null, 2);
   }
 
   getToolStatusText(callId: string): string {

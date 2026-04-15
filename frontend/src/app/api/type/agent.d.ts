@@ -41,9 +41,8 @@ export type MatrixAgentEventToolCall = {
   }
 }
 export type MatrixAgentToolResultOutputObject = {
-  // message: string
+  message?: string
   checkpointId?: CheckpointId
-  toString?: () => string
 }
 export type MatrixAgentToolResultOutput = string | MatrixAgentToolResultOutputObject
 export type MatrixAgentEventToolResult = {

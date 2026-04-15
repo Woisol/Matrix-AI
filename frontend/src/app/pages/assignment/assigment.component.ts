@@ -491,7 +491,7 @@ export class AssignmentComponent implements OnDestroy {
       this.notify.warning("未能创建检查点。", "编辑警告");
     }
     this.userEditedEditorAfterAgentWrite = false;
-    return { checkpointId, toString: () => 'Content written to editor successfully.' } as MatrixAgentToolResultOutput
+    return { checkpointId, message: 'Content written to editor successfully.' } as MatrixAgentToolResultOutput
   }
 
   /**
