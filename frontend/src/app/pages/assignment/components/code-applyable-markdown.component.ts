@@ -8,7 +8,7 @@ import { NzIconModule } from "ng-zorro-antd/icon";
   selector: "code-applyable-markdown",
   imports: [MarkdownModule, NzTooltipModule, NzIconModule],
   template: `
-    @if (!content.trim()) {
+    @if (!content) {
       <markdown class="markdown-patched" [data]="'这里没有内容呢'"></markdown>
     } @else {
       @for (segment of getTabSegments(); track $index) {

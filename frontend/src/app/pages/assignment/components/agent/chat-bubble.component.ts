@@ -39,10 +39,6 @@ export type DisplayEvent =
               </div>
             </details>
         } @else if (event.type === 'tool_call') {
-          @if(getToolCheckpointId(event.payload.callId)) {
-            <span class="rewind-chat" (click)="rewindWriteRequest.emit(getToolCheckpointId(event.payload.callId))">回溯到这里</span>
-
-          }
             <details class="bubble-card tool-card">
               <summary class="tool-summary">
                 <div class="tool-card-header sticky">
@@ -55,6 +51,16 @@ export type DisplayEvent =
                   >
                     {{ getToolStatusText(event.payload.callId) }}
                   </span>
+                  @if(getToolCheckpointId(event.payload.callId)) {
+                    <button
+                      class="rewind-write-icon"
+                      type="button"
+                      nz-tooltip="回溯到这里"
+                      (click)="$event.stopPropagation(); rewindWriteRequest.emit(getToolCheckpointId(event.payload.callId))"
+                    >
+                      ↶
+                    </button>
+                  }
                 </div>
                 @if (getToolResultOutput(event.payload.callId)) {
                   <pre class="tool-output">{{ getToolResultOutput(event.payload.callId) }}</pre>
@@ -293,34 +299,28 @@ export type DisplayEvent =
       background: #ffffff;
     }
 
-    .rewind-write{
-      opacity: 0;
-      width: 5.5rem;
+    .rewind-write-icon {
+      flex: 0 0 auto;
+      padding: 4px;
+      margin-left: 8px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      background: var(--color-bg);
       color: var(--color-secondary);
-      transition: color .2s ease,
-       opacity .2s ease;
-      &::before{
-        content: "";
-        display: inline-block;
-        width: calc(50% - 2.75rem);
-        height: 0;
-        border-top: 1px solid var(--color-border);
-        margin-right: 0.5rem;
-        vertical-align: middle;
-      }
-      &::after{
-        content: "";
-        display: inline-block;
-        width: calc(50% - 2.75rem);
-        height: 0;
-        border-top: 1px solid var(--color-border);
-        margin-left: 0.5rem;
-        vertical-align: middle;
-      }
-      &:hover {
-        cursor: pointer;
-        opacity: 1;
-      }
+      font-size: 13px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.72;
+      transition: color .2s ease, opacity .2s ease, border-color .2s ease;
+    }
+
+    .rewind-write-icon:hover {
+      opacity: 1;
+      color: var(--color-text);
+      border-color: var(--color-secondary);
     }
 
 
@@ -393,7 +393,7 @@ export class AgentAssistantMessageComponent {
   // }
 
   getToolResultOutput(callId: string): string {
-    return String(this.toolResultsByCallId.get(callId)?.payload.output) ?? '';
+    return String(this.toolResultsByCallId.get(callId)?.payload.output ?? '');
   }
 
   getToolStatusText(callId: string): string {

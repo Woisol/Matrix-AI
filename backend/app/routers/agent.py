@@ -168,7 +168,7 @@ async def stream_messages(
     del course_id
     stream = await AIAgentController.stream_messages(
         assignment_id=assign_id,
-        user_id=user_id,
+        _user_id=user_id,
         messages=[message.model_dump(exclude_none=True) for message in request.messages],
     )
     return StreamingResponse(stream, media_type="text/plain; charset=utf-8")

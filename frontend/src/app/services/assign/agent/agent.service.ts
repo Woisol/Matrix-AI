@@ -1,6 +1,6 @@
 import { inject, Injectable, WritableSignal } from "@angular/core";
 import { HttpResponse } from "@angular/common/http";
-import { catchError, map, Observable, of, OperatorFunction } from "rxjs";
+import { catchError, firstValueFrom, map, Observable, of, OperatorFunction } from "rxjs";
 
 import { CodeFileInfo } from "../../../api/type/assigment";
 import { AssignId, CourseId } from "../../../api/type/general";
@@ -127,6 +127,19 @@ export class AgentService {
       map((response) => response.status),
       this.handleAgentError<number>('无法删除对话'),
     );
+  }
+
+  async resetLocalConversation(courseId: CourseId, assignId: AssignId, currentConversation: WritableSignal<MatrixAgentConversation | null | undefined>, userId: string | undefined): Promise<void> {
+    const remoteConversation = await firstValueFrom(this.getConversation$(
+      courseId,
+      assignId,
+      currentConversation()!.conversationId,
+      userId,
+    ));
+    if (remoteConversation) {
+      currentConversation.set(remoteConversation);
+    }
+
   }
 
   createCheckpoint$(courseId: CourseId, assignId: AssignId, userId: string | undefined, files: CodeFileInfo[]): Observable<string | undefined> {

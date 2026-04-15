@@ -736,11 +736,12 @@ export class AssignmentComponent implements OnDestroy {
         nzAutofocus: 'cancel',
         nzOnOk: async () => {
           const restored = await this.restoreEditorFromCheckpoint(checkpointId);
-          if (restored) {
-            this.notify.success("已恢复代码，可按 Ctrl+Z 撤销。", "回溯成功");
+          if (!restored) {
+            this.notify.warning("代码恢复失败。", "部分成功");
+            this.agentService.resetLocalConversation(this.courseId!, this.assignId!, this.currentConversationInfo, this._agentUserId);
             return;
           }
-          this.notify.warning("代码恢复失败。", "部分成功");
+          this.notify.success("已恢复代码，可按 Ctrl+Z 撤销。", "回溯成功");
         },
         // nzOnCancel: () => {
         //   this.notify.info("会话已回溯。", "回溯成功");
@@ -772,11 +773,12 @@ export class AssignmentComponent implements OnDestroy {
         }),
       );
       if (!status || status < 200 || status >= 300) {
-        this.notify.warning("会话已回溯，但服务端同步失败。", "回溯提示");
+        this.notify.error(`会话回溯失败，服务器错误（${status}）。`, "回溯失败");
+        this.agentService.resetLocalConversation(this.courseId!, this.assignId!, this.currentConversationInfo, this._agentUserId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.notify.warning(`会话已回溯，但服务端同步失败：${message}`, "回溯提示");
+      this.notify.error(`会话回溯失败，服务器错误（${message}）。`, "回溯失败");
     }
   }
 

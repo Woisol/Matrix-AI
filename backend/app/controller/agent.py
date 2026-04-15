@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 
 from fastapi import HTTPException
 from app.controller.ai import torExceptions
-from app.models.agent import AIAgent, AIAgentConservation
+from app.models.agent import AIAgent, AIAgentConservation, AIAgentConservationCheckpoint
 from app.models.assignment import Assignment
 from app.schemas.agent import AIAgentEvent
 from app.models.ai import AI
@@ -173,8 +173,9 @@ class AIAgentController:
     async def create_checkpoint(cls, assignment_id: str, original_code: str):
         """创建对话回溯点"""
         assignment = await cls._get_assignment_or_404(assignment_id)
-        checkpoint = await assignment.agent_checkpoints.create(
+        checkpoint = await AIAgentConservationCheckpoint.create(
             id=str(uuid.uuid4()),
+            assignment=assignment,
             original_code=original_code,
         )
         return checkpoint.id
@@ -183,7 +184,7 @@ class AIAgentController:
     async def get_checkpoint(cls, checkpoint_id: str, assignment_id: str):
         """获取对话回溯点详情"""
         assignment = await cls._get_assignment_or_404(assignment_id)
-        checkpoint = await assignment.agent_checkpoints.filter(id=checkpoint_id).first()
+        checkpoint = await AIAgentConservationCheckpoint.filter(id=checkpoint_id, assignment=assignment).first()
         if not checkpoint:
             raise HTTPException(status_code=404, detail="回溯点不存在")
 
@@ -194,7 +195,7 @@ class AIAgentController:
     async def stream_messages(
         cls,
         assignment_id: str,
-        user_id: str,
+        _user_id: str,
         messages: list[dict],
     ) -> AsyncGenerator[str, None]:
         """直接代理模型流式输出，供前端 loop 自主编排。"""

@@ -118,15 +118,22 @@ a {
   }
 }
 
-button:not(.ant-tabs-tab-btn, .nz-icon-btn, .ant-modal-close) {
-  padding: 0.5em 1em;
+button:not(.ant-tabs-tab-btn,
+  .nz-icon-btn,
+  .ant-modal-close,
+  .ant-btn) {
   color: white;
   background: var(--color-primary);
+}
+
+button:not(.ant-tabs-tab-btn, .nz-icon-btn, .ant-modal-close) {
+  padding: 0.5em 1em;
   border: none;
   border-radius: 10px;
   transition: filter 0.3s ease-in-out,
     box-shadow 0.3s ease-in-out;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+
 
   &.secondary {
     color: var(--color-text);
