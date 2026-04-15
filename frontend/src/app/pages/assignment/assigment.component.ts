@@ -8,6 +8,7 @@ import { AssignService } from "../../services/assign/assign.service";
 import { firstValueFrom, Subscription } from "rxjs";
 import { ActivatedRoute } from "@angular/router";
 import { NotificationService } from "../../services/notification/notification.service";
+import { NzModalModule, NzModalService } from "ng-zorro-antd/modal";
 import * as monaco from "monaco-editor";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
 import { CheckpointId, ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent, MatrixAgentToolResultOutput } from "../../api/type/agent";
@@ -19,7 +20,7 @@ import { ToolExecutionResult } from "../../api/type/agent-loop";
 
 @Component({
   selector: "app-assignment",
-  imports: [NzSplitterModule, CourseInfoTabComponent, CodeEditorComponent],
+  imports: [NzSplitterModule, CourseInfoTabComponent, CodeEditorComponent, NzModalModule],
   standalone: true,
   template: `
   <div class="assignment-con">
@@ -46,7 +47,7 @@ import { ToolExecutionResult } from "../../api/type/agent-loop";
           [selectedTabIndex]="selectedTabIndex"
           (focusRequestRangeOnEditor)="focusRequestRangeOnEditor($event)"
           (applyAnalysisEdit)="handleAnalysisEditRequest($event)"
-          (rewindConversationRequest)="handleRewindConversationRequest()"
+          (rewindConversationRequest)="handleRewindConversationRequest($event)"
           (rewindWriteRequest)="hanldeRewindWriteRequest($event)"
         />
 
@@ -85,6 +86,7 @@ export class AssignmentComponent implements OnDestroy {
   private agentService = inject(AgentService)
   private agentLoopService = inject(AgentLoopService)
   private agentToolProvider = inject(AgentLoopToolProvider)
+  private modal = inject(NzModalService)
 
   courseId: CourseId | undefined;
   assignId: AssignId | undefined;
@@ -108,6 +110,9 @@ export class AssignmentComponent implements OnDestroy {
 
   private subs: Subscription[] = [];
   private codeEditor: monaco.editor.IStandaloneCodeEditor | undefined;
+  private editorContentChangeDisposable: monaco.IDisposable | null = null;
+  private suppressEditorChangeTracking = false;
+  private userEditedEditorAfterAgentWrite = false;
 
   constructor() {
     // 监听路由参数变化后再加载数据，避免构造期 ID 为空
@@ -277,12 +282,48 @@ export class AssignmentComponent implements OnDestroy {
     this.agentToolProvider.enabledToolsDisplay = orderedTools;
   }
 
-  handleRewindConversationRequest = () => {
-
+  handleRewindConversationRequest = (userEventIndex: number) => {
+    void this.rewindConversationAt(userEventIndex);
   }
 
   hanldeRewindWriteRequest = (checkpointId: CheckpointId | undefined) => {
+    if (!checkpointId) {
+      this.notify.warning("未找到可回溯的检查点。", "回溯提示");
+      return;
+    }
+    void this.handleAgentRollbackRequest(checkpointId);
+  }
 
+  async handleAgentRollbackRequest(checkpointId: CheckpointId): Promise<void> {
+    if (!checkpointId) {
+      this.notify.warning("未找到可回溯的检查点。", "回溯提示");
+      return;
+    }
+
+    if (this.userEditedEditorAfterAgentWrite) {
+      this.modal.confirm({
+        nzTitle: "检测到编辑器已修改",
+        nzContent: "你在上次 Agent 写入后手动修改过编辑器内容。回溯将覆盖当前代码，是否继续？",
+        nzOkText: "确认回溯",
+        nzCancelText: "取消",
+        nzAutofocus: 'cancel',
+        nzOnOk: async () => {
+          const restored = await this.restoreEditorFromCheckpoint(checkpointId);
+          if (restored) {
+            this.notify.success("已回溯到指定检查点。", "回溯成功");
+          }
+        },
+        nzOnCancel: () => {
+          this.notify.info("已取消代码回溯。", "回溯提示");
+        },
+      });
+      return;
+    }
+
+    const restored = await this.restoreEditorFromCheckpoint(checkpointId);
+    if (restored) {
+      this.notify.success("已回溯到指定检查点。", "回溯成功");
+    }
   }
 
   //** Agent Loop 核心启动事件
@@ -405,11 +446,19 @@ export class AssignmentComponent implements OnDestroy {
   // }
 
   ngOnDestroy() {
+    this.editorContentChangeDisposable?.dispose();
     this.subs.forEach(s => s.unsubscribe());
   }
 
   handleEditorReady(editor: monaco.editor.IStandaloneCodeEditor) {
     this.codeEditor = editor;
+    this.editorContentChangeDisposable?.dispose();
+    this.editorContentChangeDisposable = editor.onDidChangeModelContent(() => {
+      if (this.suppressEditorChangeTracking) {
+        return;
+      }
+      this.userEditedEditorAfterAgentWrite = true;
+    });
   }
 
   /**
@@ -436,11 +485,12 @@ export class AssignmentComponent implements OnDestroy {
    * Agent 用 write_editor 包装
    */
   handleAgentWriteEditorRequest = async (request: Pick<MatrixAnalysisEditRequest, 'target' | 'range' | 'text'>): Promise<MatrixAgentToolResultOutput> => {
+    const checkpointId = await firstValueFrom(this.agentService.createCheckpoint$(this.courseId!, this.assignId!, this._agentUserId, [this.codeFile()]));
     this.handleAnalysisEditRequest(request);
-    const checkpointId = await firstValueFrom(this.agentService.createCheckpoint$(this.courseId!, this.assignId!, this.currentConversationInfo()!.conversationId, [this.codeFile()]));
     if (!checkpointId) {
       this.notify.warning("未能创建检查点。", "编辑警告");
     }
+    this.userEditedEditorAfterAgentWrite = false;
     return { checkpointId, toString: () => 'Content written to editor successfully.' } as MatrixAgentToolResultOutput
   }
 
@@ -489,19 +539,25 @@ export class AssignmentComponent implements OnDestroy {
       selectionRange.endColumn,
     );
 
-    this.codeEditor.pushUndoStop();
-    const applied = this.codeEditor.executeEdits(
-      'matrix-analysis',
-      [
-        {
-          range: editRange,
-          text: request.text,
-          forceMoveMarkers: true,
-        },
-      ],
-      [selection],
-    );
-    this.codeEditor.pushUndoStop();
+    let applied = false;
+    this.suppressEditorChangeTracking = true;
+    try {
+      this.codeEditor.pushUndoStop();
+      applied = this.codeEditor.executeEdits(
+        'matrix-analysis',
+        [
+          {
+            range: editRange,
+            text: request.text,
+            forceMoveMarkers: true,
+          },
+        ],
+        [selection],
+      );
+      this.codeEditor.pushUndoStop();
+    } finally {
+      this.suppressEditorChangeTracking = false;
+    }
 
     if (!applied) {
       this.notify.error("未能把修改应用到编辑器。", "应用失败");
@@ -650,6 +706,195 @@ export class AssignmentComponent implements OnDestroy {
     });
 
     this.subs.push(sub);
+  }
+
+  private async rewindConversationAt(userEventIndex: number): Promise<void> {
+    const conversation = this.currentConversationInfo();
+    if (!conversation) {
+      this.notify.error("没有进行中的对话", "回溯失败");
+      return;
+    }
+    if (userEventIndex < 0 || userEventIndex >= conversation.events.length) {
+      this.notify.error("回溯位置无效。", "回溯失败");
+      return;
+    }
+    const anchorEvent = conversation.events[userEventIndex];
+    if (anchorEvent.type !== 'user_message') {
+      this.notify.error("只能回溯到用户消息。", "回溯失败");
+      return;
+    }
+
+    const truncatedTail = conversation.events.slice(userEventIndex);
+    const checkpointId = this.findLatestWriteEditorCheckpointId(truncatedTail);
+    if (checkpointId)
+      this.modal.confirm({
+        nzTitle: "检测到后续代码写入",
+        nzContent: "该位置之后存在 write_editor 操作。是否同时将编辑器代码回溯到 Agent 编辑前？",
+        nzOkText: "同时回溯代码",
+        nzCancelText: "仅回溯会话",
+        nzAutofocus: 'cancel',
+        nzOnOk: async () => {
+          const restored = await this.restoreEditorFromCheckpoint(checkpointId);
+          if (restored) {
+            this.notify.success("已恢复代码，可按 Ctrl+Z 撤销。", "回溯成功");
+            return;
+          }
+          this.notify.warning("代码恢复失败。", "部分成功");
+        },
+        // nzOnCancel: () => {
+        //   this.notify.info("会话已回溯。", "回溯成功");
+        // },
+      });
+
+    const truncatedEvents = conversation.events.slice(0, userEventIndex);
+
+    this.currentConversationInfo.set({
+      ...conversation,
+      updatedAt: new Date().toISOString(),
+      events: truncatedEvents,
+    });
+
+    this.notify.success("已回溯会话到所选用户消息。", "回溯成功");
+
+  }
+
+  private async restoreEditorFromCheckpoint(checkpointId: CheckpointId): Promise<boolean> {
+    if (!this.courseId || !this.assignId) {
+      this.notify.error("课程或作业信息缺失，无法回溯。", "回溯失败");
+      return false;
+    }
+
+    if (!this.codeEditor) {
+      this.notify.error("编辑器尚未准备好，无法回溯。", "回溯失败");
+      return false;
+    }
+
+    const model = this.codeEditor.getModel();
+    if (!model) {
+      this.notify.error("当前没有可编辑的代码模型。", "回溯失败");
+      return false;
+    }
+
+    try {
+      const checkpointFiles = await firstValueFrom(
+        this.agentService.getCheckpoint$(this.courseId, this.assignId, checkpointId, this._agentUserId),
+      );
+      if (!checkpointFiles?.length) {
+        this.notify.error("检查点内容为空，无法回溯。", "回溯失败");
+        return false;
+      }
+
+      const currentFileName = this.codeFile().fileName;
+      const targetFile = checkpointFiles.find((file) => file.fileName === currentFileName) ?? checkpointFiles[0];
+      if (!targetFile) {
+        this.notify.error("检查点缺少可恢复文件。", "回溯失败");
+        return false;
+      }
+
+      const targetContent = targetFile.content ?? '';
+      if (model.getValue() === targetContent) {
+        this.codeFile.update((codeFile) => ({
+          ...codeFile,
+          fileName: targetFile.fileName,
+          content: targetContent,
+        }));
+        this.userEditedEditorAfterAgentWrite = false;
+        return true;
+      }
+
+      // 实际回溯逻辑
+      const editTargetRange = getFullEditorRange(model);
+      const selectionRange = buildEditedSelectionRange(editTargetRange, targetContent);
+      const editRange = new monaco.Range(
+        editTargetRange.startLineNumber,
+        editTargetRange.startColumn,
+        editTargetRange.endLineNumber,
+        editTargetRange.endColumn,
+      );
+      const selection = new monaco.Selection(
+        selectionRange.startLineNumber,
+        selectionRange.startColumn,
+        selectionRange.endLineNumber,
+        selectionRange.endColumn,
+      );
+
+      let applied = false;
+      this.suppressEditorChangeTracking = true;
+      try {
+        this.codeEditor.pushUndoStop();
+        applied = this.codeEditor.executeEdits(
+          'matrix-rewind',
+          [
+            {
+              range: editRange,
+              text: targetContent,
+              forceMoveMarkers: true,
+            },
+          ],
+          [selection],
+        );
+        this.codeEditor.pushUndoStop();
+      } finally {
+        this.suppressEditorChangeTracking = false;
+      }
+
+      if (!applied) {
+        this.notify.error("未能将检查点内容应用到编辑器。", "回溯失败");
+        return false;
+      }
+
+      this.codeFile.update((codeFile) => ({
+        ...codeFile,
+        fileName: targetFile.fileName,
+        content: model.getValue(),
+      }));
+      this.codeEditor.setSelection(selection);
+      this.codeEditor.revealRangeInCenter(selection);
+      this.codeEditor.focus();
+      this.userEditedEditorAfterAgentWrite = false;
+      return true;
+    } catch {
+      this.notify.error("获取检查点失败，请稍后重试。", "回溯失败");
+      return false;
+    }
+  }
+
+  private findLatestWriteEditorCheckpointId(events: MatrixAgentEvent[]): CheckpointId | undefined {
+    const writeEditorCallIds = new Set<string>();
+    let latestCheckpointId: CheckpointId | undefined;
+
+    events.forEach((event) => {
+      if (event.type === 'tool_call' && event.payload.toolName === 'write_editor') {
+        writeEditorCallIds.add(event.payload.callId);
+        return;
+      }
+
+      if (event.type !== 'tool_result') {
+        return;
+      }
+
+      if (!writeEditorCallIds.has(event.payload.callId)) {
+        return;
+      }
+
+      const checkpointId = this.extractCheckpointId(event.payload.output);
+      if (checkpointId) {
+        latestCheckpointId = checkpointId;
+      }
+    });
+
+    return latestCheckpointId;
+  }
+
+  private extractCheckpointId(output: MatrixAgentToolResultOutput | undefined): CheckpointId | undefined {
+    if (!output || typeof output === 'string') {
+      return undefined;
+    }
+
+    const checkpointId = output.checkpointId;
+    return typeof checkpointId === 'string' && checkpointId.trim().length > 0
+      ? checkpointId
+      : undefined;
   }
 
 }

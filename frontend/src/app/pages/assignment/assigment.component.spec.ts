@@ -42,6 +42,8 @@ class MockCourseInfoTabComponent {
   @Output() toggleAgentTool = new EventEmitter<string>();
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
+  @Output() rewindConversationRequest = new EventEmitter<number>();
+  @Output() rewindWriteRequest = new EventEmitter<string | undefined>();
 }
 
 @Component({
@@ -230,7 +232,7 @@ describe('AssignmentComponent', () => {
     component.handleEditorReady(editor);
     editor.__triggerContentChange();
 
-    expect((component as any).agentRollbackNeedsConfirm).toBeTrue();
+    expect((component as any).userEditedEditorAfterAgentWrite).toBeTrue();
   });
 
   it('creates a checkpoint before applying an agent write and returns the checkpoint id', async () => {
@@ -241,7 +243,7 @@ describe('AssignmentComponent', () => {
     component.courseId = 'course-1' as any;
     component.assignId = 'assign-1' as any;
     component.codeFile.set({ fileName: 'main.cpp', content: 'int main() { return 0; }' });
-    (component as any).agentRollbackNeedsConfirm = true;
+    (component as any).userEditedEditorAfterAgentWrite = true;
 
     const result = await component.handleAgentWriteEditorRequest({
       target: 'full-editor',
@@ -251,14 +253,8 @@ describe('AssignmentComponent', () => {
     expect(agentServiceStub.createCheckpoint$).toHaveBeenCalledWith('course-1', 'assign-1', 'Matrix AI', [
       { fileName: 'main.cpp', content: 'int main() { return 0; }' },
     ]);
-    expect(result).toEqual(jasmine.objectContaining({
-      success: true,
-      output: jasmine.objectContaining({
-        message: 'Content written to editor successfully.',
-        checkpointId: 'cp-1',
-      }),
-    }));
-    expect((component as any).agentRollbackNeedsConfirm).toBeFalse();
+    expect(result).toEqual(jasmine.objectContaining({ checkpointId: 'cp-1' }));
+    expect((component as any).userEditedEditorAfterAgentWrite).toBeFalse();
   });
 
   it('rolls back immediately when no overwrite confirmation is needed', async () => {
@@ -285,7 +281,7 @@ describe('AssignmentComponent', () => {
     component.courseId = 'course-1' as any;
     component.assignId = 'assign-1' as any;
     component.codeFile.set({ fileName: 'main.cpp', content: 'current code' });
-    (component as any).agentRollbackNeedsConfirm = true;
+    (component as any).userEditedEditorAfterAgentWrite = true;
 
     await component.handleAgentRollbackRequest('cp-1');
 
@@ -295,6 +291,56 @@ describe('AssignmentComponent', () => {
     const confirmConfig = modalServiceStub.confirm.calls.mostRecent().args[0];
     await confirmConfig.nzOnOk();
 
+    expect(editor.executeEdits).toHaveBeenCalled();
+  });
+
+  it('rewinds conversation to clicked user event and asks whether to restore code when write_editor exists', () => {
+    const fixture = TestBed.createComponent(AssignmentComponent);
+    const component = fixture.componentInstance;
+
+    component.currentConversationInfo.set({
+      conversationId: 'conv-1',
+      title: '测试对话',
+      createdAt: '2026-04-10T10:00:00Z',
+      updatedAt: '2026-04-10T10:00:00Z',
+      events: [
+        { type: 'user_message', payload: { content: '请修改代码' } },
+        { type: 'tool_call', payload: { callId: 'c1', toolName: 'write_editor', input: [] } },
+        { type: 'tool_result', payload: { callId: 'c1', success: true, output: { checkpointId: 'cp-2' } } },
+      ],
+    });
+
+    component.handleRewindConversationRequest(0);
+
+    expect(component.currentConversationInfo()?.events.length).toBe(1);
+    expect(modalServiceStub.confirm).toHaveBeenCalled();
+  });
+
+  it('restores code after conversation rewind when user confirms restore', async () => {
+    const fixture = TestBed.createComponent(AssignmentComponent);
+    const component = fixture.componentInstance;
+    const editor = createFocusedEditorMock('current code');
+    (component as unknown as { codeEditor: monaco.editor.IStandaloneCodeEditor }).codeEditor = editor;
+    component.courseId = 'course-1' as any;
+    component.assignId = 'assign-1' as any;
+    component.codeFile.set({ fileName: 'main.cpp', content: 'current code' });
+    component.currentConversationInfo.set({
+      conversationId: 'conv-1',
+      title: '测试对话',
+      createdAt: '2026-04-10T10:00:00Z',
+      updatedAt: '2026-04-10T10:00:00Z',
+      events: [
+        { type: 'user_message', payload: { content: '请修改代码' } },
+        { type: 'tool_call', payload: { callId: 'c1', toolName: 'write_editor', input: [] } },
+        { type: 'tool_result', payload: { callId: 'c1', success: true, output: { checkpointId: 'cp-2' } } },
+      ],
+    });
+
+    component.handleRewindConversationRequest(0);
+    const confirmConfig = modalServiceStub.confirm.calls.mostRecent().args[0];
+    await confirmConfig.nzOnOk();
+
+    expect(agentServiceStub.getCheckpoint$).toHaveBeenCalledWith('course-1', 'assign-1', 'cp-2', 'Matrix AI');
     expect(editor.executeEdits).toHaveBeenCalled();
   });
 

@@ -16,15 +16,16 @@ import {
   MatrixAnalysisEditorRange,
   MatrixAnalysisEditRequest,
 } from "../code-applyable-markdown.component";
+import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 
 export type DisplayEvent =
-  | { type: 'user', events: MatrixAgentEventUserMessage[] }
-  | { type: 'agent', events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[] };
+  | { type: 'user', sourceStartIndex: number, events: MatrixAgentEventUserMessage[] }
+  | { type: 'agent', sourceStartIndex: number, events: Exclude<MatrixAgentEvent, MatrixAgentEventUserMessage>[] };
 
 @Component({
   selector: "agent-assistant-message",
   standalone: true,
-  imports: [MarkdownModule, CodeApplyableMarkdownComponent],
+  imports: [MarkdownModule, CodeApplyableMarkdownComponent, NzTooltipDirective],
   template: `
     <div class="chat-bubble agent">
       @for (event of dEvent.events; track $index) {
@@ -45,9 +46,9 @@ export type DisplayEvent =
             <details class="bubble-card tool-card">
               <summary class="tool-summary">
                 <div class="tool-card-header sticky">
-                  <code class="tool-title"> {{event.payload.toolName}}({{ event.payload.input.join(', ') }})</code>
+                  <code class="tool-title no-select" nz-tooltip="{{ event.payload.toolName + '( ' + event.payload.input.join(', ') + ' )' }}"> {{event.payload.toolName}}({{ event.payload.input.join(', ') }})</code>
                   <span
-                    class="tool-status"
+                    class="tool-status no-select"
                     [class.pending]="this.toolResultsByCallId.get(event.payload.callId) === null"
                     [class.success]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === true"
                     [class.error]="this.toolResultsByCallId.get(event.payload.callId)?.payload?.success === false"
@@ -65,9 +66,9 @@ export type DisplayEvent =
           <details class="bubble-card tool-card orphan-result">
             <summary class="tool-summary">
               <div class="tool-card-header sticky">
-                <code class="tool-title">tool_result<span style="color: #d08585;font-size:9px;">(tool_call missing)</span></code>
+                <code class="tool-title no-select">tool_result<span style="color: #d08585;font-size:9px;">(tool_call missing)</span></code>
                 <span
-                  class="tool-status"
+                  class="tool-status no-select"
                   [class.success]="event.payload.success"
                   [class.error]="!event.payload.success"
                 >
@@ -99,6 +100,10 @@ export type DisplayEvent =
     </div>
   `,
   styles: [`
+    .no-select{
+      user-select: none;
+    }
+
     .chat-bubble.agent {
       padding: 10px 12px;
       border-radius: 14px 14px 14px 2px;
@@ -177,6 +182,7 @@ export type DisplayEvent =
     /* 害依然要重新定制另一份 animated-details……*/
     .tool-card{
       .tool-card-header::before {
+        flex-shrink: 0;
         content: '>';
         width: 16px;
         height: 16px;
@@ -433,7 +439,7 @@ export class AgentAssistantMessageComponent {
   standalone: true,
   template: `
     @if (dEvent.type === 'user') {
-      <span class="rewind-chat" (click)="rewindConversationRequest.emit()">回溯到这里</span>
+      <span class="rewind-chat" (click)="rewindConversationRequest.emit(dEvent.sourceStartIndex)">回溯到这里</span>
       @for (event of dEvent.events; track $index) {
         <div class="chat-bubble user">
           <div class="bubble-body">{{ event.payload.content }}</div>
@@ -501,6 +507,6 @@ export class AgentChatBubbleComponent {
   @Input() dEvent!: DisplayEvent;
   @Output() applyToEditor = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
-  @Output() rewindConversationRequest = new EventEmitter<void>();
+  @Output() rewindConversationRequest = new EventEmitter<number>();
   @Output() rewindWriteRequest = new EventEmitter<CheckpointId | undefined>();
 }

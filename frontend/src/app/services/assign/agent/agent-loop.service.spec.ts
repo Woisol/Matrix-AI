@@ -4,6 +4,7 @@ import { signal, WritableSignal } from '@angular/core';
 
 import { AssignData } from '../../../api/type/assigment';
 import { MatrixAgentConversation, MatrixAgentEvent } from '../../../api/type/agent';
+import { AgentLoopRunConfig } from '../../../api/type/agent-loop';
 import { AgentService } from './agent.service';
 import { AgentLoopService, AgentLoopToolName } from './agent-loop.service';
 import { SYSTEM_PROMPT } from './agent.constant';
@@ -76,7 +77,7 @@ describe('AgentLoopService', () => {
 
   function runConfig(
     conversationSignal: WritableSignal<MatrixAgentConversation | null>,
-    overrides: Partial<ReturnType<typeof runConfigBase>> = {},
+    overrides: Partial<AgentLoopRunConfig> = {},
   ) {
     return {
       ...runConfigBase(conversationSignal),
@@ -84,7 +85,7 @@ describe('AgentLoopService', () => {
     };
   }
 
-  function runConfigBase(conversationSignal: WritableSignal<MatrixAgentConversation | null>) {
+  function runConfigBase(conversationSignal: WritableSignal<MatrixAgentConversation | null>): AgentLoopRunConfig {
     return {
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
@@ -96,7 +97,7 @@ describe('AgentLoopService', () => {
       updateConversationTitle: () => undefined,
       getEditorContent: () => 'int main() { return 0; }',
       getSelectionContent: () => null,
-      writeEditorContent: async () => ({ success: true, output: 'Content written to editor successfully.' }),
+      writeEditorContent: async () => 'Content written to editor successfully.',
       playground: async () => 'playground result',
       enabledTools: ['read_editor', 'read_problem_info'] as AgentLoopToolName[],
     };
@@ -370,12 +371,8 @@ describe('AgentLoopService', () => {
     await service.emitAgentLoop(runConfig(conversationSignal, {
       enabledTools: ['write_editor'] as AgentLoopToolName[],
       writeEditorContent: async () => ({
-        success: true,
-        output: {
-          message: 'Content written to editor successfully.',
-          checkpointId: 'cp-1',
-          toString: () => 'Content written to editor successfully.',
-        },
+        checkpointId: 'cp-1',
+        toString: () => 'Content written to editor successfully.',
       }),
     }));
 
@@ -393,7 +390,6 @@ describe('AgentLoopService', () => {
           callId: 'call-1',
           success: true,
           output: jasmine.objectContaining({
-            message: 'Content written to editor successfully.',
             checkpointId: 'cp-1',
           }),
         },

@@ -201,7 +201,7 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-app
                 [dEvent]="event"
                 (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
                 (applyToEditor)="applyAnalysisEdit.emit($event)"
-                (rewindConversationRequest)="rewindConversationRequest.emit($event)"
+                (rewindConversationRequest)="handleRewindConversationRequest(event, $event)"
                 (rewindWriteRequest)="rewindWriteRequest.emit($event)"
                 />
             }
@@ -711,7 +711,7 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() selectedTabIndex = signal(0);
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
-  @Output() rewindConversationRequest = new EventEmitter<void>();
+  @Output() rewindConversationRequest = new EventEmitter<number>();
   @Output() rewindWriteRequest = new EventEmitter<CheckpointId | undefined>();
 
   //! 暂不考虑更新，要看自己刷新⚫
@@ -808,23 +808,33 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     this.deleteConversation.emit(conversationId);
   }
 
+  handleRewindConversationRequest(displayEvent: DisplayEvent, eventIndex: number): void {
+    if (displayEvent.type === 'user') {
+      const rewoundMessage = displayEvent.events[0]?.payload?.content;
+      if (typeof rewoundMessage === 'string') {
+        this.userInput = rewoundMessage;
+      }
+    }
+    this.rewindConversationRequest.emit(eventIndex);
+  }
+
   private _splitEventsForDisplay(events: MatrixAgentEvent[]): DisplayEvent[] {
     const resDisplayEvents: DisplayEvent[] = [];
     let currentDisplayEvents: DisplayEvent | null = null;
-    events.forEach((event) => {
+    events.forEach((event, eventIndex) => {
       if (event.type === 'user_message') {
         // 用户消息，如果有推完前面的 agent 消息后直接推
         if (currentDisplayEvents) {
           resDisplayEvents.push(currentDisplayEvents);
         }
-        currentDisplayEvents = { type: 'user', events: [event] };
+        currentDisplayEvents = { type: 'user', sourceStartIndex: eventIndex, events: [event] };
       } else {
         // 助手消息：若当前不是 agent 批次，先落盘并新建 agent 批次
         if (!currentDisplayEvents || currentDisplayEvents.type === 'user') {
           if (currentDisplayEvents) {
             resDisplayEvents.push(currentDisplayEvents);
           }
-          currentDisplayEvents = { type: 'agent', events: [event] };
+          currentDisplayEvents = { type: 'agent', sourceStartIndex: eventIndex, events: [event] };
         } else {
           currentDisplayEvents.events.push(event);
         }

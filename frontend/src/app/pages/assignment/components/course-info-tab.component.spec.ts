@@ -94,6 +94,23 @@ describe('CourseInfoTabComponent', () => {
     expect(emitSpy).not.toHaveBeenCalled();
   });
 
+  it('prefills input with rewound user message before emitting rewind event', () => {
+    const component = createComponent();
+    const emitSpy = spyOn(component.rewindConversationRequest, 'emit');
+
+    component.handleRewindConversationRequest(
+      {
+        type: 'user',
+        sourceStartIndex: 3,
+        events: [{ type: 'user_message', payload: { content: '请回到这一句' } }],
+      },
+      3,
+    );
+
+    expect(component.userInput).toBe('请回到这一句');
+    expect(emitSpy).toHaveBeenCalledWith(3);
+  });
+
   it('exposes checkbox state and emits toggle requests from the menu', () => {
     const component = createComponent();
     const menuItems: AgentLoopToolMenuItem[] = [

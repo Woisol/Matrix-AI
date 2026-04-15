@@ -22,6 +22,7 @@ export type { AgentLoopRunConfig, AgentLoopMessage } from "../../../api/type/age
 export type { AgentLoopToolName } from "./agent-loop-tool-provider.service";
 
 type PassState = {
+  _fullResponse: string;
   rawText: string;
   localStartIndex: number;
   toolBlockIds: string[];
@@ -172,6 +173,7 @@ export class AgentLoopService {
     enabledTools: AgentLoopToolName[],
   ): Promise<{ kind: 'continue' | 'complete'; persistedEventCount: number; toolFailureHappened: boolean }> {
     const passState: PassState = {
+      _fullResponse: '',
       rawText: '',
       localStartIndex: conversation.events.length,
       toolBlockIds: [],
@@ -187,6 +189,7 @@ export class AgentLoopService {
     // 流式 & 解析
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
       passState.rawText += chunk;
+      passState._fullResponse += chunk;
 
       const snapshot = parseAgentLoopPass({
         rawText: passState.rawText,
@@ -201,6 +204,8 @@ export class AgentLoopService {
       this.projectPassTail(config, passState.localStartIndex, snapshot.displayEvents);
       await persistCursor.persistStablePrefix(snapshot.displayEvents, snapshot.stableCount);
     }
+
+    console.log('Model: ', passState._fullResponse);
 
     const finalSnapshot = parseAgentLoopPass({
       rawText: passState.rawText,

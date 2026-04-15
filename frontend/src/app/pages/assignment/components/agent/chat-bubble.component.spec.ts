@@ -15,6 +15,7 @@ describe('AgentChatBubbleComponent', () => {
     const fixture = TestBed.createComponent(AgentChatBubbleComponent);
     fixture.componentInstance.dEvent = {
       type: 'user',
+      sourceStartIndex: 0,
       events: [
         { type: 'user_message', payload: { content: '你好' } },
       ],
@@ -38,6 +39,7 @@ describe('AgentAssistantMessageComponent', () => {
     const fixture = TestBed.createComponent(AgentAssistantMessageComponent);
     fixture.componentInstance.dEvent = {
       type: 'agent',
+      sourceStartIndex: 0,
       events,
     };
     fixture.detectChanges();
@@ -87,12 +89,12 @@ describe('AgentAssistantMessageComponent', () => {
         },
       } as any,
     ]);
-    const emitSpy = spyOn(fixture.componentInstance.rollbackCheckpoint, 'emit');
+    const emitSpy = spyOn(fixture.componentInstance.rewindWriteRequest, 'emit');
 
     const root = fixture.nativeElement as HTMLElement;
-    const button = root.querySelector('.rollback-action') as HTMLButtonElement | null;
+    const button = root.querySelector('.rewind-chat') as HTMLSpanElement | null;
 
-    expect(button).withContext('expected rollback button on write_editor tool card').not.toBeNull();
+    expect(button).withContext('expected rewind action on write_editor tool card').not.toBeNull();
 
     button!.click();
 
