@@ -197,7 +197,11 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-app
           <section class="chat-section" #chatScrollContainer>
           @if (currentConversation) {
             @for (event of _displayEvents(); track $index) {
-              <agent-chat-bubble [dEvent]="event"></agent-chat-bubble>
+              <agent-chat-bubble
+                [dEvent]="event"
+                (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
+                (applyToEditor)="applyAnalysisEdit.emit($event)"
+                />
             }
           } @else {
             <div class="empty-content">

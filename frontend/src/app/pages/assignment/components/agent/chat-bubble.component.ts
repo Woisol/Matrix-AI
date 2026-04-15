@@ -1,4 +1,4 @@
-import { Component, Input } from "@angular/core";
+import { Component, EventEmitter, Input, Output } from "@angular/core";
 import {
   MatrixAgentEvent,
   MatrixAgentEventThink,
@@ -8,6 +8,11 @@ import {
   MatrixAgentEventUserMessage,
 } from "../../../../api/type/agent";
 import { MarkdownModule } from "ngx-markdown";
+import {
+  CodeApplyableMarkdownComponent,
+  MatrixAnalysisEditorRange,
+  MatrixAnalysisEditRequest,
+} from "../code-applyable-markdown.component";
 
 export type DisplayEvent =
   | { type: 'user', events: MatrixAgentEventUserMessage[] }
@@ -16,7 +21,7 @@ export type DisplayEvent =
 @Component({
   selector: "agent-assistant-message",
   standalone: true,
-  imports: [MarkdownModule],
+  imports: [MarkdownModule, CodeApplyableMarkdownComponent],
   template: `
     <div class="chat-bubble agent">
       @for (event of dEvent.events; track $index) {
@@ -68,7 +73,12 @@ export type DisplayEvent =
             </summary>
           </details>
         } @else if (event.type === 'output') {
-          <markdown class="markdown-patched output" [data]="event.payload.content"></markdown>
+          <!-- <markdown class="markdown-patched output" [data]="event.payload.content"></markdown> -->
+           <code-applyable-markdown
+            [content]="event.payload.content"
+            (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
+            (applyToEditor)="applyToEditor.emit($event)"
+          />
         } @else if (event.type === 'turn_end' ) {
           <!-- && !hasAssistantOutput -->
           <p class="bubble-body system-end">
@@ -311,6 +321,9 @@ export class AgentAssistantMessageComponent {
     return this._dEvent;
   }
 
+  @Output() applyToEditor = new EventEmitter<MatrixAnalysisEditRequest>();
+  @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
+
   // 判断 think 事件是否连续，如果有则只在第一个 think 事件上渲染 think 块，后续的 think 事件内容会合并到同一个 think 块中
   shouldRenderThinkBlock(index: number): boolean {
     const event = this.dEvent.events[index];
@@ -383,7 +396,11 @@ export class AgentAssistantMessageComponent {
         </div>
       }
     } @else {
-      <agent-assistant-message [dEvent]="dEvent"></agent-assistant-message>
+      <agent-assistant-message
+        [dEvent]="dEvent"
+        (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
+        (applyToEditor)="applyToEditor.emit($event)"
+      ></agent-assistant-message>
     }
   `,
   styles: [`
@@ -407,4 +424,6 @@ export class AgentAssistantMessageComponent {
 })
 export class AgentChatBubbleComponent {
   @Input() dEvent!: DisplayEvent;
+  @Output() applyToEditor = new EventEmitter<MatrixAnalysisEditRequest>();
+  @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
 }
