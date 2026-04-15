@@ -11,6 +11,7 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { NzDropDownModule } from "ng-zorro-antd/dropdown";
 import { NzCheckboxModule } from "ng-zorro-antd/checkbox";
 import { NzMenuModule } from "ng-zorro-antd/menu";
+import { NzModalModule } from "ng-zorro-antd/modal";
 import { SubmitScoreComponent } from "./submit-score.component";
 import { CheckpointId, ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../../api/type/agent";
 import { DatePipe } from "@angular/common";
@@ -22,11 +23,12 @@ import { AgentChatBubbleComponent } from "./agent/chat-bubble.component";
 import type { DisplayEvent } from "./agent/chat-bubble.component";
 import type { AgentLoopToolMenuItem, AgentLoopToolNameDisplay } from "../../../services/assign/agent/agent-loop-tool-provider.service";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-applyable-markdown.component";
+import { buildConversationExportText } from "../../../api/util/export";
 
 
 @Component({
   selector: "course-info-tab",
-  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzCheckboxModule, NzMenuModule, SubmitScoreComponent, NzInputModule, NzFormModule, FormsModule, CdkTextareaAutosize, AgentChatBubbleComponent],
+  imports: [DatePipe, NzSplitterModule, NzTabsModule, MarkdownModule, NzProgressModule, NzCollapseModule, MatrixAnalyseComponent, NzIconModule, NzTooltipModule, NzDropDownModule, NzCheckboxModule, NzMenuModule, NzModalModule, SubmitScoreComponent, NzInputModule, NzFormModule, FormsModule, CdkTextareaAutosize, AgentChatBubbleComponent],
   standalone: true,
   template: `
     <nz-tabs class="tab-expend" [(nzSelectedIndex)]="selectedTabIndex">
@@ -272,6 +274,23 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-app
         </nz-tab>
       }
     </nz-tabs>
+
+    <nz-modal
+      [(nzVisible)]="exportPreviewVisible"
+      nzTitle="导出预览"
+      (nzOnCancel)="closeExportPreview()"
+      [nzWidth]="720"
+      [nzMaskClosable]="true"
+    >
+      <section *nzModalContent class="export-preview-con">
+        <pre class="export-preview-content">{{ exportPreviewContent }}</pre>
+      </section>
+      <div *nzModalFooter>
+        <button class="secondary" type="button" (click)="downloadExportPreview()">下载 .txt</button>
+        <span style="margin: 0 4px;" data-reason="懒"></span>
+        <button class="secondary" type="button" (click)="downloadExportPreview('md')">下载 .md</button>
+      </div>
+    </nz-modal>
   `,
   styles: [`
   :host{ display:block; height:100%; }
@@ -681,6 +700,25 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-app
     font-size: 12px;
   }
 
+  .export-preview-con{
+    max-height: 60vh;
+    overflow: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-radius-sm);
+    background: var(--color-surface);
+  }
+
+  .export-preview-content{
+    margin: 0;
+    padding: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--color-text);
+  }
+
   `],
   // styleUrl
 })
@@ -720,6 +758,9 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   ddlGrant = signal(!this.assignData?.ddl || this.assignData?.ddl! <= new Date());
 
   userInput = '';
+  exportPreviewVisible = false;
+  exportPreviewContent = '';
+  exportFileName = 'agent-conversation-export.txt';
   editingConversationId: ConversationId | null = null;
   editingTitleDraft = '';
   // callIdCounter = (() => { for (let i = 0; ; i++) { yield `${this.currentConversation?.conversationId}-${i}` } })();
@@ -896,7 +937,28 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     if (!this.currentConversation) {
       return;
     }
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.currentConversation));
-    // window.showSave
+
+    this.exportPreviewContent = buildConversationExportText(this.currentConversation.events);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    this.exportFileName = `conversation-${this.currentConversation.conversationId}-${timestamp}`;
+    this.exportPreviewVisible = true;
+  }
+
+  closeExportPreview(): void {
+    this.exportPreviewVisible = false;
+  }
+
+  downloadExportPreview(ext: string = "txt"): void {
+    if (!this.exportPreviewContent.trim()) {
+      return;
+    }
+
+    const blob = new Blob([this.exportPreviewContent], { type: 'text/plain;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = blobUrl;
+    anchor.download = `${this.exportFileName}.${ext}`;
+    anchor.click();
+    URL.revokeObjectURL(blobUrl);
   }
 }

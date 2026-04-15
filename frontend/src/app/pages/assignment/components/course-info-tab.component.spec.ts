@@ -139,4 +139,39 @@ describe('CourseInfoTabComponent', () => {
 
     expect(emitted).toEqual(['read_editor']);
   });
+
+  it('builds export text with user and matrix agent sections', () => {
+    const component = createComponent();
+    const content = (component as any).buildConversationExportText([
+      { type: 'user_message', payload: { content: '请分析这段代码' } },
+      { type: 'think', payload: { content: '先看边界' } },
+      { type: 'output', payload: { content: '建议如下。' } },
+      { type: 'tool_call', payload: { callId: 'c1', toolName: 'write_editor', input: ['full-editor', 'int main() {}'] } },
+      { type: 'tool_result', payload: { callId: 'c1', success: true, output: 'ok' } },
+    ]);
+
+    expect(content).toContain('User:\n请分析这段代码');
+    expect(content).toContain('Matrix Agent:\n<think>先看边界</think>建议如下。');
+    expect(content).toContain('<tool_call>write_editor(full-editor,int main() {})</tool_call>');
+    expect(content).toContain('<tool_result>ok</tool_result>');
+  });
+
+  it('opens export preview when current conversation exists', () => {
+    const component = createComponent();
+    component.currentConversation = {
+      conversationId: 'conv-1',
+      title: '新的对话',
+      createdAt: '2026-04-15T10:00:00Z',
+      updatedAt: '2026-04-15T10:00:00Z',
+      events: [
+        { type: 'user_message', payload: { content: '你好' } },
+      ],
+    };
+
+    component.exportCurrentConversation();
+
+    expect(component.exportPreviewVisible).toBeTrue();
+    expect(component.exportPreviewContent).toContain('User:\n你好');
+    expect(component.exportFileName).toContain('conversation-conv-1-');
+  });
 });
