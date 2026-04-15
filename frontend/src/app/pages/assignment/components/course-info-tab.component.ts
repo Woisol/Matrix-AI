@@ -228,6 +228,7 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-app
               <menu class="agent-action-buttons">
                 <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'" [nzClickHide]="false">工具列表</button>
                 <button class="secondary" >BYOK</button>
+                <button class="secondary" (click)="exportCurrentConversation()" [disabled]="!this.currentConversation"><span nz-icon nzType="export" nzTheme="outline"></span></button>
                 <button class="secondary send-action" type="submit" [disabled]="agentLoopRunning"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
               </menu>
               <nz-dropdown-menu #agentActionMenu="nzDropdownMenu">
@@ -889,5 +890,13 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
     // 应该用 [nzClickHide]
     // event.stopPropagation();
     return this.enabledAgentTools.includes(toolName);
+  }
+
+  exportCurrentConversation(): void {
+    if (!this.currentConversation) {
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.currentConversation));
+    // window.showSave
   }
 }

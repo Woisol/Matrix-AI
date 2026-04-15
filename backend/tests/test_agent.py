@@ -255,6 +255,36 @@ def test_agent_router_supports_batch_append_events(monkeypatch):
     ]
 
 
+def test_agent_router_supports_override_events(monkeypatch):
+    client = build_agent_test_client()
+    mocked = AsyncMock(return_value={"message": "事件覆盖成功"})
+    monkeypatch.setattr("app.routers.agent.AIAgentController.override_events", mocked)
+
+    response = client.post(
+        "/courses/course-1/assignments/assign-1/agent/event/override",
+        headers={"user_id": "user-1"},
+        json={
+            "conversation_id": "conv-1",
+            "events": [
+                {"type": "user_message", "payload": {"content": "你好"}},
+                {"type": "turn_end", "payload": {"reason": "completed"}},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "事件覆盖成功"}
+    mocked.assert_awaited_once()
+    kwargs = mocked.await_args.kwargs
+    assert kwargs["conversation_id"] == "conv-1"
+    assert kwargs["assignment_id"] == "assign-1"
+    assert kwargs["user_id"] == "user-1"
+    assert [event.type for event in kwargs["events"]] == [
+        AIAgentEventType.USER_MESSAGE,
+        AIAgentEventType.TURN_END,
+    ]
+
+
 def test_agent_router_supports_stream_messages(monkeypatch):
     client = build_agent_test_client()
 

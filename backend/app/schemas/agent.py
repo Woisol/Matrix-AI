@@ -44,6 +44,11 @@ class AIAgentAppendEventsRequest(BaseModel):
     events: List[AIAgentEvent] = Field(..., min_length=1, description="待追加的事件列表")
 
 
+class AIAgentOverrideEventsRequest(BaseModel):
+    conversation_id: str = Field(..., description="会话 ID")
+    events: List[AIAgentEvent] = Field(..., min_length=1, description="完整事件列表，用于强制覆盖")
+
+
 class AIAgentModelMessage(BaseModel):
     role: Literal["system", "user", "assistant", "tool"] = Field(..., description="消息角色")
     content: str = Field(..., description="消息内容")

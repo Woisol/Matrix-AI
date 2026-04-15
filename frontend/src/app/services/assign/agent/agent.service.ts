@@ -11,6 +11,7 @@ import {
   MatrixAgentEvent,
   MatrixAgentEventOutput,
   MatrixAgentEventThink,
+  MatrixAgentOverrideEventsRequest,
   MatrixAgentOperationResponse,
   MatrixAgentToolResultOutputObject,
 } from "../../../api/type/agent";
@@ -186,6 +187,20 @@ export class AgentService {
           detail,
         } satisfies MatrixAgentAppendEventsResult);
       }),
+    );
+  }
+
+  overrideEvents$(courseId: CourseId, assignId: AssignId, userId: string | undefined, request: MatrixAgentOverrideEventsRequest): Observable<number | undefined> {
+    return this.api.post$<HttpResponse<MatrixAgentOperationResponse>>(
+      `/courses/${courseId}/assignments/${assignId}/agent/event/override`,
+      {
+        conversation_id: request.conversationId,
+        events: request.events,
+      },
+      { ...this.buildUserParams(userId), observe: 'response' },
+    ).pipe(
+      map((response) => response.status),
+      this.handleAgentError<number>('无法覆盖对话事件'),
     );
   }
 

@@ -9,6 +9,7 @@ from app.schemas.agent import (
     AIAgentConversationSummary,
     AIAgentStreamRequest,
     AIAgentConversationTitleUpdateRequest,
+    AIAgentOverrideEventsRequest,
 )
 
 
@@ -22,6 +23,7 @@ async def create_conversation(
     user_id: str = Header("", alias="user_id"),
 ):
     """创建新的对话记录"""
+    del course_id
     return await AIAgentController.create_conversation(assignment_id=assign_id, user_id=user_id)
 
 
@@ -32,6 +34,7 @@ async def list_conversations(
     user_id: str = Header("", alias="user_id"),
 ):
     """列出用户在该作业下的所有对话记录"""
+    del course_id
     return await AIAgentController.list_conversations(assignment_id=assign_id, user_id=user_id)
 
 
@@ -43,6 +46,7 @@ async def get_conversation(
     user_id: str = Header("", alias="user_id"),
 ):
     """获取单个对话详情"""
+    del course_id
     return await AIAgentController.get_conversation(
         conversation_id=conversation_id,
         assignment_id=assign_id,
@@ -59,6 +63,7 @@ async def update_conversation_title(
     user_id: str = Header("", alias="user_id"),
 ):
     """更新对话标题"""
+    del course_id
     return await AIAgentController.update_conversation_title(
         conversation_id=conversation_id,
         assignment_id=assign_id,
@@ -75,6 +80,7 @@ async def delete_conversation(
     user_id: str = Header("", alias="user_id"),
 ):
     """删除对话记录（软删除）"""
+    del course_id
     return await AIAgentController.delete_conversation(
         conversation_id=conversation_id,
         assignment_id=assign_id,
@@ -90,11 +96,29 @@ async def append_agent_events(
     user_id: str = Header("", alias="user_id"),
 ):
     """按批次追加事件到指定会话。"""
+    del course_id
     return await AIAgentController.append_events(
         conversation_id=request.conversation_id,
         assignment_id=assign_id,
         user_id=user_id,
         expected_event_count=request.expected_event_count,
+        events=request.events,
+    )
+
+
+@agent_route.post("/courses/{course_id}/assignments/{assign_id}/agent/event/override")
+async def override_agent_events(
+    course_id: str,
+    assign_id: str,
+    request: AIAgentOverrideEventsRequest,
+    user_id: str = Header("", alias="user_id"),
+):
+    """强制覆盖指定会话的完整事件列表。"""
+    del course_id
+    return await AIAgentController.override_events(
+        conversation_id=request.conversation_id,
+        assignment_id=assign_id,
+        user_id=user_id,
         events=request.events,
     )
 
@@ -109,6 +133,7 @@ async def create_checkpoint(
     request: AIAgentCheckpointCreateRequest,
 ):
     """创建对话回溯点。"""
+    del course_id
     return await AIAgentController.create_checkpoint(
         assignment_id=assign_id,
         original_code=request.original_code,
@@ -125,6 +150,7 @@ async def get_checkpoint(
     checkpoint_id: str,
 ):
     """获取对话回溯点详情。"""
+    del course_id
     return await AIAgentController.get_checkpoint(
         checkpoint_id=checkpoint_id,
         assignment_id=assign_id,
@@ -139,6 +165,7 @@ async def stream_messages(
     user_id: str = Header("", alias="user_id"),
 ):
     """直接按消息列表代理模型流式输出。"""
+    del course_id
     stream = await AIAgentController.stream_messages(
         assignment_id=assign_id,
         user_id=user_id,

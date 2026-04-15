@@ -76,7 +76,20 @@ class AIAgent:
         try:
             await conversation.save()
         except Exception as exc:
-            raise Exception("保存事件失败：" + str(exc)) from exc
+            raise RuntimeError("保存事件失败：" + str(exc)) from exc
+
+    @classmethod
+    async def override_events(
+        cls,
+        conversation: AIAgentConservation,
+        events: list[AIAgentEvent],
+    ) -> None:
+        """强制覆盖会话事件列表，不校验当前事件数。"""
+        conversation.events = [event.model_dump() for event in events]
+        try:
+            await conversation.save()
+        except Exception as exc:
+            raise RuntimeError("保存事件失败：" + str(exc)) from exc
 
     @classmethod
     def _normalize_event(cls, event: AIAgentEvent | dict) -> tuple[str, dict]:

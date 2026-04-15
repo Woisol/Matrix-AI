@@ -211,6 +211,31 @@ describe('AgentService', () => {
     expect(result).toBe(200);
   });
 
+  it('overrides conversation events without checking event counts', async () => {
+    apiStub.post$.and.returnValue(of({ status: 200 }));
+
+    const service = TestBed.inject(AgentService);
+    const result = await firstValueFrom(service.overrideEvents$('course-1', 'assign-1', 'user-1', {
+      conversationId: 'conv-1',
+      events: [
+        { type: 'user_message', payload: { content: '你好' } },
+        { type: 'turn_end', payload: { reason: 'completed' } },
+      ],
+    }));
+
+    expect(apiStub.post$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/event/override', {
+      conversation_id: 'conv-1',
+      events: [
+        { type: 'user_message', payload: { content: '你好' } },
+        { type: 'turn_end', payload: { reason: 'completed' } },
+      ],
+    }, {
+      headers: { user_id: 'user-1' },
+      observe: 'response',
+    });
+    expect(result).toBe(200);
+  });
+
   it('returns structured append results so callers can detect conflicts', async () => {
     apiStub.post$.and.returnValue(throwError(() => new ApiError('Conflict', 409, { detail: 'expected_event_count mismatch' })));
 

@@ -89,6 +89,11 @@ export type MatrixAgentAppendEventsRequest = {
   events: MatrixAgentEvent[]
 }
 
+export type MatrixAgentOverrideEventsRequest = {
+  conversationId: ConversationId
+  events: MatrixAgentEvent[]
+}
+
 export type MatrixAgentOperationResponse = {
   message: string
 }

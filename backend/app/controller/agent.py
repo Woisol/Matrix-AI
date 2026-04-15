@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from fastapi import HTTPException
 from app.controller.ai import torExceptions
 from app.models.agent import AIAgent, AIAgentConservation
-from app.models.assignment import Assignment, AssignmentCode
+from app.models.assignment import Assignment
 from app.schemas.agent import AIAgentEvent
 from app.models.ai import AI
 
@@ -17,8 +17,8 @@ class AIAgentController:
     async def _get_assignment_or_404(cls, assignment_id: str) -> Assignment:
         try:
             return await Assignment.get(id=assignment_id)
-        except torExceptions.DoesNotExist:
-            raise HTTPException(status_code=404, detail="请求了不存在的作业 ID")
+        except torExceptions.DoesNotExist as exc:
+            raise HTTPException(status_code=404, detail="请求了不存在的作业 ID") from exc
 
     @classmethod
     def _serialize_conversation_summary(cls, conversation: AIAgentConservation | dict):
@@ -141,9 +141,33 @@ class AIAgentController:
             return
         except ValueError as e:
             # from expected_event_count mismatch
-            raise HTTPException(status_code=409, detail=str(e))
+            raise HTTPException(status_code=409, detail=str(e)) from e
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"新增事件失败: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"新增事件失败: {str(e)}") from e
+
+    @classmethod
+    async def override_events(
+        cls,
+        conversation_id: str,
+        assignment_id: str,
+        user_id: str,
+        events: list[AIAgentEvent],
+    ):
+        """强制覆盖会话事件，不校验当前事件数。"""
+        assignment = await cls._get_assignment_or_404(assignment_id)
+        conversation = await assignment.agent_conversations.filter(
+            id=conversation_id,
+            user_id=user_id,
+            deleted_at=None,
+        ).first()
+        if not conversation:
+            raise HTTPException(status_code=404, detail="对话记录不存在")
+
+        try:
+            await AIAgent.override_events(conversation, events)
+            return
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"覆盖事件失败: {str(e)}") from e
 
     @classmethod
     async def create_checkpoint(cls, assignment_id: str, original_code: str):

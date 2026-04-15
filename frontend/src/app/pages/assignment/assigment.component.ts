@@ -724,6 +724,7 @@ export class AssignmentComponent implements OnDestroy {
       return;
     }
 
+    const truncatedEvents = conversation.events.slice(0, userEventIndex);
     const truncatedTail = conversation.events.slice(userEventIndex);
     const checkpointId = this.findLatestWriteEditorCheckpointId(truncatedTail);
     if (checkpointId)
@@ -746,16 +747,37 @@ export class AssignmentComponent implements OnDestroy {
         // },
       });
 
-    const truncatedEvents = conversation.events.slice(0, userEventIndex);
-
     this.currentConversationInfo.set({
       ...conversation,
       updatedAt: new Date().toISOString(),
       events: truncatedEvents,
     });
 
+    void this.syncConversationEventsOverride(conversation.conversationId, truncatedEvents);
+
     this.notify.success("已回溯会话到所选用户消息。", "回溯成功");
 
+  }
+
+  private async syncConversationEventsOverride(conversationId: string, events: MatrixAgentEvent[]): Promise<void> {
+    if (!this.courseId || !this.assignId) {
+      return;
+    }
+
+    try {
+      const status = await firstValueFrom(
+        this.agentService.overrideEvents$(this.courseId, this.assignId, this._agentUserId, {
+          conversationId,
+          events,
+        }),
+      );
+      if (!status || status < 200 || status >= 300) {
+        this.notify.warning("会话已回溯，但服务端同步失败。", "回溯提示");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.notify.warning(`会话已回溯，但服务端同步失败：${message}`, "回溯提示");
+    }
   }
 
   private async restoreEditorFromCheckpoint(checkpointId: CheckpointId): Promise<boolean> {
