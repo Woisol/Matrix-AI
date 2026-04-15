@@ -9,12 +9,12 @@ import { firstValueFrom, Subscription } from "rxjs";
 import { ActivatedRoute } from "@angular/router";
 import { NotificationService } from "../../services/notification/notification.service";
 import * as monaco from "monaco-editor";
-import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/matrix-analyse.utils";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
 import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../api/type/agent";
 import { AgentService } from "../../services/assign/agent/agent.service";
 import { AgentLoopService } from "../../services/assign/agent/agent-loop.service";
 import { AgentLoopToolProvider, type AgentLoopToolNameDisplay } from "../../services/assign/agent/agent-loop-tool-provider.service";
+import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/code-applyable-markdown.component";
 
 @Component({
   selector: "app-assignment",

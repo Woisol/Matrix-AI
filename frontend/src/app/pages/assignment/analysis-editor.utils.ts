@@ -2,7 +2,8 @@
  * @file 编辑器范围验证和编辑后选择范围构建工具函数
  * @author GPT-5.4 xhigh
  */
-import type { MatrixAnalysisEditorRange } from './components/matrix-analyse.utils';
+
+import { MatrixAnalysisEditorRange } from "./components/code-applyable-markdown.component";
 
 // 又用 like 😂
 export interface MatrixAnalysisModelLike {

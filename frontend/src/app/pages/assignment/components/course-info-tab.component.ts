@@ -6,7 +6,6 @@ import { MarkdownModule } from "ngx-markdown";
 import { NzProgressModule } from "ng-zorro-antd/progress";
 import { NzCollapseModule } from "ng-zorro-antd/collapse";
 import { MatrixAnalyseComponent } from "./matrix-analyse.component";
-import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./matrix-analyse.utils";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { NzDropDownModule } from "ng-zorro-antd/dropdown";
@@ -22,6 +21,7 @@ import { CdkTextareaAutosize } from "@angular/cdk/text-field";
 import { AgentChatBubbleComponent } from "./agent/chat-bubble.component";
 import type { DisplayEvent } from "./agent/chat-bubble.component";
 import type { AgentLoopToolMenuItem, AgentLoopToolNameDisplay } from "../../../services/assign/agent/agent-loop-tool-provider.service";
+import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-applyable-markdown.component";
 
 
 @Component({

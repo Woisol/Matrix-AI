@@ -194,7 +194,7 @@ export class AgentLoopToolProvider {
         if (!content) {
           return { success: false, output: 'Erasing entire editor content is not allowed.' };
         }
-        config.writeEditorContent({ target, text: content });
+        config.writeEditorContent({ target, text: content, range: undefined });
       }
       else if (target === 'range') {
         const [startLineNumber, startColumn, endLineNumber, endColumn] = position.map(Number);
