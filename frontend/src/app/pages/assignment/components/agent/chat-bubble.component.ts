@@ -1,11 +1,14 @@
 import { Component, EventEmitter, Input, Output } from "@angular/core";
 import {
+  CheckpointId,
   MatrixAgentEvent,
   MatrixAgentEventThink,
   MatrixAgentEventToolCall,
   MatrixAgentEventToolResult,
   MatrixAgentEventTurnEnd,
   MatrixAgentEventUserMessage,
+  MatrixAgentToolResultOutput,
+  MatrixAgentToolResultOutputObject,
 } from "../../../../api/type/agent";
 import { MarkdownModule } from "ngx-markdown";
 import {
@@ -35,6 +38,10 @@ export type DisplayEvent =
               </div>
             </details>
         } @else if (event.type === 'tool_call') {
+          @if(getToolCheckpointId(event.payload.callId)) {
+            <span class="rewind-chat" (click)="rewindWriteRequest.emit(getToolCheckpointId(event.payload.callId))">回溯到这里</span>
+
+          }
             <details class="bubble-card tool-card">
               <summary class="tool-summary">
                 <div class="tool-card-header sticky">
@@ -280,6 +287,37 @@ export type DisplayEvent =
       background: #ffffff;
     }
 
+    .rewind-write{
+      opacity: 0;
+      width: 5.5rem;
+      color: var(--color-secondary);
+      transition: color .2s ease,
+       opacity .2s ease;
+      &::before{
+        content: "";
+        display: inline-block;
+        width: calc(50% - 2.75rem);
+        height: 0;
+        border-top: 1px solid var(--color-border);
+        margin-right: 0.5rem;
+        vertical-align: middle;
+      }
+      &::after{
+        content: "";
+        display: inline-block;
+        width: calc(50% - 2.75rem);
+        height: 0;
+        border-top: 1px solid var(--color-border);
+        margin-left: 0.5rem;
+        vertical-align: middle;
+      }
+      &:hover {
+        cursor: pointer;
+        opacity: 1;
+      }
+    }
+
+
     .system-end {
       color: var(--color-secondary);
       border: 1px dashed #cbd5e1;
@@ -323,6 +361,7 @@ export class AgentAssistantMessageComponent {
 
   @Output() applyToEditor = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
+  @Output() rewindWriteRequest = new EventEmitter<string | undefined>();
 
   // 判断 think 事件是否连续，如果有则只在第一个 think 事件上渲染 think 块，后续的 think 事件内容会合并到同一个 think 块中
   shouldRenderThinkBlock(index: number): boolean {
@@ -348,13 +387,17 @@ export class AgentAssistantMessageComponent {
   // }
 
   getToolResultOutput(callId: string): string {
-    return this.toolResultsByCallId.get(callId)?.payload.output ?? '';
+    return String(this.toolResultsByCallId.get(callId)?.payload.output) ?? '';
   }
 
   getToolStatusText(callId: string): string {
     const result = this.toolResultsByCallId.get(callId);
     if (!result) return '执行中';
     return result.payload.success ? '成功' : '失败';
+  }
+
+  getToolCheckpointId(callId: string): CheckpointId | undefined {
+    return (this.toolResultsByCallId.get(callId)?.payload.output as MatrixAgentToolResultOutputObject)?.checkpointId;
   }
 
   // 主要更新 tool 结果的映射 和 hasAssistantOutput
@@ -390,6 +433,7 @@ export class AgentAssistantMessageComponent {
   standalone: true,
   template: `
     @if (dEvent.type === 'user') {
+      <span class="rewind-chat" (click)="rewindConversationRequest.emit()">回溯到这里</span>
       @for (event of dEvent.events; track $index) {
         <div class="chat-bubble user">
           <div class="bubble-body">{{ event.payload.content }}</div>
@@ -400,6 +444,7 @@ export class AgentAssistantMessageComponent {
         [dEvent]="dEvent"
         (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
         (applyToEditor)="applyToEditor.emit($event)"
+        (rewindWriteRequest)="rewindWriteRequest.emit($event)"
       ></agent-assistant-message>
     }
   `,
@@ -420,10 +465,42 @@ export class AgentAssistantMessageComponent {
     .bubble-body {
       font-size: 14px;
     }
+
+    .rewind-chat{
+      opacity: 0;
+      width: 5.5rem;
+      color: var(--color-secondary);
+      transition: color .2s ease,
+       opacity .2s ease;
+      &::before{
+        content: "";
+        display: inline-block;
+        width: calc(50% - 2.75rem);
+        height: 0;
+        border-top: 1px solid var(--color-border);
+        margin-right: 0.5rem;
+        vertical-align: middle;
+      }
+      &::after{
+        content: "";
+        display: inline-block;
+        width: calc(50% - 2.75rem);
+        height: 0;
+        border-top: 1px solid var(--color-border);
+        margin-left: 0.5rem;
+        vertical-align: middle;
+      }
+      &:hover {
+        cursor: pointer;
+        opacity: 1;
+      }
+    }
   `],
 })
 export class AgentChatBubbleComponent {
   @Input() dEvent!: DisplayEvent;
   @Output() applyToEditor = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
+  @Output() rewindConversationRequest = new EventEmitter<void>();
+  @Output() rewindWriteRequest = new EventEmitter<CheckpointId | undefined>();
 }

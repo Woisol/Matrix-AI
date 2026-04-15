@@ -74,7 +74,17 @@ describe('AgentLoopService', () => {
     };
   }
 
-  function runConfig(conversationSignal: WritableSignal<MatrixAgentConversation | null>) {
+  function runConfig(
+    conversationSignal: WritableSignal<MatrixAgentConversation | null>,
+    overrides: Partial<ReturnType<typeof runConfigBase>> = {},
+  ) {
+    return {
+      ...runConfigBase(conversationSignal),
+      ...overrides,
+    };
+  }
+
+  function runConfigBase(conversationSignal: WritableSignal<MatrixAgentConversation | null>) {
     return {
       courseId: 'course-1' as any,
       assignId: 'assign-1' as any,
@@ -86,7 +96,7 @@ describe('AgentLoopService', () => {
       updateConversationTitle: () => undefined,
       getEditorContent: () => 'int main() { return 0; }',
       getSelectionContent: () => null,
-      writeEditorContent: () => undefined,
+      writeEditorContent: async () => ({ success: true, output: 'Content written to editor successfully.' }),
       playground: async () => 'playground result',
       enabledTools: ['read_editor', 'read_problem_info'] as AgentLoopToolName[],
     };
@@ -345,6 +355,50 @@ describe('AgentLoopService', () => {
       { type: 'output', payload: { content: 'fixed answer' } },
       { type: 'turn_end', payload: { reason: 'completed' } },
     ]);
+  });
+
+  it('propagates checkpoint ids from successful write_editor tool executions into tool_result events', async () => {
+    const conversationSignal = signal<MatrixAgentConversation | null>(createConversation());
+
+    agentServiceStub.streamMessages.and.returnValues(
+      asyncChunks(['<tool_call>{"toolName":"write_editor","input":["full-editor","int main() { return 1; }"]}</tool_call>']),
+      asyncChunks(['<output>done</output>']),
+    );
+
+    const service = TestBed.inject(AgentLoopService);
+
+    await service.emitAgentLoop(runConfig(conversationSignal, {
+      enabledTools: ['write_editor'] as AgentLoopToolName[],
+      writeEditorContent: async () => ({
+        success: true,
+        output: {
+          message: 'Content written to editor successfully.',
+          checkpointId: 'cp-1',
+          toString: () => 'Content written to editor successfully.',
+        },
+      }),
+    }));
+
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(1)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 1,
+      events: [{ type: 'tool_call', payload: { callId: 'call-1', toolName: 'write_editor', input: ['full-editor', 'int main() { return 1; }'] } }],
+    });
+    expect(agentServiceStub.appendEventsWithResult$.calls.argsFor(2)[3]).toEqual({
+      conversationId: 'conv-1',
+      expectedEventCount: 2,
+      events: [{
+        type: 'tool_result',
+        payload: {
+          callId: 'call-1',
+          success: true,
+          output: jasmine.objectContaining({
+            message: 'Content written to editor successfully.',
+            checkpointId: 'cp-1',
+          }),
+        },
+      }],
+    });
   });
 
   it('reloads the conversation and aborts when persistence reports a conflict', async () => {

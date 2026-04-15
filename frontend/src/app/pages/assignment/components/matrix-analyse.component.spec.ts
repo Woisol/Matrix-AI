@@ -38,7 +38,6 @@ describe('MatrixAnalyseComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith({
       target: 'range',
       language: 'cpp',
-      tabTitle: 'Code Analysis',
       text: 'abc\n',
       range: {
         startLineNumber: 2,
@@ -69,7 +68,6 @@ describe('MatrixAnalyseComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith({
       target: 'full-editor',
       language: 'C++',
-      tabTitle: 'Reference',
       text: 'int main() {\n  return 0;\n}\n',
     });
   });

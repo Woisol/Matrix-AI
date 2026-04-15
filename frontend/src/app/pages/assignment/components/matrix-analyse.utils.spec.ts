@@ -1,7 +1,7 @@
 import {
   parseMatrixAnalysisSegments,
   type MatrixAnalysisRenderSegment,
-} from './matrix-analyse.utils';
+} from './code-applyable-markdown.component';
 
 function getPatchSegment(segments: MatrixAnalysisRenderSegment[]) {
   const patchSegment = segments.find(
@@ -17,7 +17,7 @@ describe('parseMatrixAnalysisSegments', () => {
   it('returns one markdown segment when showInEditor is disabled', () => {
     const content = ['Intro', '```cpp:1C1-1C4', 'code', '```', 'Outro'].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, false, 'Example');
+    const segments = parseMatrixAnalysisSegments(content, false);
 
     expect(segments).toEqual([
       {
@@ -39,7 +39,7 @@ describe('parseMatrixAnalysisSegments', () => {
       'Run the code after applying it.',
     ].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, true, 'Code Analysis');
+    const segments = parseMatrixAnalysisSegments(content, true);
     const patchSegment = getPatchSegment(segments);
 
     expect(segments.length).toBe(3);
@@ -53,7 +53,6 @@ describe('parseMatrixAnalysisSegments', () => {
     expect(patchSegment.request).toEqual({
       target: 'range',
       language: 'cpp',
-      tabTitle: 'Code Analysis',
       text: 'int value = 1;\nreturn value;\n',
       range: {
         startLineNumber: 2,
@@ -79,7 +78,7 @@ describe('parseMatrixAnalysisSegments', () => {
       '```',
     ].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, true, 'Multi Patch');
+    const segments = parseMatrixAnalysisSegments(content, true);
     const patchSegments = segments.filter(
       (segment): segment is Extract<MatrixAnalysisRenderSegment, { type: 'editor-patch' }> =>
         segment.type === 'editor-patch',
@@ -89,7 +88,6 @@ describe('parseMatrixAnalysisSegments', () => {
     expect(patchSegments[0].request).toEqual({
       target: 'range',
       language: 'cpp',
-      tabTitle: 'Multi Patch',
       text: 'ab\n',
       range: {
         startLineNumber: 1,
@@ -101,7 +99,6 @@ describe('parseMatrixAnalysisSegments', () => {
     expect(patchSegments[1].request).toEqual({
       target: 'range',
       language: 'cpp',
-      tabTitle: 'Multi Patch',
       text: 'xyz\n',
       range: {
         startLineNumber: 3,
@@ -124,7 +121,7 @@ describe('parseMatrixAnalysisSegments', () => {
       '```',
     ].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, true, 'Reference', true);
+    const segments = parseMatrixAnalysisSegments(content, true, true);
     const patchSegment = getPatchSegment(segments);
 
     expect(patchSegment.language).toBe('C++');
@@ -132,7 +129,6 @@ describe('parseMatrixAnalysisSegments', () => {
     expect(patchSegment.request).toEqual({
       target: 'full-editor',
       language: 'C++',
-      tabTitle: 'Reference',
       text: '#include <iostream>\nint main() {\n  return 0;\n}\n',
     });
   });
@@ -140,7 +136,7 @@ describe('parseMatrixAnalysisSegments', () => {
   it('keeps a plain language fence as markdown when whole editor replacement is disabled', () => {
     const content = ['```C++', 'int main() {}', '```'].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, true, 'Reference', false);
+    const segments = parseMatrixAnalysisSegments(content, true, false);
 
     expect(segments).toEqual([
       {
@@ -153,7 +149,7 @@ describe('parseMatrixAnalysisSegments', () => {
   it('normalizes preview markdown when code does not end with a newline', () => {
     const content = ['```cpp:1C1-1C2', 'ab```'].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, true, 'Preview');
+    const segments = parseMatrixAnalysisSegments(content, true);
     const patchSegment = getPatchSegment(segments);
 
     expect(patchSegment.code).toBe('ab');
@@ -163,7 +159,7 @@ describe('parseMatrixAnalysisSegments', () => {
   it('keeps malformed coordinate fences in markdown flow', () => {
     const content = ['```cpp:2x3-4C5', 'broken', '```'].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, true, 'Invalid');
+    const segments = parseMatrixAnalysisSegments(content, true);
 
     expect(segments).toEqual([
       {
@@ -176,7 +172,7 @@ describe('parseMatrixAnalysisSegments', () => {
   it('keeps unclosed special fences in markdown flow', () => {
     const content = ['Hint', '```cpp:2C3-4C5', 'missing close'].join('\n');
 
-    const segments = parseMatrixAnalysisSegments(content, true, 'Unclosed');
+    const segments = parseMatrixAnalysisSegments(content, true);
 
     expect(segments).toEqual([
       {

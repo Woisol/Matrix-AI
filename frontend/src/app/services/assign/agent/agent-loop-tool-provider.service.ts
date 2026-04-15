@@ -194,19 +194,18 @@ export class AgentLoopToolProvider {
         if (!content) {
           return { success: false, output: 'Erasing entire editor content is not allowed.' };
         }
-        config.writeEditorContent({ target, text: content, range: undefined });
+        return { success: true, output: await config.writeEditorContent({ target, text: content, range: undefined }) };
       }
       else if (target === 'range') {
         const [startLineNumber, startColumn, endLineNumber, endColumn] = position.map(Number);
         if (!startLineNumber || !startColumn || !endLineNumber || !endColumn) {
           return { success: false, output: 'Invalid or missing position parameters for range write.' };
         }
-        config.writeEditorContent({ target, text: content, range: { startLineNumber, startColumn, endLineNumber, endColumn } });
+        return { success: true, output: await config.writeEditorContent({ target, text: content, range: { startLineNumber, startColumn, endLineNumber, endColumn } }) };
       }
       else {
         return { success: false, output: 'Invalid target for write_editor tool. Must be "full-editor" or "range".' };
       }
-      return { success: true, output: 'Content written to editor successfully.' };
     }],
     ['playground', async (config, _input) => {
       const [input = '', shortCode] = _input;

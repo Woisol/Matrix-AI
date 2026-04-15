@@ -71,6 +71,34 @@ describe('AgentAssistantMessageComponent', () => {
     expect(card?.textContent).toContain('执行中');
   });
 
+  it('renders a rollback action for successful write_editor cards with checkpoint ids and emits the checkpoint id when clicked', () => {
+    const fixture = createAgentFixture([
+      { type: 'tool_call', payload: { callId: '1', toolName: 'write_editor', input: ['full-editor', 'int main() {}'] } },
+      {
+        type: 'tool_result',
+        payload: {
+          callId: '1',
+          success: true,
+          output: {
+            message: 'Content written to editor successfully.',
+            checkpointId: 'cp-1',
+            toString: () => 'Content written to editor successfully.',
+          },
+        },
+      } as any,
+    ]);
+    const emitSpy = spyOn(fixture.componentInstance.rollbackCheckpoint, 'emit');
+
+    const root = fixture.nativeElement as HTMLElement;
+    const button = root.querySelector('.rollback-action') as HTMLButtonElement | null;
+
+    expect(button).withContext('expected rollback button on write_editor tool card').not.toBeNull();
+
+    button!.click();
+
+    expect(emitSpy).toHaveBeenCalledWith('cp-1');
+  });
+
   it('renders an unmatched tool result as a standalone fallback card', () => {
     const fixture = createAgentFixture([
       { type: 'tool_result', payload: { callId: 'missing', success: false, output: 'network error' } },

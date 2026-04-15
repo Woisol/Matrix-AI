@@ -2,6 +2,7 @@ import { inject, Injectable, WritableSignal } from "@angular/core";
 import { HttpResponse } from "@angular/common/http";
 import { catchError, map, Observable, of, OperatorFunction } from "rxjs";
 
+import { CodeFileInfo } from "../../../api/type/assigment";
 import { AssignId, CourseId } from "../../../api/type/general";
 import {
   MatrixAgentAppendEventsRequest,
@@ -11,6 +12,7 @@ import {
   MatrixAgentEventOutput,
   MatrixAgentEventThink,
   MatrixAgentOperationResponse,
+  MatrixAgentToolResultOutputObject,
 } from "../../../api/type/agent";
 import { ApiError, ApiHttpService } from "../../../api/util/api-http.service";
 import { NotificationService } from "../../notification/notification.service";
@@ -123,6 +125,28 @@ export class AgentService {
     ).pipe(
       map((response) => response.status),
       this.handleAgentError<number>('无法删除对话'),
+    );
+  }
+
+  createCheckpoint$(courseId: CourseId, assignId: AssignId, userId: string | undefined, files: CodeFileInfo[]): Observable<string | undefined> {
+    return this.api.post$<string>(
+      `/courses/${courseId}/assignments/${assignId}/agent/checkpoints`,
+      {
+        original_code: JSON.stringify(files),
+      },
+      this.buildUserParams(userId),
+    ).pipe(
+      this.handleAgentError<string>('无法创建回溯点'),
+    );
+  }
+
+  getCheckpoint$(courseId: CourseId, assignId: AssignId, checkpointId: string, userId?: string): Observable<CodeFileInfo[] | undefined> {
+    return this.api.get$<string>(
+      `/courses/${courseId}/assignments/${assignId}/agent/checkpoints/${checkpointId}`,
+      this.buildUserParams(userId),
+    ).pipe(
+      map((serializedFiles) => JSON.parse(serializedFiles) as CodeFileInfo[]),
+      this.handleAgentError<CodeFileInfo[]>('无法获取回溯点详情'),
     );
   }
 

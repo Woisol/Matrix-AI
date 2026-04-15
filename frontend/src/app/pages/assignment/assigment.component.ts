@@ -10,11 +10,12 @@ import { ActivatedRoute } from "@angular/router";
 import { NotificationService } from "../../services/notification/notification.service";
 import * as monaco from "monaco-editor";
 import { buildEditedSelectionRange, getFullEditorRange, validateMatrixAnalysisRange } from "./analysis-editor.utils";
-import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../api/type/agent";
+import { CheckpointId, ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent, MatrixAgentToolResultOutput } from "../../api/type/agent";
 import { AgentService } from "../../services/assign/agent/agent.service";
 import { AgentLoopService } from "../../services/assign/agent/agent-loop.service";
 import { AgentLoopToolProvider, type AgentLoopToolNameDisplay } from "../../services/assign/agent/agent-loop-tool-provider.service";
 import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./components/code-applyable-markdown.component";
+import { ToolExecutionResult } from "../../api/type/agent-loop";
 
 @Component({
   selector: "app-assignment",
@@ -45,6 +46,8 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./componen
           [selectedTabIndex]="selectedTabIndex"
           (focusRequestRangeOnEditor)="focusRequestRangeOnEditor($event)"
           (applyAnalysisEdit)="handleAnalysisEditRequest($event)"
+          (rewindConversationRequest)="handleRewindConversationRequest()"
+          (rewindWriteRequest)="hanldeRewindWriteRequest($event)"
         />
 
       </nz-splitter-panel>
@@ -274,6 +277,14 @@ export class AssignmentComponent implements OnDestroy {
     this.agentToolProvider.enabledToolsDisplay = orderedTools;
   }
 
+  handleRewindConversationRequest = () => {
+
+  }
+
+  hanldeRewindWriteRequest = (checkpointId: CheckpointId | undefined) => {
+
+  }
+
   //** Agent Loop 核心启动事件
   pushNewAgentEvent(event: MatrixAgentEvent) {
     const currentConversation = this.currentConversationInfo();
@@ -316,7 +327,7 @@ export class AssignmentComponent implements OnDestroy {
         }
         return `select content: ${model.getValueInRange(selection)}\n\n\nrange: ${selection.toString()}`; // [21,1 -> 22,1]
       },
-      writeEditorContent: this.handleAnalysisEditRequest,
+      writeEditorContent: this.handleAgentWriteEditorRequest,
       playground: async (input: string, codeInfo: CodeFileInfo, language: CodeLanguage = 'c_cpp') => {
         // toPromise deprecated，用 firstValueFrom 代替
         return await firstValueFrom(this.assignService.testRequest$(codeInfo, input, language));
@@ -419,6 +430,18 @@ export class AssignmentComponent implements OnDestroy {
     this.codeEditor.setSelection(_range);
     this.codeEditor.revealRangeInCenter(_range);
     this.codeEditor.focus();
+  }
+
+  /**
+   * Agent 用 write_editor 包装
+   */
+  handleAgentWriteEditorRequest = async (request: Pick<MatrixAnalysisEditRequest, 'target' | 'range' | 'text'>): Promise<MatrixAgentToolResultOutput> => {
+    this.handleAnalysisEditRequest(request);
+    const checkpointId = await firstValueFrom(this.agentService.createCheckpoint$(this.courseId!, this.assignId!, this.currentConversationInfo()!.conversationId, [this.codeFile()]));
+    if (!checkpointId) {
+      this.notify.warning("未能创建检查点。", "编辑警告");
+    }
+    return { checkpointId, toString: () => 'Content written to editor successfully.' } as MatrixAgentToolResultOutput
   }
 
   /**

@@ -1,4 +1,5 @@
 export type ConversationId = string
+export type CheckpointId = string
 
 export type MatrixAgentConversationSummary = {
   conversationId: ConversationId
@@ -39,12 +40,18 @@ export type MatrixAgentEventToolCall = {
     input: string[]
   }
 }
+export type MatrixAgentToolResultOutputObject = {
+  // message: string
+  checkpointId?: CheckpointId
+  toString?: () => string
+}
+export type MatrixAgentToolResultOutput = string | MatrixAgentToolResultOutputObject
 export type MatrixAgentEventToolResult = {
   type: 'tool_result'
   payload: {
     callId: string
     success: boolean
-    output?: string
+    output?: MatrixAgentToolResultOutput
   }
 }
 export type MatrixAgentEventOutput = {

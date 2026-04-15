@@ -12,7 +12,7 @@ import { NzDropDownModule } from "ng-zorro-antd/dropdown";
 import { NzCheckboxModule } from "ng-zorro-antd/checkbox";
 import { NzMenuModule } from "ng-zorro-antd/menu";
 import { SubmitScoreComponent } from "./submit-score.component";
-import { ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../../api/type/agent";
+import { CheckpointId, ConversationId, MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from "../../../api/type/agent";
 import { DatePipe } from "@angular/common";
 import { NzInputModule } from "ng-zorro-antd/input";
 import { NzFormModule } from "ng-zorro-antd/form";
@@ -201,6 +201,8 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-app
                 [dEvent]="event"
                 (focusRequestRangeOnEditor)="focusRequestRangeOnEditor.emit($event)"
                 (applyToEditor)="applyAnalysisEdit.emit($event)"
+                (rewindConversationRequest)="rewindConversationRequest.emit($event)"
+                (rewindWriteRequest)="rewindWriteRequest.emit($event)"
                 />
             }
           } @else {
@@ -541,7 +543,7 @@ import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from "./code-app
     background-color: var(--color-surface);
     display:flex;
     flex-direction:column;
-    gap:12px;
+    gap:4px;
     padding: 12px 2px 12px 10px;
 
     scrollbar-width: thin;
@@ -709,6 +711,8 @@ export class CourseInfoTabComponent implements OnInit, OnChanges {
   @Input() selectedTabIndex = signal(0);
   @Output() applyAnalysisEdit = new EventEmitter<MatrixAnalysisEditRequest>();
   @Output() focusRequestRangeOnEditor = new EventEmitter<MatrixAnalysisEditorRange>();
+  @Output() rewindConversationRequest = new EventEmitter<void>();
+  @Output() rewindWriteRequest = new EventEmitter<CheckpointId | undefined>();
 
   //! 暂不考虑更新，要看自己刷新⚫
   //？这里为什么是 ddl > now？？？

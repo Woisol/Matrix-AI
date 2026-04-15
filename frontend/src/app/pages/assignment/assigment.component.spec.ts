@@ -4,6 +4,7 @@ import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import * as monaco from 'monaco-editor';
+import { NzModalService } from 'ng-zorro-antd/modal';
 import { AssignmentComponent } from './assigment.component';
 import { CourseInfoTabComponent } from './components/course-info-tab.component';
 import { CodeEditorComponent } from './components/code-editor.component';
@@ -13,7 +14,7 @@ import { AgentLoopService } from '../../services/assign/agent/agent-loop.service
 import { AgentLoopToolMenuItem } from '../../services/assign/agent/agent-loop-tool-provider.service';
 import { NotificationService } from '../../services/notification/notification.service';
 import { Analysis, AssignData, CodeFileInfo } from '../../api/type/assigment';
-import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from './components/matrix-analyse.utils';
+import { MatrixAnalysisEditorRange, MatrixAnalysisEditRequest } from './components/code-applyable-markdown.component';
 import { MatrixAgentConversation, MatrixAgentConversationSummary, MatrixAgentEvent } from '../../api/type/agent';
 
 @Component({
@@ -75,10 +76,16 @@ describe('AssignmentComponent', () => {
     getConversation$: jasmine.createSpy('getConversation$').and.returnValue(of(undefined)),
     updateConversationTitle$: jasmine.createSpy('updateConversationTitle$').and.returnValue(of(200)),
     deleteConversation$: jasmine.createSpy('deleteConversation$').and.returnValue(of(200)),
+    createCheckpoint$: jasmine.createSpy('createCheckpoint$').and.returnValue(of('cp-1')),
+    getCheckpoint$: jasmine.createSpy('getCheckpoint$').and.returnValue(of([{ fileName: 'main.cpp', content: 'restored code' }])),
   };
 
   const agentLoopServiceStub = {
     emitAgentLoop: jasmine.createSpy('emitAgentLoop').and.resolveTo(undefined),
+  };
+
+  const modalServiceStub = {
+    confirm: jasmine.createSpy('confirm'),
   };
 
   beforeEach(async () => {
@@ -95,6 +102,7 @@ describe('AssignmentComponent', () => {
         { provide: AgentService, useValue: agentServiceStub },
         { provide: AgentLoopService, useValue: agentLoopServiceStub },
         { provide: NotificationService, useValue: notificationServiceStub },
+        { provide: NzModalService, useValue: modalServiceStub },
       ],
     })
       .overrideComponent(AssignmentComponent, {
@@ -110,18 +118,29 @@ describe('AssignmentComponent', () => {
       .compileComponents();
   });
 
-  function createFocusedEditorMock() {
+  function createFocusedEditorMock(initialContent = 'updated') {
+    let content = initialContent;
+    let changeListener: (() => void) | null = null;
+
     return {
       setSelection: jasmine.createSpy('setSelection'),
       revealRangeInCenter: jasmine.createSpy('revealRangeInCenter'),
       focus: jasmine.createSpy('focus'),
+      onDidChangeModelContent: jasmine.createSpy('onDidChangeModelContent').and.callFake((listener: () => void) => {
+        changeListener = listener;
+        return { dispose: () => undefined };
+      }),
+      __triggerContentChange: () => changeListener?.(),
       getModel: jasmine.createSpy('getModel').and.returnValue({
-        getValue: () => 'updated',
+        getValue: () => content,
         getLineCount: () => 2,
         getLineMaxColumn: (lineNumber: number) => (lineNumber === 1 ? 4 : 1),
       }),
       pushUndoStop: jasmine.createSpy('pushUndoStop'),
-      executeEdits: jasmine.createSpy('executeEdits').and.returnValue(true),
+      executeEdits: jasmine.createSpy('executeEdits').and.callFake((_source: string, edits: Array<{ text: string }>) => {
+        content = edits[0]?.text ?? content;
+        return true;
+      }),
     } as unknown as monaco.editor.IStandaloneCodeEditor;
   }
 
@@ -135,7 +154,10 @@ describe('AssignmentComponent', () => {
     agentServiceStub.getConversation$.calls.reset();
     agentServiceStub.updateConversationTitle$.calls.reset();
     agentServiceStub.deleteConversation$.calls.reset();
+    agentServiceStub.createCheckpoint$.calls.reset();
+    agentServiceStub.getCheckpoint$.calls.reset();
     agentLoopServiceStub.emitAgentLoop.calls.reset();
+    modalServiceStub.confirm.calls.reset();
   });
 
   it('wires the course tab focus event to the page handler', () => {
@@ -197,6 +219,83 @@ describe('AssignmentComponent', () => {
 
     expect(editor.executeEdits).toHaveBeenCalled();
     expect(editor.focus).toHaveBeenCalled();
+  });
+
+  it('marks agent rollback as needing confirmation when the editor changes during an agent run', () => {
+    const fixture = TestBed.createComponent(AssignmentComponent);
+    const component = fixture.componentInstance;
+    const editor = createFocusedEditorMock('before edit') as monaco.editor.IStandaloneCodeEditor & { __triggerContentChange: () => void };
+
+    component.agentLoopRunning.set(true);
+    component.handleEditorReady(editor);
+    editor.__triggerContentChange();
+
+    expect((component as any).agentRollbackNeedsConfirm).toBeTrue();
+  });
+
+  it('creates a checkpoint before applying an agent write and returns the checkpoint id', async () => {
+    const fixture = TestBed.createComponent(AssignmentComponent);
+    const component = fixture.componentInstance;
+    const editor = createFocusedEditorMock('int main() { return 0; }');
+    (component as unknown as { codeEditor: monaco.editor.IStandaloneCodeEditor }).codeEditor = editor;
+    component.courseId = 'course-1' as any;
+    component.assignId = 'assign-1' as any;
+    component.codeFile.set({ fileName: 'main.cpp', content: 'int main() { return 0; }' });
+    (component as any).agentRollbackNeedsConfirm = true;
+
+    const result = await component.handleAgentWriteEditorRequest({
+      target: 'full-editor',
+      text: 'int main() { return 1; }',
+    });
+
+    expect(agentServiceStub.createCheckpoint$).toHaveBeenCalledWith('course-1', 'assign-1', 'Matrix AI', [
+      { fileName: 'main.cpp', content: 'int main() { return 0; }' },
+    ]);
+    expect(result).toEqual(jasmine.objectContaining({
+      success: true,
+      output: jasmine.objectContaining({
+        message: 'Content written to editor successfully.',
+        checkpointId: 'cp-1',
+      }),
+    }));
+    expect((component as any).agentRollbackNeedsConfirm).toBeFalse();
+  });
+
+  it('rolls back immediately when no overwrite confirmation is needed', async () => {
+    const fixture = TestBed.createComponent(AssignmentComponent);
+    const component = fixture.componentInstance;
+    const editor = createFocusedEditorMock('current code');
+    (component as unknown as { codeEditor: monaco.editor.IStandaloneCodeEditor }).codeEditor = editor;
+    component.courseId = 'course-1' as any;
+    component.assignId = 'assign-1' as any;
+    component.codeFile.set({ fileName: 'main.cpp', content: 'current code' });
+
+    await component.handleAgentRollbackRequest('cp-1');
+
+    expect(modalServiceStub.confirm).not.toHaveBeenCalled();
+    expect(agentServiceStub.getCheckpoint$).toHaveBeenCalledWith('course-1', 'assign-1', 'cp-1', 'Matrix AI');
+    expect(editor.executeEdits).toHaveBeenCalled();
+  });
+
+  it('asks for confirmation before rollback when the editor was manually changed during agent execution', async () => {
+    const fixture = TestBed.createComponent(AssignmentComponent);
+    const component = fixture.componentInstance;
+    const editor = createFocusedEditorMock('current code');
+    (component as unknown as { codeEditor: monaco.editor.IStandaloneCodeEditor }).codeEditor = editor;
+    component.courseId = 'course-1' as any;
+    component.assignId = 'assign-1' as any;
+    component.codeFile.set({ fileName: 'main.cpp', content: 'current code' });
+    (component as any).agentRollbackNeedsConfirm = true;
+
+    await component.handleAgentRollbackRequest('cp-1');
+
+    expect(modalServiceStub.confirm).toHaveBeenCalled();
+    expect(editor.executeEdits).not.toHaveBeenCalled();
+
+    const confirmConfig = modalServiceStub.confirm.calls.mostRecent().args[0];
+    await confirmConfig.nzOnOk();
+
+    expect(editor.executeEdits).toHaveBeenCalled();
   });
 
   it('delegates a user event to AgentLoopService', () => {

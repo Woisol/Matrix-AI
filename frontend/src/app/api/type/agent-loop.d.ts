@@ -1,8 +1,8 @@
 import type { WritableSignal } from "@angular/core";
 
 import type { Analysis, AssignData } from "./assigment";
-import type { MatrixAgentConversation } from "./agent";
-import { MatrixAnalysisEditRequest } from "../../pages/assignment/components/matrix-analyse.utils";
+import type { MatrixAgentConversation, MatrixAgentToolResultOutput } from "./agent";
+import { MatrixAnalysisEditRequest } from "../../pages/assignment/components/code-applyable-markdown.component";
 
 export type AgentLoopMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -24,7 +24,7 @@ export type AgentLoopRunConfig = {
    * 除了返回选择内容，还返回选择的位置信息
    */
   getSelectionContent: () => string | null;
-  writeEditorContent: (request: Pick<MatrixAnalysisEditRequest, 'target' | 'text' | 'range'>) => void;
+  writeEditorContent: (request: Pick<MatrixAnalysisEditRequest, 'target' | 'text' | 'range'>) => Promise<MatrixAgentToolResultOutput>;
   // writeEditorSuggestion?: (request: MatrixAnalysisEditRequest) => void;
   // getModels?: () => monaco;
   playground: (input: string, codeInfo: CodeFileInfo, language?: CodeLanguage) => Promise<string>;
@@ -33,5 +33,5 @@ export type AgentLoopRunConfig = {
 
 export type ToolExecutionResult = {
   success: boolean;
-  output?: string;
+  output?: MatrixAgentToolResultOutput;
 };

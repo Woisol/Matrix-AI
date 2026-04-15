@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { signal } from '@angular/core';
 
+import { CodeFileInfo } from '../../../api/type/assigment';
 import { MatrixAgentConversation } from '../../../api/type/agent';
 import { ApiError, ApiHttpService } from '../../../api/util/api-http.service';
 import { NotificationService } from '../../notification/notification.service';
@@ -150,6 +151,37 @@ describe('AgentService', () => {
       observe: 'response',
     });
     expect(result).toBe(200);
+  });
+
+  it('creates a checkpoint by serializing code files into backend payload shape', async () => {
+    const files: CodeFileInfo[] = [
+      { fileName: 'main.cpp', content: 'int main() { return 0; }' },
+    ];
+    apiStub.post$.and.returnValue(of('cp-1'));
+
+    const service = TestBed.inject(AgentService);
+    const result = await firstValueFrom(service.createCheckpoint$('course-1', 'assign-1', 'user-1', files));
+
+    expect(apiStub.post$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/checkpoints', {
+      original_code: JSON.stringify(files),
+    }, {
+      headers: { user_id: 'user-1' },
+    });
+    expect(result).toBe('cp-1');
+  });
+
+  it('gets a checkpoint and parses the serialized code file list', async () => {
+    apiStub.get$.and.returnValue(of('[{"fileName":"main.cpp","content":"int main() {}"}]'));
+
+    const service = TestBed.inject(AgentService);
+    const result = await firstValueFrom(service.getCheckpoint$('course-1', 'assign-1', 'cp-1', 'user-1'));
+
+    expect(apiStub.get$).toHaveBeenCalledWith('/courses/course-1/assignments/assign-1/agent/checkpoints/cp-1', {
+      headers: { user_id: 'user-1' },
+    });
+    expect(result).toEqual([
+      { fileName: 'main.cpp', content: 'int main() {}' },
+    ]);
   });
 
   it('appends a batch of events using backend request keys', async () => {
