@@ -229,7 +229,7 @@ import { buildConversationExportText } from "../../../api/util/export";
                 cdkAutosizeMaxRows="6"
               ></textarea>
               <menu class="agent-action-buttons">
-                <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'" [nzClickHide]="false">工具列表</button>
+                <button class="secondary" nz-dropdown [nzDropdownMenu]="agentActionMenu" nzTrigger="click" [nzPlacement]="'topLeft'" [nzClickHide]="false">Tools</button>
                 <button class="secondary" nz-dropdown [nzDropdownMenu]="byokMenu" nzTrigger="click" [nzPlacement]="'topLeft'" [nzClickHide]="false" (nzVisibleChange)="handleByokDropdownVisibleChange($event)" type="button">BYOK</button>
                 <button class="secondary" (click)="exportCurrentConversation()" [disabled]="!this.currentConversation"><span nz-icon nzType="export" nzTheme="outline"></span></button>
                 <button class="secondary send-action" type="submit" [disabled]="agentLoopRunning"><nz-icon nzType="send" nzTheme="outline"></nz-icon></button>
