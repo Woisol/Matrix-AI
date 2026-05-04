@@ -173,7 +173,7 @@ class Playground:
                     out = r_stdout.decode("utf-8", errors="replace")
                     return (err or out) or f"Process exited with code {run_proc.returncode}"
 
-                print(f"Raw output: {r_stdout.decode('utf-8', errors='replace')}")
+                # print(f"Raw output: {r_stdout.decode('utf-8', errors='replace')}")
                 return r_stdout.decode("utf-8", errors="replace")
         except Exception as e:
             return f"Runner Error: {e}"
