@@ -120,9 +120,53 @@ pnpm start
 
 如果你使用 VS Code，.vscode 文件夹下有示例的前后端调试配置，删去 .example 后缀后可以直接使用
 
+#### 6. 使用 Docker Compose 启动（新增）
+
+项目根目录已新增以下容器化配置：
+
+- `docker-compose.yml`：编排 `db`(openGauss)、`backend`(FastAPI)、`frontend`(Angular)
+- `backend/Dockerfile`：后端镜像构建
+- `frontend/Dockerfile`：前端镜像构建
+- `frontend/proxy.docker.conf.json`：前端容器内使用的 API 代理配置
+
+首次使用建议先准备环境变量：
+
+```bash
+cp .env.compose.example .env
+```
+
+然后在项目根目录执行：
+
+```bash
+docker compose up --build -d
+```
+
+服务地址：
+
+- 前端：http://localhost:4200
+- 后端：http://localhost:8000
+- 数据库：localhost:8888（容器内为 5432）
+
+查看日志：
+
+```bash
+docker compose logs -f backend frontend db
+```
+
+停止并删除容器：
+
+```bash
+docker compose down
+```
+
+说明：
+
+- Docker Compose 模式下，后端会自动连接容器内数据库（`DB_HOST=db`、`DB_PORT=5432`）
+- 本地开发仍可继续使用原有 `python run.py` + `pnpm start` 方式
+
 ### 部署项目
 
-考虑到本项目在**龙芯上部署**的性质，没有配置 docker compose 而是使用原生部署
+考虑到本项目在**龙芯上部署**的性质，生产环境仍以原生部署为主；当前仓库已补充 Docker Compose 作为开发/体验启动方式
 
 完成**前述 前端、后端、数据库 配置**后，使用如下命令打包前端
 

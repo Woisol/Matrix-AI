@@ -1,0 +1,53 @@
+services:
+  db:
+    image: opengauss/opengauss-server:latest
+    container_name: matrixai-db
+    restart: on-failure:3
+    environment:
+      GS_PASSWORD: "${DB_PASSWORD:-}"
+      GS_NODENAME: "${GS_NODENAME:-matrixaidb}"
+      GS_USERNAME: "${DB_USER:-matrixai}"
+      GS_DB: "${DB_NAME:-matrixai}"
+    ports:
+      - "8888:5432"
+    volumes:
+      - ./backend/db:/var/lib/opengauss
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc 'exec 3<>/dev/tcp/127.0.0.1/5432'" ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      # start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: matrixai-backend
+    restart: on-failure:3
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-}"
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: "${DB_USER:-matrixai}"
+      DB_PASSWORD: "${DB_PASSWORD:-}"
+      DB_NAME: "${DB_NAME:-matrixai}"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: matrixai-frontend
+    restart: on-failure:3
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "4200:4200"
