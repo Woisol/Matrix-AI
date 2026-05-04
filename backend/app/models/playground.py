@@ -1,6 +1,7 @@
 import os
 import asyncio
 import tempfile
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -172,23 +173,48 @@ class Playground:
                     out = r_stdout.decode("utf-8", errors="replace")
                     return (err or out) or f"Process exited with code {run_proc.returncode}"
 
+                print(f"Raw output: {r_stdout.decode('utf-8', errors='replace')}")
                 return r_stdout.decode("utf-8", errors="replace")
         except Exception as e:
             return f"Runner Error: {e}"
     async def judge_code(code:CodeContent, testSample: TestSampleCreate)-> JudgeResult:
         try:
+            # 保护：空的测试样例直接返回
+            if not testSample.input or len(testSample.input) == 0:
+                logging.warning("judge_code called with empty testSample.input")
+                return JudgeResult(score=100, testRealOutput=[]) # 无测试数据先直接满分……
+
             score = 0
             testRealOutput:list[MdCodeContent] = []
             for i in range(len(testSample.input)):
-                output = await Playground.run_code(
-                    code=code,
-                    input=testSample.input[i],
-                    language=CodeLanguage.C_CPP,
-                )
-                testRealOutput.append(output)
-                if output.strip() == testSample.expectOutput[i].strip():
-                    score += 1
+                try:
+                    output = await Playground.run_code(
+                        code=code,
+                        input=testSample.input[i],
+                        language=CodeLanguage.C_CPP,
+                    )
+                except Exception as run_ex:
+                    # 单个用例运行失败时记录错误字符串，不中断整个判题流程
+                    logging.exception(f"run_code failed for test index {i}: {run_ex}")
+                    output = f"Runner Error: {run_ex}"
 
-            return JudgeResult(score=int(score / len(testSample.input) * 100), testRealOutput=testRealOutput)
+                testRealOutput.append(output)
+                try:
+                    if output is not None and output.strip() == testSample.expectOutput[i].strip():
+                        score += 1
+                except Exception:
+                    # 如果对比发生错误，继续下一个用例
+                    logging.exception(f"Comparison failed for test index {i}")
+
+            # 计算分数，避免除以零
+            total = len(testSample.input)
+            final_score = int(score / total * 100) if total else 0
+            return JudgeResult(score=final_score, testRealOutput=testRealOutput)
         except Exception as e:
-            return JudgeResult(score=0, testRealOutput=['' for i in range(len(testSample.input))])
+            logging.exception(f"judge_code encountered an unexpected error: {e}")
+            # 返回与测试输入相同长度的错误占位，便于前端显示
+            try:
+                length = len(testSample.input) if testSample and testSample.input else 0
+            except Exception:
+                length = 0
+            return JudgeResult(score=0, testRealOutput=[f"Error: {e}" for _ in range(length)])

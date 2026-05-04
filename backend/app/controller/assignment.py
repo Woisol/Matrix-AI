@@ -229,7 +229,7 @@ class AssignmentController:
         except Exception as e:
             logging.error(f"Error occurred while submitting code for assignment {assign_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    @classmethod
+    # @classmethod
     # async def remove_previous_ai_gen(cls, assignment: AssignmentModel):
     #     """删除之前的 AI 生成分析"""
     #     try:
