@@ -63,7 +63,8 @@ export type DisplayEvent =
                   }
                 </div>
                 @if (getToolResultOutput(event.payload.callId)) {
-                  <pre class="tool-output">{{ getToolResultOutput(event.payload.callId) }}</pre>
+                  <!-- 注意对于 details 的阻止是用的 default，阻止冒泡无效！ -->
+                  <pre class="tool-output" (click)="$event.preventDefault()">{{ getToolResultOutput(event.payload.callId) }}</pre>
                 }
               </summary>
             </details>
@@ -82,7 +83,7 @@ export type DisplayEvent =
                 </span>
               </div>
               @if (event.payload.output) {
-                <pre class="tool-output">{{ event.payload.output }}</pre>
+                <pre class="tool-output" (click)="$event.preventDefault()">{{ event.payload.output }}</pre>
               }
             </summary>
           </details>
