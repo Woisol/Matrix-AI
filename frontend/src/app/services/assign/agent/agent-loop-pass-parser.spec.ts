@@ -1,4 +1,4 @@
-import { parseAgentLoopPass } from './agent-loop-pass-parser';
+import { AgentLoopSxmlPassParser, parseAgentLoopPass } from './agent-loop-pass-parser';
 import type { AgentLoopToolName } from './agent-loop.service';
 
 describe('parseAgentLoopPass', () => {
@@ -109,5 +109,48 @@ describe('parseAgentLoopPass', () => {
       { type: 'tool_call', payload: { callId: 'call-7', toolName: 'read_editor', input: [] } },
     ]);
     expect(snapshot.stableCount).toBe(4);
+  });
+});
+
+describe('AgentLoopSxmlPassParser', () => {
+  const enabledTools: AgentLoopToolName[] = ['read_editor', 'read_problem_info'];
+
+  it('streams split XML tags without reparsing the full response', () => {
+    const parser = new AgentLoopSxmlPassParser({
+      existingToolCallIds: [],
+      enabledTools,
+      nextCallId: () => 'call-1',
+    });
+
+    let snapshot = parser.write('plain<thi');
+    expect(snapshot.displayEvents).toEqual([
+      { type: 'output', payload: { content: 'plain<thi' } },
+    ]);
+    expect(snapshot.stableCount).toBe(0);
+
+    snapshot = parser.write('nk>draft</think><tool_call>{"toolName":"read_editor","input":["main.cpp"]}');
+    expect(snapshot.displayEvents).toEqual([
+      { type: 'output', payload: { content: 'plain' } },
+      { type: 'think', payload: { content: 'draft' } },
+      { type: 'output', payload: { content: '<tool_call>{"toolName":"read_editor","input":["main.cpp"]}' } },
+    ]);
+    expect(snapshot.stableCount).toBe(2);
+    expect(snapshot.toolCalls).toEqual([]);
+
+    snapshot = parser.write('</tool_call>tail');
+    expect(snapshot.displayEvents).toEqual([
+      { type: 'output', payload: { content: 'plain' } },
+      { type: 'think', payload: { content: 'draft' } },
+      { type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: ['main.cpp'] } },
+      { type: 'output', payload: { content: 'tail' } },
+    ]);
+    expect(snapshot.stableCount).toBe(3);
+    expect(snapshot.toolBlockIds).toEqual(['call-1']);
+    expect(snapshot.toolCalls).toEqual([
+      { type: 'tool_call', payload: { callId: 'call-1', toolName: 'read_editor', input: ['main.cpp'] } },
+    ]);
+
+    const finalSnapshot = parser.finalize();
+    expect(finalSnapshot.stableCount).toBe(4);
   });
 });

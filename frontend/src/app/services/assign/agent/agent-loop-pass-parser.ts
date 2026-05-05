@@ -1,26 +1,18 @@
-import type {
+﻿import type {
   MatrixAgentEventOutput,
   MatrixAgentEventThink,
   MatrixAgentEventToolCall,
   MatrixAgentEventToolResult,
 } from "../../../api/type/agent";
 import type { AgentLoopToolName } from "./agent-loop-tool-provider.service";
-
-type AgentXmlTag = 'think' | 'tool_call' | 'output';
+import { SxmlParser } from "./sxml.js/sxml";
+import type { BusinessEvent, SxmlEvent, SxmlResult, TextEvent } from "./sxml.js";
 
 export type AgentLoopPassDisplayEvent =
   | MatrixAgentEventOutput
   | MatrixAgentEventThink
   | MatrixAgentEventToolCall
   | MatrixAgentEventToolResult;
-
-/**
-* 在 event 的基础上包装一个 stable 字段，只有已经明确闭合的内容才会 stable 并允许持久化
-*/
-type ParsedDisplayBlock = {
-  event: AgentLoopPassDisplayEvent;
-  stable: boolean;
-};
 
 export type AgentLoopPassSnapshot = {
   displayEvents: AgentLoopPassDisplayEvent[];
@@ -32,86 +24,120 @@ export type AgentLoopPassSnapshot = {
 
 const INVALID_TOOL_CALL_MESSAGE =
   'Invalid tool_call payload. Use JSON {"toolName":"...","input":["..."]} or comma-separated "toolName, arg1, arg2".';
-/**
- * 核心解析方法，将模型输出的 raw text 解析为前端可展示的事件列表，并提取工具调用信息
- */
-export function parseAgentLoopPass(args: {
-  rawText: string;
-  existingToolCallIds: string[];
-  enabledTools: AgentLoopToolName[];
-  finalize: boolean;
-  nextCallId: () => string;
-}): AgentLoopPassSnapshot {
-  const { rawText, existingToolCallIds, finalize, nextCallId } = args;
-  const blocks: ParsedDisplayBlock[] = [];
-  const toolBlockIds: string[] = [];
-  const toolCalls: MatrixAgentEventToolCall[] = [];
-  const toolErrors: MatrixAgentEventToolResult[] = [];
-  let cursor = 0;
-  let toolIndex = 0;
-  let curTag: AgentXmlTag | null = null;
-  let curTagStartIndex = -1;
-  let curTagContentStartIndex = -1;
 
-  while (cursor < rawText.length) {
-    if (curTag === null) {
-      const nextTag = findNextOpeningTag(rawText, cursor, finalize);
-      if (!nextTag) {
-        pushOutputBlock(blocks, rawText.slice(cursor), finalize);
-        break;
-      }
-      // push 标签前的文本为 output
-      if (nextTag.index > cursor) {
-        pushOutputBlock(blocks, rawText.slice(cursor, nextTag.index), true);
-      }
+export class AgentLoopSxmlPassParser {
+  private readonly parser = new SxmlParser({
+    legalTags: [
+      { name: 'think', confirmAt: 'open' },
+      'tool_call',
+      { name: 'output', confirmAt: 'open' },
+    ],
+  });
 
-      curTag = nextTag.tag;
-      curTagStartIndex = nextTag.index;
-      curTagContentStartIndex = nextTag.index + nextTag.openTag.length;
-      cursor = curTagContentStartIndex;
-      continue;
+  private readonly displayEvents: AgentLoopPassDisplayEvent[] = [];
+  private readonly toolBlockIds: string[];
+  private nextToolIndex = 0;
+
+  constructor(private readonly args: {
+    existingToolCallIds: string[];
+    enabledTools: AgentLoopToolName[];
+    nextCallId: () => string;
+  }) {
+    this.toolBlockIds = [...args.existingToolCallIds];
+  }
+
+  write(chunk: string): AgentLoopPassSnapshot {
+    if (!chunk || this.parser.isEnd) {
+      return this.snapshot(false);
     }
 
-    const closeTag = `</${curTag}>`;
-    const closeIndex = rawText.indexOf(closeTag, cursor);
-    if (closeIndex === -1) {
-      // 说明有 开标签 但没有 闭标签，直接 push 为 output
-      if (curTag === 'think' && !finalize) {
-        // ？？？直接 push？？？
-        blocks.push({
-          event: {
-            type: 'think',
-            payload: { content: rawText.slice(curTagContentStartIndex) },
-          },
-          stable: false,
-        });
-      } else if (curTag === 'output') {
-        pushOutputBlock(blocks, rawText.slice(curTagContentStartIndex), finalize);
-      } else {
-        pushOutputBlock(blocks, rawText.slice(curTagStartIndex), finalize);
-      }
-      break;
+    this.parser.write(chunk);
+    this.drainResults();
+    return this.snapshot(false);
+  }
+
+  finalize(): AgentLoopPassSnapshot {
+    if (!this.parser.isEnd) {
+      this.parser.end();
     }
 
-    const tagContent = rawText.slice(curTagContentStartIndex, closeIndex);
-    if (curTag === 'output') {
-      pushOutputBlock(blocks, tagContent, true);
-    } else if (curTag === 'think') {
-      blocks.push({
-        event: {
-          type: 'think',
-        payload: { content: tagContent },
-        },
-        stable: true,
-      });
-    } else {
-      const callId = existingToolCallIds[toolIndex] ?? nextCallId();
-      toolBlockIds.push(callId);
-      toolIndex += 1;
+    this.drainResults();
+    return this.snapshot(true);
+  }
 
-      const parsedToolCall = parseToolCallPayload(tagContent);
+  snapshotDraft(): AgentLoopPassSnapshot {
+    return this.snapshot(false);
+  }
+
+  /**
+   * sxml 主接入口
+   */
+  private drainResults(): void {
+    let result: SxmlResult | null;
+    while ((result = this.parser.tryPull()) !== null) {
+      this.applyResult(result);
+    }
+  }
+
+  private applyResult(result: SxmlResult): void {
+    const update = result.update;
+    if (update !== undefined) {
+      this.replaceLastEvent(update);
+    }
+
+    for (const event of result.append) {
+      this.appendEvent(event);
+    }
+  }
+
+  private replaceLastEvent(event: SxmlEvent | null): void {
+    if (event === null) {
+      this.displayEvents.pop();
+      return;
+    }
+
+    if (!this.displayEvents.length) {
+      this.appendEvent(event);
+      return;
+    }
+
+    const previous = this.displayEvents.at(-1)!;
+    const displayEvent = this.toDisplayEvent(event, getCallId(previous));
+    this.displayEvents[this.displayEvents.length - 1] = displayEvent;
+  }
+
+  private appendEvent(event: SxmlEvent): void {
+    const displayEvent = this.toDisplayEvent(event);
+    if (!isEmptyOutput(displayEvent)) {
+      this.displayEvents.push(displayEvent);
+    }
+  }
+
+  /**
+   * 转义为 displayEvent 提供前端展示
+   */
+  private toDisplayEvent(event: SxmlEvent, existingCallId?: string): AgentLoopPassDisplayEvent {
+    if (event.type === 'text') {
+      return toOutputEvent((event as TextEvent).content);
+    }
+
+    const content = getBusinessEventContent(event as BusinessEvent);
+    if (event.type === 'output') {
+      return toOutputEvent(content);
+    }
+
+    if (event.type === 'think') {
+      return {
+        type: 'think',
+        payload: { content },
+      };
+    }
+
+    if (event.type === 'tool_call') {
+      const callId = existingCallId ?? this.nextToolCallId();
+      const parsedToolCall = parseToolCallPayload(content);
       if (parsedToolCall.ok) {
-        const toolCallEvent: MatrixAgentEventToolCall = {
+        return {
           type: 'tool_call',
           payload: {
             callId,
@@ -119,88 +145,83 @@ export function parseAgentLoopPass(args: {
             input: parsedToolCall.input,
           },
         };
-        blocks.push({ event: toolCallEvent, stable: true });
-        toolCalls.push(toolCallEvent);
-      } else {
-        const toolError: MatrixAgentEventToolResult = {
-          type: 'tool_result',
-          payload: {
-            callId,
-            success: false,
-            output: INVALID_TOOL_CALL_MESSAGE,
-          },
-        };
-        blocks.push({ event: toolError, stable: true });
-        toolErrors.push(toolError);
       }
+
+      return {
+        type: 'tool_result',
+        payload: {
+          callId,
+          success: false,
+          output: INVALID_TOOL_CALL_MESSAGE,
+        },
+      };
     }
 
-    cursor = closeIndex + closeTag.length;
-    curTag = null;
-    curTagStartIndex = -1;
-    curTagContentStartIndex = -1;
+    return toOutputEvent(content);
   }
 
+  private snapshot(finalize: boolean): AgentLoopPassSnapshot {
+    const isComplete = finalize || this.parser.isEnd;
+    const stableCount = isComplete || this.parser.lastConfirm
+      ? this.displayEvents.length
+      : Math.max(0, this.displayEvents.length - 1);
+
+    return {
+      displayEvents: [...this.displayEvents],
+      stableCount,
+      toolBlockIds: [...this.toolBlockIds],
+      toolCalls: this.displayEvents.filter((event): event is MatrixAgentEventToolCall => event.type === 'tool_call'),
+      toolErrors: this.displayEvents.filter((event): event is MatrixAgentEventToolResult => event.type === 'tool_result'),
+    };
+  }
+
+  private nextToolCallId(): string {
+    const callId = this.toolBlockIds[this.nextToolIndex] ?? this.args.nextCallId();
+    if (this.nextToolIndex >= this.toolBlockIds.length) {
+      this.toolBlockIds.push(callId);
+    }
+    this.nextToolIndex += 1;
+    return callId;
+  }
+}
+
+export function parseAgentLoopPass(args: {
+  rawText: string;
+  existingToolCallIds: string[];
+  enabledTools: AgentLoopToolName[];
+  finalize: boolean;
+  nextCallId: () => string;
+}): AgentLoopPassSnapshot {
+  const parser = new AgentLoopSxmlPassParser({
+    existingToolCallIds: args.existingToolCallIds,
+    enabledTools: args.enabledTools,
+    nextCallId: args.nextCallId,
+  });
+
+  parser.write(args.rawText);
+  return args.finalize ? parser.finalize() : parser.snapshotDraft();
+}
+
+function toOutputEvent(content: string): MatrixAgentEventOutput {
   return {
-    displayEvents: blocks.map((block) => block.event),
-    stableCount: finalize ? blocks.length : countStablePrefix(blocks),
-    toolBlockIds,
-    toolCalls,
-    toolErrors,
+    type: 'output',
+    payload: { content },
   };
 }
-/**
- * 找 /<(think|tool_call|output)>/
- */
-function findNextOpeningTag(
-  text: string,
-  cursor: number,
-  finalize: boolean,
-): { tag: AgentXmlTag; index: number; openTag: string } | null {
-  const tagPattern = /<(think|tool_call|output)>/g;
-  tagPattern.lastIndex = cursor;
 
-  let match: RegExpExecArray | null;
-  while ((match = tagPattern.exec(text)) !== null) {
-    const tag = match[1] as AgentXmlTag;
-    const index = match.index;
-    const openTag = match[0];
-
-    if (tag !== 'tool_call') {
-      return { tag, index, openTag };
-    }
-
-    if (finalize || text.indexOf('</tool_call>', index + openTag.length) !== -1) {
-      return { tag, index, openTag };
-    }
-  }
-
-  return null;
+function getBusinessEventContent(event: BusinessEvent): string {
+  return typeof event['content'] === 'string' ? event['content'] : '';
 }
 
-function pushOutputBlock(blocks: ParsedDisplayBlock[], content: string, stable: boolean): void {
-  if (!content) {
-    return;
+function getCallId(event: AgentLoopPassDisplayEvent): string | undefined {
+  if (event.type === 'tool_call' || event.type === 'tool_result') {
+    return event.payload.callId;
   }
-
-  blocks.push({
-    event: {
-      type: 'output',
-      payload: { content },
-    },
-    stable,
-  });
+  return undefined;
 }
 
-function countStablePrefix(blocks: ParsedDisplayBlock[]): number {
-  let stableCount = 0;
-  for (const block of blocks) {
-    if (!block.stable) {
-      break;
-    }
-    stableCount += 1;
-  }
-  return stableCount;
+function isEmptyOutput(event: AgentLoopPassDisplayEvent): boolean {
+  return event.type === 'output' && event.payload.content === '';
 }
 
 function parseToolCallPayload(
@@ -232,7 +253,7 @@ function parseToolCallPayload(
 }
 
 function parseCommaSeparatedToolCall(content: string): { ok: true; toolName: string; input: string[] } | null {
-  const parts = content.split(/[，,]/).map((part) => part.trim());
+  const parts = content.split(/[,\uFF0C]/).map((part) => part.trim());
   if (!parts.length) {
     return null;
   }

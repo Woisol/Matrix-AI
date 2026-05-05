@@ -12,7 +12,7 @@ import {
 import { escapeXml } from "../../../api/util/format";
 import { AgentService } from "./agent.service";
 import { SYSTEM_PROMPT } from "./agent.constant";
-import { parseAgentLoopPass } from "./agent-loop-pass-parser";
+import { AgentLoopSxmlPassParser } from "./agent-loop-pass-parser";
 import { AgentLoopPersistCursor } from "./agent-loop-persist-cursor";
 import { AgentLoopRunConfig, AgentLoopMessage, ToolExecutionResult } from "../../../api/type/agent-loop";
 import { projectAgentLoopPassTail } from "./agent-loop-tail-projector";
@@ -23,9 +23,7 @@ export type { AgentLoopToolName } from "./agent-loop-tool-provider.service";
 
 type PassState = {
   _fullResponse: string;
-  rawText: string;
   localStartIndex: number;
-  toolBlockIds: string[];
 };
 
 @Injectable({ providedIn: 'root' })
@@ -174,10 +172,13 @@ export class AgentLoopService {
   ): Promise<{ kind: 'continue' | 'complete'; persistedEventCount: number; toolFailureHappened: boolean }> {
     const passState: PassState = {
       _fullResponse: '',
-      rawText: '',
       localStartIndex: conversation.events.length,
-      toolBlockIds: [],
     };
+    const passParser = new AgentLoopSxmlPassParser({
+      existingToolCallIds: [],
+      enabledTools,
+      nextCallId: () => this.nextCallId(),
+    });
     const persistCursor = new AgentLoopPersistCursor(
       persistedEventCount,
       (expectedEventCount, events) => this.persistEvents(config, expectedEventCount, events),
@@ -188,17 +189,9 @@ export class AgentLoopService {
 
     // 流式 & 解析
     for await (const chunk of this.agentService.streamMessages(config.courseId, config.assignId, config.userId, messages)) {
-      passState.rawText += chunk;
       passState._fullResponse += chunk;
 
-      const snapshot = parseAgentLoopPass({
-        rawText: passState.rawText,
-        existingToolCallIds: passState.toolBlockIds,
-        enabledTools,
-        finalize: false,
-        nextCallId: () => this.nextCallId(),
-      });
-      passState.toolBlockIds = snapshot.toolBlockIds;
+      const snapshot = passParser.write(chunk);
 
       // 传入 localStartIndex 而非 push，只更新本次对话的 tail 事件
       this.projectPassTail(config, passState.localStartIndex, snapshot.displayEvents);
@@ -207,13 +200,7 @@ export class AgentLoopService {
 
     console.log('Model: ', passState._fullResponse);
 
-    const finalSnapshot = parseAgentLoopPass({
-      rawText: passState.rawText,
-      existingToolCallIds: passState.toolBlockIds,
-      enabledTools,
-      finalize: true,
-      nextCallId: () => this.nextCallId(),
-    });
+    const finalSnapshot = passParser.finalize();
 
     this.projectPassTail(config, passState.localStartIndex, finalSnapshot.displayEvents);
     persistedEventCount = await persistCursor.persistStablePrefix(finalSnapshot.displayEvents, finalSnapshot.stableCount);
