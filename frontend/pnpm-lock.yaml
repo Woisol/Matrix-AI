@@ -32,6 +32,9 @@ importers:
       '@ant-design/icons-angular':
         specifier: ^20.0.0
         version: 20.0.0(@angular/common@20.1.6(@angular/core@20.1.6(@angular/compiler@20.1.6)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@20.1.6(@angular/compiler@20.1.6)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@20.1.6(@angular/animations@20.1.6(@angular/common@20.1.6(@angular/core@20.1.6(@angular/compiler@20.1.6)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@20.1.6(@angular/compiler@20.1.6)(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@20.1.6(@angular/core@20.1.6(@angular/compiler@20.1.6)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@20.1.6(@angular/compiler@20.1.6)(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
+      '@woisol-g/sxml.js':
+        specifier: ^0.2.1
+        version: 0.2.1
       monaco-editor:
         specifier: ^0.52.2
         version: 0.52.2
@@ -1346,6 +1349,9 @@ packages:
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     peerDependencies:
       vite: ^6.0.0 || ^7.0.0
+
+  '@woisol-g/sxml.js@0.2.1':
+    resolution: {integrity: sha512-nXcsNHJOhQzpI4Y6KQS+Nn+SiLU2jaDPJlvMLpNcFyGjtilVXV/qdkKQyhotdC6ZNrPoHfcKw8/AvZuu+G0HQw==}
 
   '@yarnpkg/lockfile@1.1.0':
     resolution: {integrity: sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ==}
@@ -4689,6 +4695,8 @@ snapshots:
   '@vitejs/plugin-basic-ssl@2.1.0(vite@7.0.6(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2))':
     dependencies:
       vite: 7.0.6(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)
+
+  '@woisol-g/sxml.js@0.2.1': {}
 
   '@yarnpkg/lockfile@1.1.0': {}
 

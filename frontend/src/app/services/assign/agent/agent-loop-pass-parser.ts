@@ -5,8 +5,7 @@
   MatrixAgentEventToolResult,
 } from "../../../api/type/agent";
 import type { AgentLoopToolName } from "./agent-loop-tool-provider.service";
-import { SxmlParser } from "./sxml.js/sxml";
-import type { BusinessEvent, SxmlEvent, SxmlResult, TextEvent } from "./sxml.js";
+import { BusinessEvent, SxmlEvent, SxmlParser, SxmlResult, TextEvent } from "@woisol-g/sxml.js";
 
 export type AgentLoopPassDisplayEvent =
   | MatrixAgentEventOutput
